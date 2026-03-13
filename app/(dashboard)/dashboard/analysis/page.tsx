@@ -1,16 +1,23 @@
 import { 
-  BarChart3, 
-  Lightbulb, 
-  Zap, 
-  HelpCircle,
-  BrainCircuit,
-  Settings2,
+  FolderOpen,
+  Brain,
+  Info,
   Cpu,
-  ArrowRight
+  Zap,
+  Check,
+  PenSquare,
+  Sparkles,
+  HelpCircle,
+  Key,
+  Clock,
+  Rocket,
+  Settings2,
+  ArrowRight,
+  BrainCircuit,
+  Lightbulb
 } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
+import { Button } from "@/components/ui/button";
 import { 
   Select, 
   SelectContent, 
@@ -26,85 +33,81 @@ export const metadata = {
 export default function NewAnalysisPage() {
   const models = [
     { name: "GPT-4o", provider: "OpenAI", cost: "0.85", icon: <BrainCircuit className="text-emerald-500" /> },
-    { name: "Claude 3.5 Sonnet", provider: "Anthropic", cost: "0.92", icon: <zap className="text-amber-500" size={20} /> },
-    { name: "Gemini 1.5 Pro", provider: "Google", cost: "0.75", icon: <cpu className="text-primary" size={20} /> },
+    { name: "Claude 3.5 Sonnet", provider: "Anthropic", cost: "0.92", icon: <Zap className="text-amber-500" size={20} /> },
+    { name: "Gemini 1.5 Pro", provider: "Google", cost: "0.75", icon: <Cpu className="text-primary" size={20} /> },
     { name: "Perplexity", provider: "Perplexity", cost: "1.10", icon: <Lightbulb className="text-blue-500" /> },
   ];
 
   return (
-    <div className="max-w-5xl mx-auto space-y-10 pb-20">
-      {/* Header */}
-      <div className="space-y-2">
-        <h1 className="text-3xl font-black text-slate-900 dark:text-white tracking-tight">New Analysis Configuration</h1>
-        <p className="text-slate-500 dark:text-slate-400 font-medium">Configure your Generative Engine Optimization parameters for high-impact visibility.</p>
+    <div className="space-y-6 pb-20">
+      {/* Header matching Returns Page */}
+      <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
+        <div>
+          <h1 className="text-3xl font-black text-slate-900 dark:text-white tracking-tight mb-2">New Analysis Configuration</h1>
+          <p className="text-slate-500 dark:text-slate-400 font-medium">Configure your Generative Engine Optimization parameters for high-impact visibility.</p>
+        </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
-        <div className="lg:col-span-2 space-y-8">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="lg:col-span-2 space-y-6">
           {/* Project Selection */}
-          <section className="space-y-4">
-            <div className="flex items-center gap-2 mb-2">
-               <div className="h-8 w-8 rounded-lg bg-slate-100 dark:bg-white/5 flex items-center justify-center">
-                  <BarChart3 size={18} className="text-primary" />
+          <section className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-white/5 shadow-sm p-8">
+            <div className="flex items-center gap-3 mb-6">
+               <div className="h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary">
+                  <FolderOpen className="h-5 w-5" />
                </div>
-               <h3 className="text-lg font-bold text-slate-900 dark:text-white">Project Selection</h3>
+               <h3 className="text-xl font-bold text-slate-900 dark:text-white">Project Selection</h3>
             </div>
-            <Card className="p-6 bg-white dark:bg-slate-900 border-slate-200 dark:border-white/5 shadow-sm rounded-3xl">
-               <div className="space-y-4">
-                  <div className="space-y-2">
-                     <label className="text-sm font-bold text-slate-700 dark:text-slate-300">Target Project</label>
-                     <Select>
-                        <SelectTrigger className="h-12 bg-slate-50 dark:bg-black/20 border-slate-100 dark:border-white/5 rounded-2xl">
-                           <SelectValue placeholder="Select a project to analyze" />
-                        </SelectTrigger>
-                        <SelectContent className="rounded-2xl border-slate-200 dark:border-white/10">
-                           <SelectItem value="techradar">TechRadar SEO Audit</SelectItem>
-                           <SelectItem value="retail">Global Retail Q4</SelectItem>
-                           <SelectItem value="alpha">Alpha Labs Beta</SelectItem>
-                        </SelectContent>
-                     </Select>
-                  </div>
-                  <div className="space-y-2">
-                     <label className="text-sm font-bold text-slate-700 dark:text-slate-300">Prompt Style</label>
-                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <button className="flex items-center gap-3 p-4 bg-primary/5 border-2 border-primary rounded-2xl text-left transition-all">
-                           <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary shrink-0">
-                              <Zap size={16} />
-                           </div>
-                           <div>
-                              <p className="text-sm font-bold text-slate-900 dark:text-white">Direct Inquiry</p>
-                              <p className="text-xs text-slate-500 dark:text-slate-400">Straightforward lookup</p>
-                           </div>
-                        </button>
-                        <button className="flex items-center gap-3 p-4 bg-slate-50 dark:bg-black/20 border-2 border-transparent hover:border-slate-200 dark:hover:border-white/10 rounded-2xl text-left transition-all">
-                           <div className="h-8 w-8 rounded-lg bg-slate-200 dark:bg-white/5 flex items-center justify-center text-slate-500 shrink-0">
-                              <HelpCircle size={16} />
-                           </div>
-                           <div>
-                              <p className="text-sm font-bold text-slate-900 dark:text-white">Comparison</p>
-                              <p className="text-xs text-slate-500 dark:text-slate-400">Competitive set context</p>
-                           </div>
-                        </button>
-                     </div>
-                  </div>
-               </div>
-            </Card>
+            <div className="max-w-md">
+              <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">Select Target Project</label>
+              <Select>
+                <SelectTrigger className="w-full h-12 rounded-xl bg-slate-50 dark:bg-white/5 border-none font-medium">
+                  <SelectValue placeholder="Choose a project..." />
+                </SelectTrigger>
+                <SelectContent className="rounded-xl border-slate-200 dark:border-white/10">
+                  <SelectItem value="enterprise">Enterprise SaaS Q3 Expansion</SelectItem>
+                  <SelectItem value="fintech">Fintech Content Strategy</SelectItem>
+                  <SelectItem value="retail">Global Retail SEO Overhaul</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           </section>
 
-          {/* Model Selection */}
-          <section className="space-y-4">
-            <div className="flex items-center gap-2 mb-2">
-               <div className="h-8 w-8 rounded-lg bg-slate-100 dark:bg-white/5 flex items-center justify-center">
-                  <Cpu size={18} className="text-primary" />
-               </div>
-               <h3 className="text-lg font-bold text-slate-900 dark:text-white">AI Model Selection</h3>
+          {/* Prompt Styles */}
+          <section className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-white/5 shadow-sm p-8">
+            <div className="flex items-center gap-3 mb-6">
+              <div className="h-10 w-10 rounded-xl bg-amber-500/10 flex items-center justify-center text-amber-500">
+                <Brain className="h-5 w-5" />
+              </div>
+              <h3 className="text-xl font-bold text-slate-900 dark:text-white">Prompt Styles</h3>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {['Direct Question', 'Comparison', 'Recommendation', 'How-To Guide', 'Alternative List', 'Definition', 'Opinion Mining', 'Synthesized Summary'].map(style => (
+                <label key={style} className="flex items-center justify-between p-4 rounded-2xl border border-slate-100 dark:border-white/5 bg-slate-50/50 dark:bg-white/5 hover:bg-slate-50 dark:hover:bg-white/10 cursor-pointer group transition-colors">
+                  <div className="flex items-center gap-3">
+                    <input type="checkbox" className="rounded-md text-primary focus:ring-primary h-5 w-5 border-slate-300 dark:border-white/10 dark:bg-slate-800 dark:checked:bg-primary" />
+                    <span className="text-sm font-bold text-slate-900 dark:text-white">{style}</span>
+                  </div>
+                  <Info className="text-slate-400 w-4 h-4 group-hover:text-primary transition-colors" />
+                </label>
+              ))}
+            </div>
+          </section>
+
+          {/* AI Model Selection */}
+          <section className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-white/5 shadow-sm p-8">
+            <div className="flex items-center gap-3 mb-6">
+              <div className="h-10 w-10 rounded-xl bg-emerald-500/10 flex items-center justify-center text-emerald-500">
+                <Cpu className="h-5 w-5" />
+              </div>
+              <h3 className="text-xl font-bold text-slate-900 dark:text-white">AI Model Selection</h3>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                {models.map((model) => (
-                  <Card key={model.name} className="p-5 bg-white dark:bg-slate-900 border-slate-200 dark:border-white/5 shadow-sm rounded-3xl group cursor-pointer hover:border-primary/50 transition-all">
+                  <div key={model.name} className="p-5 bg-slate-50 dark:bg-white/5 border border-transparent dark:border-white/5 rounded-2xl group cursor-pointer hover:border-primary/50 dark:hover:border-primary/50 transition-all">
                      <div className="flex items-center justify-between mb-4">
                         <div className="flex items-center gap-3">
-                           <div className="h-10 w-10 bg-slate-50 dark:bg-black/20 rounded-xl flex items-center justify-center">
+                           <div className="h-10 w-10 bg-white dark:bg-slate-900 rounded-xl flex items-center justify-center shadow-sm">
                               {model.icon}
                            </div>
                            <div>
@@ -118,7 +121,7 @@ export default function NewAnalysisPage() {
                         <span className="text-xs font-medium text-slate-500">Credit Cost</span>
                         <span className="text-sm font-black text-slate-900 dark:text-white">{model.cost} <span className="text-[10px] text-slate-400">/ 1k credits</span></span>
                      </div>
-                  </Card>
+                  </div>
                ))}
             </div>
           </section>
@@ -127,21 +130,21 @@ export default function NewAnalysisPage() {
           <section className="bg-primary/5 border border-primary/10 p-6 rounded-3xl flex items-center justify-between">
              <div className="flex gap-4">
                 <div className="h-12 w-12 rounded-2xl bg-primary/10 flex items-center justify-center text-primary shrink-0">
-                   <Settings2 />
+                   <Key className="w-6 h-6" />
                 </div>
                 <div>
                    <h4 className="font-bold text-slate-900 dark:text-white">Keyword-only mode</h4>
                    <p className="text-sm text-slate-500 dark:text-slate-400 max-w-sm">When active, the engine skips full context analysis and focuses purely on ranking keyword performance.</p>
                 </div>
              </div>
-             <Switch />
+             <Switch defaultChecked />
           </section>
         </div>
 
         {/* Summary Sidebar */}
         <div className="space-y-6">
-           <Card className="p-8 bg-slate-900 text-white rounded-[2.5rem] shadow-2xl sticky top-8">
-              <h3 className="text-xl font-black mb-8 tracking-tight">Analysis Summary</h3>
+           <div className="p-8 bg-slate-900 text-white rounded-3xl shadow-xl sticky top-8">
+              <h3 className="text-2xl font-black mb-8 tracking-tight">Analysis Summary</h3>
               
               <div className="space-y-6 mb-10">
                  <div className="flex justify-between items-center text-sm">
@@ -164,23 +167,23 @@ export default function NewAnalysisPage() {
               </div>
 
               <div className="space-y-3">
-                 <Button className="w-full bg-white text-slate-900 hover:bg-slate-100 font-black h-14 rounded-2xl shadow-xl">
-                    Run Analysis Now
-                    <ArrowRight className="h-4 w-4 ml-2" />
+                 <Button className="w-full bg-primary hover:bg-blue-600 text-white font-black h-14 rounded-2xl shadow-lg shadow-primary/20">
+                    Start Analysis
+                    <Rocket className="h-5 w-5 ml-2" />
                  </Button>
                  <Button variant="ghost" className="w-full text-slate-400 hover:text-white hover:bg-white/5 font-bold h-12 rounded-2xl">
-                    Save as Draft
+                    Save Draft
                  </Button>
               </div>
 
               <div className="mt-8 pt-8 border-t border-white/5">
-                 <div className="flex items-center gap-3 text-emerald-400">
-                    <Zap size={16} />
-                    <span className="text-xs font-black uppercase tracking-widest leading-none">Instant Queue Ready</span>
+                 <div className="flex items-center gap-3 text-emerald-400 mb-2">
+                    <Clock size={16} />
+                    <span className="text-xs font-black uppercase tracking-widest leading-none">15-20 Mins ETA</span>
                  </div>
-                 <p className="text-[10px] text-slate-500 mt-2 font-medium">Results are typically ready in 2-5 minutes depending on model selection.</p>
+                 <p className="text-[10px] text-slate-500 font-medium">Results are typically ready in 2-5 minutes depending on model selection.</p>
               </div>
-           </Card>
+           </div>
         </div>
       </div>
     </div>
