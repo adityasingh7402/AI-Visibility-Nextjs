@@ -6,6 +6,7 @@ import { createClient } from '@/utils/supabase/client';
  */
 export async function fetchWithAuth(url: string, options: RequestInit = {}) {
   const supabase = createClient();
+  const API_BASE_URL = `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api`;
   
   // 1. Get the current user session
   const { data: { session }, error } = await supabase.auth.getSession();
