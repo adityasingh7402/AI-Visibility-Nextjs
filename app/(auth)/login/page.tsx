@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { login, loginWithGoogle } from "../actions";
 
 export const metadata = {
   title: "Login | GEO Platform",
@@ -16,13 +17,15 @@ export default function LoginPage() {
       </div>
 
       <div className="space-y-6">
-        <form className="space-y-4">
+        <form action={login} className="space-y-4">
           <div className="space-y-2">
             <label htmlFor="email" className="text-sm font-bold text-slate-700 dark:text-slate-300">Work Email</label>
             <Input 
               id="email" 
+              name="email"
               type="email" 
               placeholder="name@company.com" 
+              required
               className="h-12 bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-white/10 rounded-xl"
             />
           </div>
@@ -33,12 +36,14 @@ export default function LoginPage() {
             </div>
             <Input 
               id="password" 
+              name="password"
               type="password" 
               placeholder="••••••••" 
+              required
               className="h-12 bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-white/10 rounded-xl"
             />
           </div>
-          <Button size="lg" className="w-full py-6 rounded-xl font-bold bg-primary hover:bg-blue-600 text-white shadow-lg shadow-primary/20">
+          <Button type="submit" size="lg" className="w-full py-6 rounded-xl font-bold bg-primary hover:bg-blue-600 text-white shadow-lg shadow-primary/20">
             Sign In
           </Button>
         </form>
@@ -52,15 +57,13 @@ export default function LoginPage() {
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-4">
-          <Button variant="outline" className="h-12 rounded-xl font-bold border-slate-200 dark:border-white/10 dark:text-white">
-             <span className="mr-2 h-4 w-4 bg-slate-100 dark:bg-slate-800 rounded-full"></span>
-             Google
-          </Button>
-          <Button variant="outline" className="h-12 rounded-xl font-bold border-slate-200 dark:border-white/10 dark:text-white">
-             <span className="mr-2 h-4 w-4 bg-slate-100 dark:bg-slate-800 rounded-full"></span>
-             Slack
-          </Button>
+        <div className="grid grid-cols-1 gap-4">
+          <form action={loginWithGoogle}>
+            <Button type="submit" variant="outline" className="w-full h-12 rounded-xl font-bold border-slate-200 dark:border-white/10 dark:text-white">
+              <span className="mr-2 h-4 w-4 bg-slate-100 dark:bg-slate-800 rounded-full"></span>
+              Google
+            </Button>
+          </form>
         </div>
       </div>
 

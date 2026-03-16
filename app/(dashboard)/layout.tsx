@@ -14,26 +14,40 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { createClient } from "@/utils/supabase/server";
 
-export default function DashboardLayout({
+export default async function DashboardLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+
+  let systemRole = 'CUSTOMER';
+  if (user) {
+    const { data: profile } = await supabase
+      .from('users')
+      .select('system_role')
+      .eq('id', user.id)
+      .single();
+    if (profile) systemRole = profile.system_role;
+  }
+
   const navItems = [
-    { label: "Dashboard", icon: <LayoutDashboard size={20} />, href: "/dashboard" },
-    { label: "Clients", icon: <Users size={20} />, href: "/dashboard/clients" },
-    { label: "Projects", icon: <FolderRoot size={20} />, href: "/dashboard/projects" },
-    { label: "Run Analysis", icon: <Bolt size={20} />, href: "/dashboard/analysis" },
-    { label: "Reports", icon: <FileText size={20} />, href: "/dashboard/reports" },
-    { label: "Billing", icon: <CreditCard size={20} />, href: "/dashboard/billing" },
-    { label: "Settings", icon: <Settings size={20} />, href: "/dashboard/settings" },
-  ];
+    { label: "Dashboard", icon: <LayoutDashboard size={20} />, href: "/dashboard", roles: ['CUSTOMER', 'SUPERADMIN'] },
+    { label: "Clients", icon: <Users size={20} />, href: "/dashboard/clients", roles: ['SUPERADMIN'] },
+    { label: "Projects", icon: <FolderRoot size={20} />, href: "/dashboard/projects", roles: ['CUSTOMER', 'SUPERADMIN'] },
+    { label: "Run Analysis", icon: <Bolt size={20} />, href: "/dashboard/analysis", roles: ['CUSTOMER'] },
+    { label: "Reports", icon: <FileText size={20} />, href: "/dashboard/reports", roles: ['CUSTOMER', 'SUPERADMIN'] },
+    { label: "Billing", icon: <CreditCard size={20} />, href: "/dashboard/billing", roles: ['CUSTOMER'] },
+    { label: "Settings", icon: <Settings size={20} />, href: "/dashboard/settings", roles: ['CUSTOMER', 'SUPERADMIN'] },
+  ].filter(item => item.roles.includes(systemRole));
 
   return (
     <div className="flex h-screen bg-slate-50 dark:bg-black font-sans">
       {/* Sidebar */}
-      <aside className="w-64 bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-white/5 flex flex-col hidden lg:flex">
+      <aside className="w-72 bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-white/5 flex flex-col hidden lg:flex">
         <div className="p-6 border-b border-slate-100 dark:border-white/5">
           <Link href="/" className="flex items-center gap-2 group">
             <div className="h-8 w-8 bg-primary rounded-lg flex items-center justify-center text-white font-black text-lg shadow-sm">G</div>
@@ -54,16 +68,34 @@ export default function DashboardLayout({
           ))}
         </nav>
 
-        <div className="p-4 border-t border-slate-100 dark:border-white/5">
-           <div className="bg-slate-50 dark:bg-white/5 p-4 rounded-2xl flex items-center justify-between group cursor-pointer hover:bg-slate-100 dark:hover:bg-white/10 transition-colors">
+        <div className="p-6">
+           <div className="bg-slate-50 dark:bg-white/5 border border-slate-100 dark:border-white/5 p-5 rounded-3xl space-y-4">
               <div className="flex items-center gap-3">
-                 <div className="h-10 w-10 rounded-full bg-slate-200 dark:bg-slate-800 flex items-center justify-center font-bold text-slate-500">AR</div>
+                 <div className="h-10 w-10 rounded-full bg-slate-200 dark:bg-slate-800 flex items-center justify-center font-bold text-slate-500 shrink-0">
+                    {user?.user_metadata?.full_name ? user.user_metadata.full_name.substring(0, 2).toUpperCase() : 'U'}
+                 </div>
                  <div className="overflow-hidden">
-                    <p className="text-sm font-bold text-slate-900 dark:text-white truncate">Alex Rivers</p>
-                    <p className="text-xs text-slate-500 dark:text-slate-400 truncate">Marketing Director</p>
+                    <p className="text-sm font-bold text-slate-900 dark:text-white truncate">
+                       {user?.user_metadata?.full_name || 'User'}
+                    </p>
+                    <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wider truncate">
+                       {user?.email || 'user@example.com'}
+                    </p>
                  </div>
               </div>
-              <LogOut className="h-4 w-4 text-slate-400 group-hover:text-red-500 transition-colors" />
+              <form action={async () => {
+                 'use server';
+                 const { createClient } = await import('@/utils/supabase/server');
+                 const { redirect } = await import('next/navigation');
+                 const supabase = await createClient();
+                 await supabase.auth.signOut();
+                 redirect('/login');
+              }}>
+                 <Button type="submit" variant="ghost" className="w-full text-slate-500 dark:text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 font-bold h-10 rounded-xl justify-start px-3 gap-3">
+                    <LogOut size={16} />
+                    Sign Out
+                 </Button>
+              </form>
            </div>
         </div>
       </aside>

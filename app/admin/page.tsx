@@ -20,60 +20,84 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 
+import { createClient } from "@/utils/supabase/server";
+
 export const metadata = {
   title: "Super Admin | GEO SaaS",
 };
 
-export default function AdminOverviewPage() {
+export default async function AdminOverviewPage() {
+  const supabase = await createClient();
+
+  // 1. Fetch active users count
+  const { count: activeUsersCount } = await supabase
+    .from('users')
+    .select('*', { count: 'exact', head: true });
+
+  // 2. Fetch Organizations count (as proxy for MRR/Subscriptions for now)
+  const { count: orgCount } = await supabase
+    .from('organizations')
+    .select('*', { count: 'exact', head: true });
+
+  // 3. Fetch Recent System Activity from Audit Logs
+  const { data: auditLogs } = await supabase
+    .from('audit_logs')
+    .select(`
+      id,
+      action,
+      action_context,
+      created_at,
+      user:actor_id ( email, name )
+    `)
+    .order('created_at', { ascending: false })
+    .limit(5);
+
   const metrics = [
-    { label: "Total MRR", value: "$142,400", change: "+14.2%", trend: "up", icon: <CreditCard className="text-primary" /> },
-    { label: "Active Users", value: "12,482", change: "+8.1%", trend: "up", icon: <Users className="text-blue-500" /> },
+    { label: "Total Organizations", value: orgCount || 0, change: "+14.2%", trend: "up", icon: <CreditCard className="text-primary" /> },
+    { label: "Active Users", value: activeUsersCount || 0, change: "+8.1%", trend: "up", icon: <Users className="text-blue-500" /> },
     { label: "Total API Calls Today", value: "892,104", change: "-2.4%", trend: "down", icon: <Zap className="text-amber-500" /> },
     { label: "System Error Rate", value: "0.04%", change: "-0.01%", trend: "up", icon: <Activity className="text-emerald-500" /> },
   ];
 
-  const systemActivity = [
-    { 
-      type: "signup", 
-      title: "New Signup: TechFlow Solutions", 
-      desc: "Enterprise workspace created • ID: #TF-9021", 
-      time: "2 mins ago", 
-      icon: <Plus className="text-blue-500" />,
-      bg: "bg-blue-500/10"
-    },
-    { 
-      type: "upgrade", 
-      title: "Plan Upgrade: Creative Pulse", 
-      desc: "Pro → Enterprise Plan • +15 user seats added", 
-      time: "14 mins ago", 
-      icon: <TrendingUp className="text-emerald-500" />,
-      bg: "bg-emerald-500/10"
-    },
-    { 
-      type: "alert", 
-      title: "Critical Alert: High Latency Detected", 
-      desc: "US-East-1 region API response time > 1500ms", 
-      time: "28 mins ago", 
-      icon: <AlertTriangle className="text-amber-500" />,
-      bg: "bg-amber-500/10 shadow-[0_0_15px_rgba(245,158,11,0.2)]"
-    },
-    { 
-      type: "error", 
-      title: "API Timeout: Claude 3.5 Connector", 
-      desc: "Model endpoint failed to respond within 30s threshold", 
-      time: "42 mins ago", 
-      icon: <ShieldAlert className="text-red-500" />,
-      bg: "bg-red-500/10"
-    },
-    { 
-      type: "renew", 
-      title: "Subscription Renewed: DataNexus", 
-      desc: "Annual Pro subscription renewed successfully", 
-      time: "1 hour ago", 
+  // Map audit logs to a safe UI format
+  const systemActivity = (auditLogs || []).map((log) => {
+    let icon = <Activity className="text-blue-500" />;
+    let bg = "bg-blue-500/10";
+    
+    if (log.action.includes('CREATE')) {
+      icon = <Plus className="text-emerald-500" />;
+      bg = "bg-emerald-500/10";
+    } else if (log.action.includes('UPDATE')) {
+      icon = <TrendingUp className="text-amber-500" />;
+      bg = "bg-amber-500/10";
+    } else if (log.action.includes('LOGIN')) {
+       icon = <ShieldCheck className="text-primary" />;
+       bg = "bg-primary/10";
+    }
+
+    const userObj = Array.isArray(log.user) ? log.user[0] : log.user;
+    
+    return {
+      type: log.action,
+      title: `${log.action} Event`,
+      desc: userObj?.email || "System User",
+      time: new Date(log.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      icon,
+      bg
+    };
+  });
+
+  // Fallback if no logs exist yet
+  if (systemActivity.length === 0) {
+    systemActivity.push({
+      type: "system",
+      title: "System Initialized",
+      desc: "Waiting for user activity...",
+      time: "Just now",
       icon: <ShieldCheck className="text-primary" />,
       bg: "bg-primary/10"
-    },
-  ];
+    });
+  }
 
   return (
     <div className="space-y-10 max-w-7xl mx-auto pb-20">

@@ -16,11 +16,32 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 
-export default function AdminLayout({
+import { redirect } from "next/navigation";
+import { createClient } from "@/utils/supabase/server";
+
+export default async function AdminLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+
+  if (!user) {
+    redirect('/login');
+  }
+
+  // Verify the user is a SUPERADMIN
+  const { data: profile } = await supabase
+    .from('users')
+    .select('system_role')
+    .eq('id', user.id)
+    .single();
+
+  if (!profile || profile.system_role !== 'SUPERADMIN') {
+    // If they aren't an admin, kick them back to the regular dashboard
+    redirect('/dashboard');
+  }
   const adminNavItems = [
     { label: "Overview", icon: <BarChart3 size={20} />, href: "/admin" },
     { label: "Users", icon: <Users size={20} />, href: "/admin/users" },
