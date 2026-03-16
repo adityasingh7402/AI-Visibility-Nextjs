@@ -143,7 +143,7 @@ export default function PricingPage() {
       <section className="py-24 bg-white dark:bg-slate-950 px-6">
         <div className="max-w-3xl mx-auto">
           <h2 className="text-4xl font-black text-center mb-12 dark:text-white">Frequently Asked Questions</h2>
-          <Accordion type="single" collapsible className="w-full space-y-4">
+          <Accordion className="w-full space-y-4">
             <AccordionItem value="item-1" className="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-white/5 data-[state=open]:bg-white dark:data-[state=open]:bg-slate-800 transition-colors px-6 rounded-xl data-[state=open]:shadow-md">
               <AccordionTrigger className="text-left font-bold text-lg hover:no-underline py-6">What exactly is Generative Engine Optimization (GEO)?</AccordionTrigger>
               <AccordionContent className="text-slate-500 dark:text-slate-400 text-base leading-relaxed pb-6">
