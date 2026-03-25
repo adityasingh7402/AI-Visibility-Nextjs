@@ -2,6 +2,7 @@
 import { motion } from "framer-motion";
 import { Star, Quote } from "lucide-react";
 import SectionWatermark from "./SectionWatermark";
+import BackgroundHexagons from "./BackgroundHexagons";
 
 import sarahImg from "@/assets/testimonial-sarah.jpg";
 import jamesImg from "@/assets/testimonial-james.jpg";
@@ -210,7 +211,7 @@ const TestimonialCard = ({
 const TestimonialsSection = () => {
   return (
     <section className="section-padding bg-secondary/40 relative overflow-hidden">
-      <SectionWatermark shape="ring" className="w-[600px] h-[600px] -left-40 top-1/2 -translate-y-1/2" />
+      <BackgroundHexagons className="w-[600px] h-[600px] -left-40 top-1/2 -translate-y-1/2 opacity-20" />
 
       {/* Large decorative quotes */}
       <div className="absolute top-20 left-[8%] text-foreground/[0.04] pointer-events-none">

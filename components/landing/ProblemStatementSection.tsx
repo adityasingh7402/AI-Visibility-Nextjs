@@ -2,6 +2,7 @@
 import { motion } from "framer-motion";
 import { TrendingDown, MousePointerClick, VolumeX, ArrowDownRight, Search, AlertTriangle } from "lucide-react";
 import SectionWatermark from "./SectionWatermark";
+import BackgroundHexagons from "./BackgroundHexagons";
 
 const problems = [
   {
@@ -143,7 +144,7 @@ const visuals: Record<string, React.FC> = {
 const ProblemStatementSection = () => {
   return (
     <section className="section-padding bg-secondary/40 relative overflow-hidden">
-      <SectionWatermark shape="diamond" className="w-[500px] h-[500px] -left-32 -top-20" />
+      <BackgroundHexagons className="w-[600px] h-[600px] -left-32 -top-20 opacity-20" />
 
       <div className="section-container relative z-10">
         <div className="text-center mb-16">

@@ -2,6 +2,7 @@
 import { motion } from "framer-motion";
 import { BarChart3, Settings, Lightbulb } from "lucide-react";
 import SectionWatermark from "./SectionWatermark";
+import BackgroundHexagons from "./BackgroundHexagons";
 
 const rows = [
   {
@@ -24,7 +25,7 @@ const rows = [
 const ComparisonTableSection = () => {
   return (
     <section className="section-padding relative overflow-hidden">
-      <SectionWatermark shape="wave" className="w-[600px] h-[600px] -left-40 top-10" />
+      <BackgroundHexagons className="w-[600px] h-[600px] -left-40 top-10 opacity-20" />
 
       <div className="section-container relative z-10">
         <div className="text-center mb-16">

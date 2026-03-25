@@ -3,6 +3,7 @@ import { motion, useScroll, useTransform } from "framer-motion";
 import { useRef } from "react";
 import { useMouseTilt } from "@/hooks/use-mouse-tilt";
 import SectionWatermark from "./SectionWatermark";
+import BackgroundHexagons from "./BackgroundHexagons";
 
 const steps = [
   { number: 1, title: "Analyze", description: "Crawl LLM knowledge graphs to map how AI models currently understand your brand, products, and competitive landscape." },
@@ -43,12 +44,9 @@ const HowItWorksSection = () => {
 
   const pathLength = useTransform(scrollYProgress, [0.1, 0.55], [0, 1]);
 
-  // Positions for dots on the curve (matching the SVG path)
-  // Point 1: x=100, y=280  Point 2: x=500, y=160  Point 3: x=900, y=60
-
   return (
     <section ref={sectionRef} className="section-padding relative overflow-hidden">
-      <SectionWatermark shape="grid" className="w-[600px] h-[600px] -right-40 -bottom-20" />
+      <BackgroundHexagons className="w-[600px] h-[600px] -right-40 -bottom-20 opacity-20" />
 
       <div className="section-container relative z-10">
         {/* Header */}
@@ -173,17 +171,14 @@ const HowItWorksSection = () => {
           </svg>
 
           {/* Step cards positioned to align with dots */}
-          {/* Step 1 - below dot at x=100, y=280 */}
           <div className="absolute" style={{ left: "5%", top: "82%" }}>
             <StepCard step={steps[0]} delay={0.15} />
           </div>
 
-          {/* Step 2 - below dot at x=500, y=140 */}
           <div className="absolute" style={{ left: "38%", top: "45%" }}>
             <StepCard step={steps[1]} delay={0.3} />
           </div>
 
-          {/* Step 3 - below dot at x=900, y=35 */}
           <div className="absolute" style={{ right: "0%", top: "12%" }}>
             <StepCard step={steps[2]} delay={0.45} />
           </div>

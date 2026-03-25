@@ -3,6 +3,7 @@ import { motion } from "framer-motion";
 import { Check } from "lucide-react";
 import { useState } from "react";
 import SectionWatermark from "./SectionWatermark";
+import BackgroundHexagons from "./BackgroundHexagons";
 
 const tiers = [
   {
@@ -38,7 +39,7 @@ const PricingSection = () => {
   return (
     <section className="section-padding relative overflow-hidden">
       <div className="absolute inset-0 bg-gradient-to-br from-accent/5 via-background to-accent/10 pointer-events-none" />
-      <SectionWatermark shape="circle" className="w-[600px] h-[600px] -right-40 -bottom-32" />
+      <BackgroundHexagons className="w-[800px] h-[800px] -right-40 -bottom-32 opacity-20" />
 
       <div className="section-container relative z-10">
         {/* Header row */}
