@@ -45,6 +45,10 @@
   --radius-2xl: calc(var(--radius) * 1.8);
   --radius-3xl: calc(var(--radius) * 2.2);
   --radius-4xl: calc(var(--radius) * 2.6);
+
+  /* GEO Design System Tokens */
+  --color-geo-green: var(--geo-green);
+  --color-surface-elevated: var(--surface-elevated);
 }
 
 :root {
@@ -72,6 +76,11 @@
   --chart-4: oklch(0.488 0.243 264.376);
   --chart-5: oklch(0.424 0.199 265.638);
   --radius: 0.625rem;
+
+  /* Custom GEO Tokens */
+  --geo-green: oklch(0.7 0.15 150);
+  --surface-elevated: oklch(0.985 0 0);
+
   --sidebar: oklch(0.985 0 0);
   --sidebar-foreground: oklch(0.145 0 0);
   --sidebar-primary: oklch(0.205 0 0);
@@ -114,6 +123,10 @@
   --sidebar-accent-foreground: oklch(0.985 0 0);
   --sidebar-border: oklch(1 0 0 / 10%);
   --sidebar-ring: oklch(0.556 0 0);
+
+  /* Custom GEO Tokens - Dark */
+  --geo-green: oklch(0.75 0.18 155);
+  --surface-elevated: oklch(0.25 0 0);
 }
 
 @layer base {
@@ -125,5 +138,27 @@
   }
   html {
     @apply font-sans;
+  }
+}
+
+@layer components {
+  .section-container {
+    @apply max-w-7xl mx-auto px-6 md:px-12;
+  }
+
+  .section-padding {
+    @apply py-24 md:py-32;
+  }
+
+  .section-title {
+    @apply text-3xl md:text-5xl font-bold tracking-tight text-foreground;
+  }
+
+  .section-subtitle {
+    @apply text-lg text-muted-foreground max-w-2xl;
+  }
+
+  .font-serif-italic {
+    @apply italic font-serif;
   }
 }
