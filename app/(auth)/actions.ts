@@ -15,7 +15,11 @@ export async function login(formData: FormData) {
   })
 
   if (error) {
-    return redirect('/login?message=Could not authenticate user')
+    // Surface a cleaner message for unconfirmed emails
+    const message = error.message.includes('Email not confirmed')
+      ? 'Please confirm your email before logging in. Check your inbox.'
+      : 'Invalid email or password.'
+    return redirect(`/login?message=${encodeURIComponent(message)}`)
   }
 
   revalidatePath('/', 'layout')
@@ -30,7 +34,7 @@ export async function signup(formData: FormData) {
   
   const supabase = await createClient()
 
-  const { error } = await supabase.auth.signUp({
+  const { data, error } = await supabase.auth.signUp({
     email,
     password,
     options: {
@@ -41,11 +45,18 @@ export async function signup(formData: FormData) {
   })
 
   if (error) {
-    return redirect('/signup?message=Could not create user')
+    return redirect(`/signup?message=${encodeURIComponent(error.message)}`)
   }
 
   revalidatePath('/', 'layout')
-  redirect('/dashboard') // Or /onboarding as per flow
+
+  // If email confirmation is disabled in Supabase, a session is created immediately.
+  // If confirmation IS required, data.session will be null – redirect to a holding page.
+  if (data.session) {
+    redirect('/dashboard')
+  } else {
+    redirect('/signup?message=Check your email to confirm your account before logging in.')
+  }
 }
 
 export async function loginWithGoogle() {
