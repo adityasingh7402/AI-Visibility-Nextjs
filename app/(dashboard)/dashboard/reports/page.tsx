@@ -1,143 +1,217 @@
-import { 
-  Search, 
-  Filter, 
-  Download, 
-  MoreHorizontal, 
-  ChevronRight,
-  ArrowUpDown,
-  FileText
-} from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+'use client';
 
-export const metadata = {
-  title: "Reports | GEO Platform",
+import { useEffect, useState } from 'react';
+import { useAnalyses } from '@/hooks/useGeo';
+import type { Analysis } from '@/lib/geo-types';
+import { BarChart3, FileText, Search, Filter, ArrowRight, Clock, TrendingUp, AlertCircle, RefreshCw } from 'lucide-react';
+import Link from 'next/link';
+
+const TYPE_LABELS: Record<string, { label: string; color: string; icon: string }> = {
+  keyword_discovery: { label: 'Keyword Discovery', color: 'text-blue-400 bg-blue-500/10 border-blue-500/20', icon: '🔍' },
+  keyword_test: { label: 'Keyword Test', color: 'text-purple-400 bg-purple-500/10 border-purple-500/20', icon: '🧪' },
+  content_validation: { label: 'Content Validator', color: 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20', icon: '📝' },
+  progress_tracking: { label: 'Progress Tracking', color: 'text-amber-400 bg-amber-500/10 border-amber-500/20', icon: '📈' },
 };
 
-export default function ReportsHistoryPage() {
-  const reports = [
-    { name: "TechRadar SEO Audit", client: "TechRadar Inc.", date: "Oct 24, 2023", score: 82, engine: "Multi", status: "Completed" },
-    { name: "Global Retail Q4", client: "Retail Dynamics", date: "Oct 21, 2023", score: 71, engine: "Google SGE", status: "Completed" },
-    { name: "Alpha Labs Beta", client: "Alpha Ventures", date: "Oct 18, 2023", score: 65, engine: "ChatGPT", status: "Completed" },
-    { name: "Solar Ventures", client: "Solaris Group", date: "Oct 15, 2023", score: 48, engine: "Claude", status: "Review" },
-    { name: "EcoStream Baseline", client: "EcoStream", date: "Oct 12, 2023", score: 91, engine: "Multi", status: "Completed" },
-    { name: "Nexus Pro Launch", client: "Nexus Corp", date: "Oct 10, 2023", score: 55, engine: "Google SGE", status: "Completed" },
-  ];
+function ScoreBadge({ score }: { score: number | null }) {
+  if (score === null || score === undefined) return <span className="text-slate-500 text-xs">—</span>;
+  const grade = score >= 80 ? 'A' : score >= 60 ? 'B' : score >= 40 ? 'C' : 'D';
+  const color = score >= 80 ? 'text-emerald-400' : score >= 60 ? 'text-amber-400' : 'text-red-400';
+  return (
+    <span className={`font-black text-lg ${color}`}>
+      {score.toFixed(0)}<span className="text-xs ml-0.5 opacity-60">/100</span>
+    </span>
+  );
+}
+
+function AnalysisRow({ analysis }: { analysis: Analysis }) {
+  const type = TYPE_LABELS[analysis.analysis_type] ?? { label: analysis.analysis_type, color: 'text-slate-400 bg-white/5 border-white/10', icon: '📊' };
+  const date = new Date(analysis.created_at);
+  const relativeTime = (() => {
+    const diff = Date.now() - date.getTime();
+    const min = Math.floor(diff / 60000);
+    if (min < 60) return `${min}m ago`;
+    const hrs = Math.floor(min / 60);
+    if (hrs < 24) return `${hrs}h ago`;
+    return date.toLocaleDateString();
+  })();
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
+    <div className="flex items-center gap-4 p-5 rounded-2xl border border-white/5 bg-white/5 hover:bg-white/10 hover:border-white/10 transition-all group cursor-pointer">
+      <div className="text-2xl w-10 flex-shrink-0 text-center">{type.icon}</div>
+
+      <div className="flex-grow min-w-0">
+        <div className="flex items-center gap-2 mb-1">
+          <span className={`text-[10px] font-black uppercase tracking-widest px-2 py-0.5 rounded-md border ${type.color}`}>
+            {type.label}
+          </span>
+          {analysis.status === 'completed' && (
+            <span className="text-[10px] text-emerald-400 font-bold">✓ Done</span>
+          )}
+          {analysis.status === 'failed' && (
+            <span className="text-[10px] text-red-400 font-bold">✗ Failed</span>
+          )}
+        </div>
+        <p className="font-bold text-white truncate">{analysis.brand_name}</p>
+        <p className="text-xs text-slate-500">{analysis.category}</p>
+      </div>
+
+      <div className="text-center flex-shrink-0">
+        <ScoreBadge score={analysis.visibility_score ?? analysis.overall_score} />
+        <p className="text-[10px] text-slate-500 mt-0.5">visibility</p>
+      </div>
+
+      {analysis.mention_rate != null && (
+        <div className="text-center flex-shrink-0">
+          <span className="font-black text-lg text-white">{(analysis.mention_rate * 100).toFixed(0)}%</span>
+          <p className="text-[10px] text-slate-500 mt-0.5">mention rate</p>
+        </div>
+      )}
+
+      <div className="text-right flex-shrink-0">
+        <div className="flex items-center gap-1 text-xs text-slate-500">
+          <Clock className="h-3 w-3" />
+          {relativeTime}
+        </div>
+        {analysis.processing_time_seconds && (
+          <p className="text-[10px] text-slate-600 mt-0.5">{analysis.processing_time_seconds}s runtime</p>
+        )}
+      </div>
+
+      <ArrowRight className="h-4 w-4 text-slate-600 group-hover:text-white group-hover:translate-x-1 transition-all flex-shrink-0" />
+    </div>
+  );
+}
+
+export default function ReportsPage() {
+  const { data: analyses, loading, error, fetchAnalyses } = useAnalyses();
+  const [searchTerm, setSearchTerm] = useState('');
+  const [filterType, setFilterType] = useState('');
+
+  useEffect(() => {
+    fetchAnalyses();
+  }, [fetchAnalyses]);
+
+  const filtered = analyses.filter(a => {
+    const matchesSearch = !searchTerm ||
+      a.brand_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      a.category.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesType = !filterType || a.analysis_type === filterType;
+    return matchesSearch && matchesType;
+  });
+
+  const totalAnalyses = analyses.length;
+  const avgScore = analyses.length > 0
+    ? (analyses.reduce((sum, a) => sum + (a.visibility_score ?? a.overall_score ?? 0), 0) / analyses.length).toFixed(1)
+    : '—';
+
+  return (
+    <div className="space-y-8">
+      {/* Header */}
+      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-black text-slate-900 dark:text-white tracking-tight mb-2">All Reports</h1>
-          <p className="text-slate-500 dark:text-slate-400 font-medium">Manage and view your historical GEO analysis reports.</p>
+          <h1 className="text-3xl font-black text-white tracking-tight">Analysis Reports</h1>
+          <p className="text-slate-400 mt-1">All your past GEO analyses in one place.</p>
         </div>
         <div className="flex gap-3">
-           <Button className="bg-primary hover:bg-blue-600 text-white font-bold rounded-xl h-11 px-6 shadow-lg shadow-primary/20">
-             New Report
-           </Button>
+          <Link href="/dashboard/keywords"
+            className="px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-sm transition-all">
+            + New Discovery
+          </Link>
+          <button onClick={() => fetchAnalyses()}
+            className="p-2.5 rounded-xl border border-white/10 hover:border-white/20 text-slate-400 hover:text-white transition-all">
+            <RefreshCw className="h-4 w-4" />
+          </button>
         </div>
       </div>
 
-      <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-white/5 shadow-sm overflow-hidden">
-        <div className="p-6 border-b border-slate-100 dark:border-white/5 flex flex-col md:flex-row md:items-center justify-between gap-4">
-           <div className="relative max-w-sm w-full">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-              <Input 
-                placeholder="Filter by report name or client..." 
-                className="pl-10 h-10 bg-slate-50 dark:bg-white/5 border-none rounded-xl"
-              />
-           </div>
-           <div className="flex items-center gap-3">
-              <Button variant="outline" size="sm" className="rounded-lg border-slate-200 dark:border-white/10 dark:text-white h-10 font-bold">
-                 <Filter className="h-4 w-4 mr-2" />
-                 Filter
-              </Button>
-              <Button variant="outline" size="sm" className="rounded-lg border-slate-200 dark:border-white/10 dark:text-white h-10 font-bold">
-                 <Download className="h-4 w-4 mr-2" />
-                 Export
-              </Button>
-           </div>
-        </div>
+      {/* Summary stats */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        {[
+          { label: 'Total Analyses', value: totalAnalyses, icon: <BarChart3 className="h-5 w-5 text-blue-400" /> },
+          { label: 'Avg Visibility Score', value: avgScore, icon: <TrendingUp className="h-5 w-5 text-emerald-400" /> },
+          { label: 'Completed', value: analyses.filter(a => a.status === 'completed').length, icon: <FileText className="h-5 w-5 text-purple-400" /> },
+        ].map((stat) => (
+          <div key={stat.label} className="bg-white/5 border border-white/5 rounded-2xl p-5 flex items-center gap-4">
+            <div className="h-10 w-10 rounded-xl bg-white/5 flex items-center justify-center flex-shrink-0">
+              {stat.icon}
+            </div>
+            <div>
+              <p className="text-2xl font-black text-white">{stat.value}</p>
+              <p className="text-xs text-slate-500 font-medium">{stat.label}</p>
+            </div>
+          </div>
+        ))}
+      </div>
 
-        <div className="overflow-x-auto">
-           <table className="w-full text-left border-collapse">
-              <thead>
-                 <tr className="border-b border-slate-100 dark:border-white/5 bg-slate-50/50 dark:bg-white/5 underline-none">
-                    <th className="px-6 py-4 text-xs font-black text-slate-400 uppercase tracking-widest">
-                       <button className="flex items-center gap-2 hover:text-slate-600 transition-colors">
-                          Report Name <ArrowUpDown className="h-3 w-3" />
-                       </button>
-                    </th>
-                    <th className="px-6 py-4 text-xs font-black text-slate-400 uppercase tracking-widest">Client</th>
-                    <th className="px-6 py-4 text-xs font-black text-slate-400 uppercase tracking-widest">Date</th>
-                    <th className="px-6 py-4 text-xs font-black text-slate-400 uppercase tracking-widest text-center">Engine</th>
-                    <th className="px-6 py-4 text-xs font-black text-slate-400 uppercase tracking-widest text-center">Score</th>
-                    <th className="px-6 py-4 text-xs font-black text-slate-400 uppercase tracking-widest text-center">Status</th>
-                    <th className="px-6 py-4 text-xs font-black text-slate-400 uppercase tracking-widest text-right">Actions</th>
-                 </tr>
-              </thead>
-              <tbody>
-                 {reports.map((report, i) => (
-                    <tr key={i} className="border-b border-slate-100 dark:border-white/5 hover:bg-slate-50 dark:hover:bg-white/5 transition-colors group cursor-pointer">
-                       <td className="px-6 py-5">
-                          <div className="flex items-center gap-3">
-                             <div className="h-10 w-10 bg-primary/10 rounded-xl flex items-center justify-center text-primary">
-                                <FileText className="h-5 w-5" />
-                             </div>
-                             <span className="font-bold text-slate-900 dark:text-white group-hover:text-primary transition-colors">
-                                {report.name}
-                             </span>
-                          </div>
-                       </td>
-                       <td className="px-6 py-5">
-                          <span className="text-slate-500 dark:text-slate-400 font-medium text-sm">{report.client}</span>
-                       </td>
-                       <td className="px-6 py-5">
-                          <span className="text-slate-500 dark:text-slate-400 font-medium text-sm">{report.date}</span>
-                       </td>
-                       <td className="px-6 py-5 text-center">
-                          <span className="px-2 py-1 bg-slate-100 dark:bg-slate-800 rounded text-[10px] font-black uppercase text-slate-600 dark:text-slate-400">
-                             {report.engine}
-                          </span>
-                       </td>
-                       <td className="px-6 py-5 text-center">
-                          <div className="flex items-center justify-center gap-2">
-                             <div className="h-1.5 w-12 bg-slate-100 dark:bg-white/10 rounded-full overflow-hidden">
-                                <div 
-                                  className={`h-full ${report.score > 75 ? 'bg-emerald-500' : report.score > 50 ? 'bg-primary' : 'bg-amber-500'}`} 
-                                  style={{ width: `${report.score}%` }}
-                                ></div>
-                             </div>
-                             <span className="text-sm font-black text-slate-900 dark:text-white">{report.score}%</span>
-                          </div>
-                       </td>
-                       <td className="px-6 py-5 text-center">
-                          <span className={`text-[10px] font-black uppercase tracking-widest px-2 py-1 rounded-md ${
-                             report.status === "Completed" ? "bg-emerald-500/10 text-emerald-500" : "bg-blue-500/10 text-blue-500"
-                          }`}>
-                             {report.status}
-                          </span>
-                       </td>
-                       <td className="px-6 py-5 text-right">
-                          <div className="flex items-center justify-end gap-2 text-slate-300">
-                             <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg hover:text-primary"><MoreHorizontal size={18} /></Button>
-                             <ChevronRight size={18} className="group-hover:text-primary group-hover:translate-x-1 transition-all" />
-                          </div>
-                       </td>
-                    </tr>
-                 ))}
-              </tbody>
-           </table>
+      {/* Filters */}
+      <div className="flex gap-3 flex-wrap">
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500" />
+          <input
+            value={searchTerm}
+            onChange={e => setSearchTerm(e.target.value)}
+            placeholder="Search by brand or category…"
+            className="pl-9 pr-4 py-2.5 rounded-xl bg-white/5 border border-white/10 text-sm text-white placeholder-slate-600 focus:outline-none focus:border-blue-500/50 transition-all w-72"
+          />
         </div>
-
-        <div className="p-6 bg-slate-50/50 dark:bg-white/5 flex items-center justify-between">
-           <p className="text-sm text-slate-500 dark:text-slate-400 font-medium">Showing 6 of 124 reports</p>
-           <div className="flex gap-2">
-              <Button variant="outline" size="sm" disabled className="rounded-lg h-9 px-4 font-bold border-slate-200 dark:border-white/5">Previous</Button>
-              <Button variant="outline" size="sm" className="rounded-lg h-9 px-4 font-bold border-slate-200 dark:border-white/5 dark:text-white">Next</Button>
-           </div>
+        <div className="relative">
+          <Filter className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500" />
+          <select
+            value={filterType}
+            onChange={e => setFilterType(e.target.value)}
+            className="pl-9 pr-4 py-2.5 rounded-xl bg-white/5 border border-white/10 text-sm text-white focus:outline-none focus:border-blue-500/50 transition-all appearance-none cursor-pointer"
+          >
+            <option value="">All types</option>
+            {Object.entries(TYPE_LABELS).map(([value, { label }]) => (
+              <option key={value} value={value}>{label}</option>
+            ))}
+          </select>
         </div>
       </div>
+
+      {/* Content */}
+      {loading && (
+        <div className="space-y-3">
+          {[1, 2, 3].map(i => (
+            <div key={i} className="h-20 rounded-2xl bg-white/5 border border-white/5 animate-pulse" />
+          ))}
+        </div>
+      )}
+
+      {error && (
+        <div className="rounded-2xl bg-red-500/10 border border-red-500/20 p-6 flex items-start gap-3">
+          <AlertCircle className="h-5 w-5 text-red-400 flex-shrink-0 mt-0.5" />
+          <div>
+            <p className="font-bold text-red-400">Failed to load reports</p>
+            <p className="text-sm text-red-400/70 mt-1">{error}</p>
+            <button onClick={() => fetchAnalyses()} className="mt-3 text-xs text-red-400 underline">Try again</button>
+          </div>
+        </div>
+      )}
+
+      {!loading && !error && filtered.length === 0 && (
+        <div className="rounded-2xl border border-white/5 bg-white/5 p-16 text-center">
+          <p className="text-4xl mb-4">🔍</p>
+          <p className="font-bold text-white text-lg mb-2">No analyses yet</p>
+          <p className="text-slate-500 text-sm mb-6">Run your first keyword discovery to see results here.</p>
+          <Link href="/dashboard/keywords"
+            className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-sm transition-all">
+            Start Keyword Discovery <ArrowRight className="h-4 w-4" />
+          </Link>
+        </div>
+      )}
+
+      {!loading && filtered.length > 0 && (
+        <div className="space-y-3">
+          {filtered.map(analysis => (
+            <AnalysisRow key={analysis.id} analysis={analysis} />
+          ))}
+          <p className="text-center text-xs text-slate-600 pt-4">
+            Showing {filtered.length} of {totalAnalyses} analyses
+          </p>
+        </div>
+      )}
     </div>
   );
 }

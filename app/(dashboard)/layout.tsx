@@ -36,8 +36,10 @@ export default async function DashboardLayout({
 
   const navItems = [
     { label: "Dashboard", icon: <LayoutDashboard size={20} />, href: "/dashboard", roles: ['CUSTOMER', 'SUPERADMIN'] },
+    { label: "Keyword Discovery", icon: <Search size={20} />, href: "/dashboard/keywords", roles: ['CUSTOMER', 'SUPERADMIN'] },
+    { label: "Content Validator", icon: <FileText size={20} />, href: "/dashboard/content", roles: ['CUSTOMER', 'SUPERADMIN'] },
+    { label: "Visibility Progress", icon: <ChevronRight size={20} />, href: "/dashboard/progress", roles: ['CUSTOMER', 'SUPERADMIN'] },
     { label: "Clients", icon: <Users size={20} />, href: "/dashboard/clients", roles: ['SUPERADMIN'] },
-    { label: "Projects", icon: <FolderRoot size={20} />, href: "/dashboard/projects", roles: ['CUSTOMER', 'SUPERADMIN'] },
     { label: "Run Analysis", icon: <Bolt size={20} />, href: "/dashboard/analysis", roles: ['CUSTOMER'] },
     { label: "Reports", icon: <FileText size={20} />, href: "/dashboard/reports", roles: ['CUSTOMER', 'SUPERADMIN'] },
     { label: "Billing", icon: <CreditCard size={20} />, href: "/dashboard/billing", roles: ['CUSTOMER'] },
