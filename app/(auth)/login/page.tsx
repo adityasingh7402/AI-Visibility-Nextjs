@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { login, loginWithGoogle } from "../actions";
+import { login } from "../actions";
+import { GoogleLoginButton } from "@/components/auth/OAuthButtons";
 
 export const metadata = {
   title: "Login | GEO Platform",
@@ -58,12 +59,7 @@ export default function LoginPage() {
         </div>
 
         <div className="grid grid-cols-1 gap-4">
-          <form action={loginWithGoogle}>
-            <Button type="submit" variant="outline" className="w-full h-12 rounded-xl font-bold border-slate-200 dark:border-white/10 dark:text-white">
-              <span className="mr-2 h-4 w-4 bg-slate-100 dark:bg-slate-800 rounded-full"></span>
-              Google
-            </Button>
-          </form>
+          <GoogleLoginButton />
         </div>
       </div>
 
