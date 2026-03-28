@@ -4,6 +4,17 @@ import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { createClient } from '@/utils/supabase/server'
 
+// Use the correct site URL: prefer explicit NEXT_PUBLIC_SITE_URL, fall back to Vercel's auto URL
+function getSiteUrl() {
+  if (process.env.NEXT_PUBLIC_SITE_URL && !process.env.NEXT_PUBLIC_SITE_URL.includes('localhost')) {
+    return process.env.NEXT_PUBLIC_SITE_URL
+  }
+  if (process.env.VERCEL_URL) {
+    return `https://${process.env.VERCEL_URL}`
+  }
+  return process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'
+}
+
 export async function login(formData: FormData) {
   const email = formData.get('email') as string
   const password = formData.get('password') as string
@@ -64,7 +75,7 @@ export async function loginWithGoogle() {
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider: 'google',
     options: {
-      redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL}/auth/callback`,
+      redirectTo: `${getSiteUrl()}/auth/callback`,
     },
   })
   if (data.url) {
@@ -77,7 +88,7 @@ export async function loginWithGithub() {
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider: 'github',
     options: {
-      redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL}/auth/callback`,
+      redirectTo: `${getSiteUrl()}/auth/callback`,
     },
   })
   if (data.url) {
