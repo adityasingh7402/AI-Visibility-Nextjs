@@ -1,8 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
-import { useKeywordDiscovery } from '@/hooks/useGeo';
+import { useKeywordDiscovery, useAnalyses } from '@/hooks/useGeo';
 import { useSSEProgress } from '@/hooks/useSSEProgress';
 import { AnalysisProgressBar } from '@/components/geo/AnalysisProgressBar';
 import type { DiscoveryMode, LLMProvider } from '@/lib/geo-types';
@@ -24,11 +24,32 @@ const MODES: { id: DiscoveryMode; label: string; desc: string; eta: string; icon
   { id: 'deep', label: 'Deep', desc: 'Comprehensive, 25+ prompts', eta: '~90s', icon: <BrainCircuit size={16} /> },
 ];
 
+function getRelativeTime(dateStr: string): string {
+  const diff = Date.now() - new Date(dateStr).getTime();
+  const min = Math.floor(diff / 60000);
+  if (min < 1) return 'Just now';
+  if (min < 60) return `${min}m ago`;
+  const hrs = Math.floor(min / 60);
+  if (hrs < 24) return `${hrs}h ago`;
+  const days = Math.floor(hrs / 24);
+  if (days < 7) return `${days}d ago`;
+  return new Date(dateStr).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+}
+
 export default function AnalysisPage() {
   const router = useRouter();
   const { discover, loading, error } = useKeywordDiscovery();
+  const { data: recentAnalyses, fetchAnalyses } = useAnalyses();
   const [analysisId, setAnalysisId] = useState<string | null>(null);
   const { progress, stageLabel } = useSSEProgress(loading ? analysisId : null);
+
+  // Fetch latest analysis on mount for the "Last Analysis" badge
+  useEffect(() => { fetchAnalyses(undefined, undefined, 1); }, [fetchAnalyses]);
+
+  const lastAnalysisLabel = useMemo(() => {
+    if (!recentAnalyses || recentAnalyses.length === 0) return 'No runs yet';
+    return `Last: ${getRelativeTime(recentAnalyses[0].created_at)}`;
+  }, [recentAnalyses]);
 
   // Form state
   const [brandName, setBrandName] = useState('');
@@ -77,7 +98,7 @@ export default function AnalysisPage() {
         </div>
         <div className="flex items-center gap-2 px-4 py-2 rounded-2xl bg-primary/5 border border-primary/10">
           <Clock size={16} className="text-primary" />
-          <span className="text-[10px] font-black uppercase tracking-widest text-primary">Last Analysis: 2h ago</span>
+          <span className="text-[10px] font-black uppercase tracking-widest text-primary">{lastAnalysisLabel}</span>
         </div>
       </div>
 

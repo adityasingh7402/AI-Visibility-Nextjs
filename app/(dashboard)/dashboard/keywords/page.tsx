@@ -3,13 +3,14 @@
 import { useState } from 'react';
 import { useKeywordDiscovery } from '@/hooks/useGeo';
 import { useSSEProgress } from '@/hooks/useSSEProgress';
+import { geoApi } from '@/lib/geo-api';
 import { ScoreCard } from '@/components/geo/ScoreCard';
 import { KeywordList } from '@/components/geo/KeywordList';
 import { CompetitorCard } from '@/components/geo/CompetitorCard';
 import { OpportunityCard } from '@/components/geo/OpportunityCard';
 import { AnalysisProgressBar } from '@/components/geo/AnalysisProgressBar';
 import { Button } from '@/components/ui/button';
-import type { DiscoveryMode, LLMProvider } from '@/lib/geo-types';
+import type { DiscoveryMode, LLMProvider, KeywordValidateResponse } from '@/lib/geo-types';
 
 const LLM_OPTIONS: { id: LLMProvider; label: string }[] = [
   { id: 'chatgpt', label: 'ChatGPT' },
@@ -30,6 +31,31 @@ export default function KeywordsPage() {
   const [mode, setMode] = useState<DiscoveryMode>('standard');
   const [selectedLLMs, setSelectedLLMs] = useState<LLMProvider[]>(['chatgpt', 'gemini', 'perplexity']);
   const [activeTab, setActiveTab] = useState<'opportunities' | 'competitors' | 'keywords'>('opportunities');
+
+  // Quick-validate state
+  const [qvPrompt, setQvPrompt] = useState('');
+  const [qvBrand, setQvBrand] = useState('');
+  const [qvLoading, setQvLoading] = useState(false);
+  const [qvResult, setQvResult] = useState<KeywordValidateResponse | null>(null);
+  const [qvError, setQvError] = useState<string | null>(null);
+
+  const handleQuickValidate = async () => {
+    if (!qvPrompt || !qvBrand) return;
+    setQvLoading(true);
+    setQvError(null);
+    try {
+      const result = await geoApi.validateKeyword({
+        prompt: qvPrompt,
+        brand_name: qvBrand,
+        llm_providers: ['chatgpt', 'gemini', 'perplexity'],
+      });
+      setQvResult(result);
+    } catch (e: any) {
+      setQvError(e.response?.data?.error || e.message || 'Quick validate failed');
+    } finally {
+      setQvLoading(false);
+    }
+  };
 
   const toggleLLM = (llm: LLMProvider) => {
     setSelectedLLMs(prev =>
@@ -273,6 +299,82 @@ export default function KeywordsPage() {
           )}
         </div>
       )}
+
+      {/* ──── Quick Prompt Validate ──── */}
+      <div className="rounded-[2.5rem] border border-slate-200 dark:border-white/5 bg-white dark:bg-slate-900/50 p-8 md:p-10 shadow-sm space-y-6">
+        <div className="flex items-center gap-4">
+          <div className="w-10 h-10 rounded-2xl bg-purple-500/10 flex items-center justify-center text-lg">⚡</div>
+          <div>
+            <h2 className="text-lg font-black text-slate-900 dark:text-white tracking-tight">Quick Prompt Check</h2>
+            <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">Test a single prompt to see if your brand gets mentioned by AI models.</p>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-end">
+          <div className="md:col-span-3 space-y-2">
+            <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em] px-1">Brand Name</label>
+            <input
+              value={qvBrand}
+              onChange={e => setQvBrand(e.target.value)}
+              placeholder="e.g. Notion"
+              className="w-full rounded-2xl bg-slate-50 dark:bg-black/20 border border-slate-100 dark:border-white/10 px-5 py-3.5 text-sm text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 transition-all font-medium"
+            />
+          </div>
+          <div className="md:col-span-6 space-y-2">
+            <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em] px-1">Test Prompt</label>
+            <input
+              value={qvPrompt}
+              onChange={e => setQvPrompt(e.target.value)}
+              placeholder="e.g. What is the best project management tool for startups?"
+              className="w-full rounded-2xl bg-slate-50 dark:bg-black/20 border border-slate-100 dark:border-white/10 px-5 py-3.5 text-sm text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 transition-all font-medium"
+            />
+          </div>
+          <div className="md:col-span-3">
+            <Button
+              onClick={handleQuickValidate}
+              disabled={qvLoading || !qvPrompt || !qvBrand}
+              className="w-full py-[14px] rounded-2xl bg-purple-600 hover:bg-purple-700 disabled:opacity-40 disabled:cursor-not-allowed text-white font-black text-sm shadow-lg shadow-purple-600/20 transition-all active:scale-[0.98]"
+            >
+              {qvLoading ? 'Checking…' : 'Check Now'}
+            </Button>
+          </div>
+        </div>
+
+        {qvError && (
+          <div className="rounded-2xl bg-red-500/10 border border-red-500/20 p-4 text-sm text-red-600 dark:text-red-400 font-semibold">{qvError}</div>
+        )}
+
+        {qvResult && (
+          <div className="rounded-[2rem] border border-purple-500/20 bg-purple-500/5 p-6 space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div>
+                <p className="text-[10px] font-black text-purple-500 uppercase tracking-[0.2em] mb-1">Result</p>
+                <p className="text-sm font-bold text-slate-700 dark:text-slate-300 italic">"{qvResult.prompt}"</p>
+              </div>
+              <div className="text-right">
+                <p className={`text-3xl font-black tracking-tighter ${qvResult.results.brand_mentioned ? 'text-emerald-500' : 'text-red-500'}`}>
+                  {qvResult.results.brand_mentioned ? '✓ Mentioned' : '✗ Not found'}
+                </p>
+                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                  {(qvResult.results.mention_rate * 100).toFixed(0)}% mention rate · Pos #{qvResult.results.average_position.toFixed(1)}
+                </p>
+              </div>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {qvResult.results.providers_mentioning.length > 0 && (
+                qvResult.results.providers_mentioning.map(p => (
+                  <span key={p} className="text-[10px] font-black bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 px-3 py-1.5 rounded-xl border border-emerald-500/20 uppercase tracking-widest">✓ {p}</span>
+                ))
+              )}
+              {qvResult.results.providers_not_mentioning.length > 0 && (
+                qvResult.results.providers_not_mentioning.map(p => (
+                  <span key={p} className="text-[10px] font-black bg-red-500/10 text-red-600 dark:text-red-400 px-3 py-1.5 rounded-xl border border-red-500/20 uppercase tracking-widest">✗ {p}</span>
+                ))
+              )}
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

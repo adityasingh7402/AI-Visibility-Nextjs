@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
+import { createClient } from '@/utils/supabase/client';
 
 export interface AnalysisProgress {
   analysis_id: string;
@@ -28,6 +29,9 @@ const STAGE_LABELS: Record<string, string> = {
  * useSSEProgress — connects to the Express SSE endpoint
  * and streams real-time progress for a running analysis.
  *
+ * Passes the Supabase JWT as a query param since EventSource
+ * doesn't support custom Authorization headers.
+ *
  * Usage:
  *   const { progress, connected, error } = useSSEProgress(analysisId);
  */
@@ -40,58 +44,78 @@ export function useSSEProgress(analysisId: string | null) {
   useEffect(() => {
     if (!analysisId) return;
 
-    const apiBase = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
-    const url = `${apiBase}/api/v1/progress/stream/${analysisId}`;
+    let cancelled = false;
 
-    // Close any existing connection
-    if (eventSourceRef.current) {
-      eventSourceRef.current.close();
-    }
+    const connect = async () => {
+      const apiBase = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
 
-    const es = new EventSource(url, { withCredentials: true });
-    eventSourceRef.current = es;
-
-    es.addEventListener('connected', () => {
-      setConnected(true);
-      setError(null);
-    });
-
-    es.addEventListener('progress', (event: MessageEvent) => {
+      // Fetch the JWT from Supabase to pass as a query param
+      let token = '';
       try {
-        const data = JSON.parse(event.data) as AnalysisProgress;
-        setProgress(data);
+        const supabase = createClient();
+        const { data: { session } } = await supabase.auth.getSession();
+        token = session?.access_token || '';
       } catch {
-        console.error('[SSE] Failed to parse progress event');
+        // If we can't get a token, try connecting anyway — backend will reject
       }
-    });
 
-    es.addEventListener('complete', (event: MessageEvent) => {
-      try {
-        const data = JSON.parse(event.data);
-        setProgress(prev => prev ? { ...prev, status: data.status } : null);
-      } catch {}
-      es.close();
-      setConnected(false);
-    });
+      if (cancelled) return;
 
-    es.addEventListener('heartbeat', () => {
-      // Connection alive, nothing to update
-    });
+      const url = `${apiBase}/api/v1/progress/stream/${analysisId}?token=${encodeURIComponent(token)}`;
 
-    es.addEventListener('timeout', () => {
-      setError('Analysis timed out');
-      es.close();
-      setConnected(false);
-    });
+      // Close any existing connection
+      if (eventSourceRef.current) {
+        eventSourceRef.current.close();
+      }
 
-    es.onerror = () => {
-      setError('Connection lost. Progress tracking stopped.');
-      es.close();
-      setConnected(false);
+      const es = new EventSource(url);
+      eventSourceRef.current = es;
+
+      es.addEventListener('connected', () => {
+        setConnected(true);
+        setError(null);
+      });
+
+      es.addEventListener('progress', (event: MessageEvent) => {
+        try {
+          const data = JSON.parse(event.data) as AnalysisProgress;
+          setProgress(data);
+        } catch {
+          console.error('[SSE] Failed to parse progress event');
+        }
+      });
+
+      es.addEventListener('complete', (event: MessageEvent) => {
+        try {
+          const data = JSON.parse(event.data);
+          setProgress(prev => prev ? { ...prev, status: data.status } : null);
+        } catch {}
+        es.close();
+        setConnected(false);
+      });
+
+      es.addEventListener('heartbeat', () => {
+        // Connection alive, nothing to update
+      });
+
+      es.addEventListener('timeout', () => {
+        setError('Analysis timed out');
+        es.close();
+        setConnected(false);
+      });
+
+      es.onerror = () => {
+        setError('Connection lost. Progress tracking stopped.');
+        es.close();
+        setConnected(false);
+      };
     };
 
+    connect();
+
     return () => {
-      es.close();
+      cancelled = true;
+      eventSourceRef.current?.close();
       eventSourceRef.current = null;
     };
   }, [analysisId]);
