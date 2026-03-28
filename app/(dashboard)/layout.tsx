@@ -53,19 +53,19 @@ export default async function DashboardLayout({
         <div className="p-6 border-b border-slate-100 dark:border-white/5">
           <Link href="/" className="flex items-center gap-2 group">
             <div className="h-8 w-8 bg-primary rounded-lg flex items-center justify-center text-white font-black text-lg shadow-sm">G</div>
-            <span className="text-xl font-black text-slate-900 dark:text-white tracking-tighter">GEO</span>
+            <span className="text-xl font-black text-slate-900 dark:text-white tracking-tighter uppercase">GEO Visibility</span>
           </Link>
         </div>
 
-        <nav className="flex-grow p-4 space-y-2 mt-4">
+        <nav className="flex-grow p-4 space-y-1.5 mt-4">
           {navItems.map((item) => (
              <Link 
               key={item.label} 
               href={item.href}
-              className="flex items-center gap-3 px-4 py-3 rounded-xl text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-white/5 hover:text-primary transition-all font-semibold"
+              className="flex items-center gap-3 px-4 py-3 rounded-xl text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-white/5 hover:text-primary dark:hover:text-primary transition-all font-semibold group"
              >
-               {item.icon}
-               <span>{item.label}</span>
+               <span className="group-hover:scale-110 transition-transform">{item.icon}</span>
+               <span className="text-sm">{item.label}</span>
              </Link>
           ))}
         </nav>
@@ -103,15 +103,15 @@ export default async function DashboardLayout({
       </aside>
 
       {/* Main Content */}
-      <main className="flex-grow flex flex-col min-w-0 overflow-hidden">
+      <main className="flex-grow flex flex-col min-w-0 overflow-hidden bg-slate-50/50 dark:bg-black">
         {/* Header */}
-        <header className="h-20 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-white/5 px-8 flex items-center justify-between shrink-0">
+        <header className="h-20 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-white/5 px-8 flex items-center justify-between shrink-0 z-20">
            <div className="flex items-center gap-4 max-w-xl w-full">
               <div className="relative w-full">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
                 <Input 
                   placeholder="Search projects, analyses, or clients..." 
-                  className="pl-10 h-11 bg-slate-50 dark:bg-white/5 border-none rounded-xl"
+                  className="pl-10 h-11 bg-slate-50 dark:bg-white/5 border-none rounded-xl text-sm"
                 />
               </div>
            </div>
@@ -122,7 +122,7 @@ export default async function DashboardLayout({
                 <span className="absolute top-2.5 right-2.5 h-2 w-2 bg-red-500 rounded-full border-2 border-white dark:border-slate-900"></span>
              </Button>
              <div className="h-8 w-[1px] bg-slate-100 dark:bg-white/5 mx-2"></div>
-             <Button className="bg-primary hover:bg-blue-600 text-white font-bold rounded-xl h-11 px-6">
+             <Button className="bg-primary hover:bg-blue-600 text-white font-bold rounded-xl h-11 px-6 shadow-lg shadow-primary/20 transition-all active:scale-95">
                <Bolt className="h-4 w-4 mr-2" />
                Quick Analysis
              </Button>
@@ -130,8 +130,10 @@ export default async function DashboardLayout({
         </header>
 
         {/* Page Content */}
-        <div className="flex-grow overflow-y-auto p-8 bg-slate-50 dark:bg-black/40">
-           {children}
+        <div className="flex-grow overflow-y-auto px-6 py-8 md:px-10 md:py-12">
+           <div className="max-w-7xl mx-auto">
+              {children}
+           </div>
         </div>
       </main>
     </div>

@@ -8,6 +8,7 @@ import { KeywordList } from '@/components/geo/KeywordList';
 import { CompetitorCard } from '@/components/geo/CompetitorCard';
 import { OpportunityCard } from '@/components/geo/OpportunityCard';
 import { AnalysisProgressBar } from '@/components/geo/AnalysisProgressBar';
+import { Button } from '@/components/ui/button';
 import type { DiscoveryMode, LLMProvider } from '@/lib/geo-types';
 
 const LLM_OPTIONS: { id: LLMProvider; label: string }[] = [
@@ -57,80 +58,86 @@ export default function KeywordsPage() {
   };
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-10">
       {/* Page header */}
-      <div>
-        <h1 className="text-3xl font-black text-white">Keyword Discovery</h1>
-        <p className="text-slate-400 mt-1">Find which keywords AI models use to mention your brand — and your competitors.</p>
+      <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
+        <div>
+          <h1 className="text-3xl font-black text-slate-900 dark:text-white tracking-tight mb-2">Keyword Discovery</h1>
+          <p className="text-slate-500 dark:text-slate-400 font-medium tracking-tight">Identify the keywords AI models use to mention your brand and competitors.</p>
+        </div>
       </div>
 
       {/* Form */}
       {!data && (
-        <form onSubmit={handleSubmit} className="rounded-2xl border border-white/10 bg-white/5 p-6 space-y-5">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-1.5">
-              <label className="text-xs font-bold text-slate-400 uppercase tracking-widest">Brand Name *</label>
+        <form onSubmit={handleSubmit} className="rounded-[2.5rem] border border-slate-200 dark:border-white/5 bg-white dark:bg-slate-900/50 p-8 md:p-10 shadow-sm space-y-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="space-y-2">
+              <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em] px-1">Brand Name *</label>
               <input
                 value={brandName}
                 onChange={e => setBrandName(e.target.value)}
                 placeholder="e.g. Notion"
                 required
-                className="w-full rounded-xl bg-white/5 border border-white/10 px-4 py-3 text-sm text-white placeholder-slate-600 focus:outline-none focus:border-blue-500/50 focus:bg-white/10 transition-all"
+                className="w-full rounded-2xl bg-slate-50 dark:bg-black/20 border border-slate-100 dark:border-white/10 px-5 py-4 text-sm text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all font-medium"
               />
             </div>
-            <div className="space-y-1.5">
-              <label className="text-xs font-bold text-slate-400 uppercase tracking-widest">Category *</label>
+            <div className="space-y-2">
+              <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em] px-1">Category *</label>
               <input
                 value={category}
                 onChange={e => setCategory(e.target.value)}
                 placeholder="e.g. project management software"
                 required
-                className="w-full rounded-xl bg-white/5 border border-white/10 px-4 py-3 text-sm text-white placeholder-slate-600 focus:outline-none focus:border-blue-500/50 focus:bg-white/10 transition-all"
+                className="w-full rounded-2xl bg-slate-50 dark:bg-black/20 border border-slate-100 dark:border-white/10 px-5 py-4 text-sm text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all font-medium"
               />
             </div>
-            <div className="space-y-1.5">
-              <label className="text-xs font-bold text-slate-400 uppercase tracking-widest">Competitors (comma-separated)</label>
+            <div className="space-y-2">
+              <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em] px-1">Competitors (comma-separated)</label>
               <input
                 value={competitors}
                 onChange={e => setCompetitors(e.target.value)}
                 placeholder="e.g. Asana, Trello, Monday.com"
-                className="w-full rounded-xl bg-white/5 border border-white/10 px-4 py-3 text-sm text-white placeholder-slate-600 focus:outline-none focus:border-blue-500/50 focus:bg-white/10 transition-all"
+                className="w-full rounded-2xl bg-slate-50 dark:bg-black/20 border border-slate-100 dark:border-white/10 px-5 py-4 text-sm text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all font-medium"
               />
             </div>
-            <div className="space-y-1.5">
-              <label className="text-xs font-bold text-slate-400 uppercase tracking-widest">Target Audience</label>
+            <div className="space-y-2">
+              <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em] px-1">Target Audience</label>
               <input
                 value={targetAudience}
                 onChange={e => setTargetAudience(e.target.value)}
                 placeholder="e.g. startup teams, freelancers"
-                className="w-full rounded-xl bg-white/5 border border-white/10 px-4 py-3 text-sm text-white placeholder-slate-600 focus:outline-none focus:border-blue-500/50 focus:bg-white/10 transition-all"
+                className="w-full rounded-2xl bg-slate-50 dark:bg-black/20 border border-slate-100 dark:border-white/10 px-5 py-4 text-sm text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all font-medium"
               />
             </div>
           </div>
 
           {/* Mode */}
-          <div className="space-y-2">
-            <label className="text-xs font-bold text-slate-400 uppercase tracking-widest">Discovery Mode</label>
-            <div className="flex gap-3">
+          <div className="space-y-3">
+            <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em] px-1">Discovery Mode</label>
+            <div className="flex gap-3 flex-wrap">
               {(['quick', 'standard', 'deep'] as DiscoveryMode[]).map(m => (
                 <button type="button" key={m} onClick={() => setMode(m)}
-                  className={`flex-1 py-2.5 rounded-xl text-sm font-bold capitalize transition-all border ${
-                    mode === m ? 'bg-blue-500/20 border-blue-500/40 text-blue-300' : 'bg-white/5 border-white/10 text-slate-400 hover:border-white/20'
+                  className={`flex-1 min-w-[140px] py-4 rounded-2xl text-xs font-black capitalize transition-all border ${
+                    mode === m 
+                      ? 'bg-primary/10 border-primary text-primary shadow-sm' 
+                      : 'bg-slate-50 dark:bg-black/20 border-slate-100 dark:border-white/10 text-slate-500 dark:text-slate-400 hover:border-slate-200 dark:hover:border-white/20'
                   }`}>
-                  {m === 'quick' ? '⚡ Quick (15s)' : m === 'standard' ? '⚙️ Standard (45s)' : '🔬 Deep (90s)'}
+                  {m === 'quick' ? '⚡ Quick' : m === 'standard' ? '⚙️ Standard' : '🔬 Deep'}
                 </button>
               ))}
             </div>
           </div>
 
           {/* LLM providers */}
-          <div className="space-y-2">
-            <label className="text-xs font-bold text-slate-400 uppercase tracking-widest">AI Models to Test *</label>
+          <div className="space-y-3">
+            <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em] px-1">AI Models to Test *</label>
             <div className="flex gap-3 flex-wrap">
               {LLM_OPTIONS.map(opt => (
                 <button type="button" key={opt.id} onClick={() => toggleLLM(opt.id)}
-                  className={`px-4 py-2 rounded-xl text-sm font-bold transition-all border ${
-                    selectedLLMs.includes(opt.id) ? 'bg-blue-500/20 border-blue-500/40 text-blue-300' : 'bg-white/5 border-white/10 text-slate-400 hover:border-white/20'
+                  className={`px-6 py-3 rounded-2xl text-xs font-black transition-all border ${
+                    selectedLLMs.includes(opt.id) 
+                      ? 'bg-primary/10 border-primary text-primary shadow-sm' 
+                      : 'bg-slate-50 dark:bg-black/20 border-slate-100 dark:border-white/10 text-slate-500 dark:text-slate-400 hover:border-slate-200 dark:hover:border-white/20'
                   }`}>
                   {opt.label}
                 </button>
@@ -139,40 +146,45 @@ export default function KeywordsPage() {
           </div>
 
           {error && (
-            <div className="rounded-xl bg-red-500/10 border border-red-500/20 p-4 text-sm text-red-400">{error}</div>
+            <div className="rounded-2xl bg-red-500/10 border border-red-500/20 p-4 text-sm text-red-600 dark:text-red-400 font-semibold">{error}</div>
           )}
 
-          <button type="submit" disabled={loading || !brandName || !category || selectedLLMs.length === 0}
-            className="w-full py-3.5 rounded-xl bg-blue-600 hover:bg-blue-500 disabled:opacity-40 disabled:cursor-not-allowed text-white font-bold text-sm transition-all">
-            {loading ? 'Discovering keywords...' : '🔍 Discover Keywords'}
-          </button>
+          <Button type="submit" disabled={loading || !brandName || !category || selectedLLMs.length === 0}
+            className="w-full py-7 rounded-2xl bg-primary hover:bg-blue-600 disabled:opacity-40 disabled:cursor-not-allowed text-white font-black text-base shadow-xl shadow-primary/25 transition-all active:scale-[0.99]">
+            {loading ? 'Discovering keywords...' : 'Discover Brand Keywords'}
+          </Button>
         </form>
       )}
 
-      {/* Loading state — real SSE progress if available, else animated placeholder */}
+      {/* Loading state */}
       {loading && (
-        <AnalysisProgressBar
-          status={progress?.status ?? 'processing'}
-          currentStage={progress ? stageLabel : 'Connecting to analysis agents…'}
-          progressPercent={progress?.progress_percent ?? 10}
-          stageProgressPercent={progress?.stage_progress_percent ?? 30}
-          estimatedSecondsRemaining={progress?.estimated_seconds_remaining}
-        />
+        <div className="bg-white dark:bg-slate-900/50 rounded-[2.5rem] border border-slate-200 dark:border-white/5 p-12 shadow-sm">
+          <AnalysisProgressBar
+            status={progress?.status ?? 'processing'}
+            currentStage={progress ? stageLabel : 'Connecting to analysis agents…'}
+            progressPercent={progress?.progress_percent ?? 10}
+            stageProgressPercent={progress?.stage_progress_percent ?? 30}
+            estimatedSecondsRemaining={progress?.estimated_seconds_remaining}
+          />
+        </div>
       )}
 
       {/* Results */}
       {data && !loading && (
-        <div className="space-y-6">
-          {/* Reset button */}
-          <div className="flex items-center justify-between">
-            <h2 className="text-xl font-black text-white">Results for "{data.brand_name}"</h2>
-            <button onClick={reset} className="text-xs text-slate-400 hover:text-white border border-white/10 hover:border-white/20 px-3 py-1.5 rounded-lg transition-all">
+        <div className="space-y-8 animate-in fade-in duration-700">
+          {/* Reset header */}
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white dark:bg-slate-900/50 p-6 rounded-[2rem] border border-slate-200 dark:border-white/5 shadow-sm">
+            <div>
+              <p className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em] mb-1">Results for</p>
+              <h2 className="text-2xl font-black text-slate-900 dark:text-white uppercase tracking-tighter">"{data.brand_name}"</h2>
+            </div>
+            <Button onClick={reset} variant="outline" className="rounded-xl font-bold border-slate-200 dark:border-white/10 dark:text-white hover:bg-slate-50 dark:hover:bg-white/5 h-11 px-6">
               ← New Discovery
-            </button>
+            </Button>
           </div>
 
           {/* Score cards */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
             <ScoreCard
               label="RAG Visibility"
               score={data.visibility_summary.rag_model_visibility}
@@ -185,21 +197,23 @@ export default function KeywordsPage() {
             <ScoreCard
               label="Opportunity Gap"
               score={data.visibility_summary.actionable_gap}
-              description="Potential gains available"
+              description="Potential gains"
             />
             <ScoreCard
               label="Avg Position"
               score={Math.max(0, 100 - data.visibility_summary.average_position * 10)}
-              description={`#${data.visibility_summary.average_position.toFixed(1)} in AI responses`}
+              description={`#${data.visibility_summary.average_position.toFixed(1)} match`}
             />
           </div>
 
           {/* Tabs */}
-          <div className="flex gap-1 bg-white/5 p-1 rounded-xl w-fit">
+          <div className="flex gap-2 bg-slate-100 dark:bg-black/40 p-1.5 rounded-2xl w-fit border border-slate-200/50 dark:border-white/5">
             {(['opportunities', 'keywords', 'competitors'] as const).map(tab => (
               <button key={tab} onClick={() => setActiveTab(tab)}
-                className={`px-4 py-2 rounded-lg text-xs font-bold capitalize transition-all ${
-                  activeTab === tab ? 'bg-white/10 text-white' : 'text-slate-400 hover:text-white'
+                className={`px-6 py-2.5 rounded-xl text-[11px] font-black uppercase tracking-widest transition-all ${
+                  activeTab === tab 
+                    ? 'bg-white dark:bg-slate-800 text-primary shadow-sm border border-slate-200 dark:border-white/10' 
+                    : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
                 }`}>
                 {tab === 'opportunities' ? `🎯 Opportunities (${data.opportunities.length})` :
                  tab === 'keywords' ? `🔑 Keywords (${data.working_keywords.length + data.gap_keywords.length})` :
@@ -209,48 +223,52 @@ export default function KeywordsPage() {
           </div>
 
           {/* Tab content */}
-          {activeTab === 'opportunities' && (
-            <div className="space-y-3">
-              {data.opportunities.length === 0 ? (
-                <p className="text-slate-400 text-sm">No opportunities found for this brand yet.</p>
-              ) : (
-                data.opportunities.map((opp, i) => <OpportunityCard key={i} opportunity={opp} index={i} />)
-              )}
-            </div>
-          )}
+          <div className="animate-in slide-in-from-bottom-4 duration-500">
+            {activeTab === 'opportunities' && (
+              <div className="space-y-4">
+                {data.opportunities.length === 0 ? (
+                  <div className="bg-white dark:bg-slate-900/50 rounded-[2.5rem] border border-slate-200 dark:border-white/5 p-16 text-center">
+                    <p className="text-slate-400 font-bold">No opportunities found for this brand yet.</p>
+                  </div>
+                ) : (
+                  data.opportunities.map((opp, i) => <OpportunityCard key={i} opportunity={opp} index={i} />)
+                )}
+              </div>
+            )}
 
-          {activeTab === 'keywords' && (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <KeywordList keywords={data.working_keywords} type="working" />
-              <KeywordList keywords={data.gap_keywords} type="gap" />
-              {data.your_winning_keywords?.length > 0 && (
-                <div className="md:col-span-2">
-                  <KeywordList keywords={data.your_winning_keywords} type="winning" />
-                </div>
-              )}
-            </div>
-          )}
+            {activeTab === 'keywords' && (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <KeywordList keywords={data.working_keywords} type="working" />
+                <KeywordList keywords={data.gap_keywords} type="gap" />
+                {data.your_winning_keywords?.length > 0 && (
+                  <div className="md:col-span-2">
+                    <KeywordList keywords={data.your_winning_keywords} type="winning" />
+                  </div>
+                )}
+              </div>
+            )}
 
-          {activeTab === 'competitors' && (
-            <div className="space-y-3">
-              {data.competitor_patterns.map((comp) => (
-                <CompetitorCard key={comp.competitor_name} competitor={comp} />
-              ))}
-            </div>
-          )}
+            {activeTab === 'competitors' && (
+              <div className="space-y-4">
+                {data.competitor_patterns.map((comp) => (
+                  <CompetitorCard key={comp.competitor_name} competitor={comp} />
+                ))}
+              </div>
+            )}
+          </div>
 
           {/* Next steps */}
           {data.next_steps?.length > 0 && (
-            <div className="rounded-2xl border border-blue-500/20 bg-blue-500/5 p-5 space-y-3">
-              <h3 className="text-sm font-bold text-blue-300">Recommended Next Steps</h3>
-              <ol className="space-y-2">
+            <div className="rounded-[2.5rem] border border-primary/20 bg-primary/5 p-8 md:p-10 space-y-6">
+              <h3 className="text-lg font-black text-primary uppercase tracking-widest">Recommended Strategy</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {data.next_steps.map((step, i) => (
-                  <li key={i} className="flex gap-3 text-xs text-slate-300">
-                    <span className="flex-shrink-0 w-5 h-5 rounded-full bg-blue-500/20 text-blue-400 flex items-center justify-center font-bold text-[10px]">{i + 1}</span>
-                    {step}
-                  </li>
+                  <div key={i} className="flex gap-4 bg-white/50 dark:bg-black/20 p-5 rounded-3xl border border-primary/10">
+                    <span className="flex-shrink-0 w-8 h-8 rounded-xl bg-primary/10 text-primary flex items-center justify-center font-black text-sm">{i + 1}</span>
+                    <p className="text-sm text-slate-700 dark:text-slate-300 font-medium leading-relaxed">{step}</p>
+                  </div>
                 ))}
-              </ol>
+              </div>
             </div>
           )}
         </div>

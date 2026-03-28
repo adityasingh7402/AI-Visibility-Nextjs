@@ -7,20 +7,21 @@ import { useSSEProgress } from '@/hooks/useSSEProgress';
 import { AnalysisProgressBar } from '@/components/geo/AnalysisProgressBar';
 import type { DiscoveryMode, LLMProvider } from '@/lib/geo-types';
 import {
-  BrainCircuit, Zap, Cpu, Lightbulb, Rocket, Clock, Bolt,
+  BrainCircuit, Zap, Cpu, Lightbulb, Rocket, Clock, Bolt, CheckCircle2, AlertCircle, Info
 } from 'lucide-react';
+import { Button } from "@/components/ui/button";
 
 const LLM_OPTIONS: { id: LLMProvider; label: string; icon: React.ReactNode; desc: string }[] = [
-  { id: 'chatgpt', label: 'ChatGPT', icon: <BrainCircuit className="text-emerald-400" size={20} />, desc: 'OpenAI GPT-4o' },
-  { id: 'claude', label: 'Claude', icon: <Zap className="text-amber-400" size={20} />, desc: 'Anthropic Claude' },
-  { id: 'gemini', label: 'Gemini', icon: <Cpu className="text-blue-400" size={20} />, desc: 'Google Gemini' },
-  { id: 'perplexity', label: 'Perplexity', icon: <Lightbulb className="text-purple-400" />, desc: 'Perplexity AI' },
+  { id: 'chatgpt', label: 'ChatGPT', icon: <BrainCircuit className="text-emerald-500" size={20} />, desc: 'OpenAI GPT-4o' },
+  { id: 'claude', label: 'Claude', icon: <Zap className="text-amber-500" size={20} />, desc: 'Anthropic Claude' },
+  { id: 'gemini', label: 'Gemini', icon: <Cpu className="text-blue-500" size={20} />, desc: 'Google Gemini' },
+  { id: 'perplexity', label: 'Perplexity', icon: <Lightbulb className="text-purple-500" />, desc: 'Perplexity AI' },
 ];
 
-const MODES: { id: DiscoveryMode; label: string; desc: string; eta: string }[] = [
-  { id: 'quick', label: '⚡ Quick', desc: 'Fast scan, 5 prompts', eta: '~15s' },
-  { id: 'standard', label: '⚙️ Standard', desc: 'Balanced results, 10 prompts', eta: '~45s' },
-  { id: 'deep', label: '🔬 Deep', desc: 'Comprehensive, 25+ prompts', eta: '~90s' },
+const MODES: { id: DiscoveryMode; label: string; desc: string; eta: string; icon: React.ReactNode }[] = [
+  { id: 'quick', label: 'Quick', desc: 'Fast scan, 5 prompts', eta: '~15s', icon: <Zap size={16} /> },
+  { id: 'standard', label: 'Standard', desc: 'Balanced, 10 prompts', eta: '~45s', icon: <Cpu size={16} /> },
+  { id: 'deep', label: 'Deep', desc: 'Comprehensive, 25+ prompts', eta: '~90s', icon: <BrainCircuit size={16} /> },
 ];
 
 export default function AnalysisPage() {
@@ -60,8 +61,6 @@ export default function AnalysisPage() {
     });
 
     if (result?.analysis_id) setAnalysisId(result.analysis_id);
-
-    // After completion, redirect to keywords page
     router.push('/dashboard/keywords');
   };
 
@@ -69,112 +68,150 @@ export default function AnalysisPage() {
   const canSubmit = brandName.trim() && category.trim() && selectedLLMs.length > 0;
 
   return (
-    <div className="space-y-6 pb-20 max-w-5xl mx-auto">
-      <div>
-        <h1 className="text-3xl font-black text-white tracking-tight mb-1">Run Keyword Analysis</h1>
-        <p className="text-slate-400">Discover how AI models see your brand and competitors across target keywords.</p>
+    <div className="space-y-10 animate-in fade-in duration-700">
+      {/* Header */}
+      <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 px-4">
+        <div className="space-y-2">
+          <h1 className="text-4xl font-black text-slate-900 dark:text-white tracking-tight uppercase italic">GEO Engine</h1>
+          <p className="text-slate-500 dark:text-slate-400 font-bold tracking-tight">Configure your AI visibility analysis parameters.</p>
+        </div>
+        <div className="flex items-center gap-2 px-4 py-2 rounded-2xl bg-primary/5 border border-primary/10">
+          <Clock size={16} className="text-primary" />
+          <span className="text-[10px] font-black uppercase tracking-widest text-primary">Last Analysis: 2h ago</span>
+        </div>
       </div>
 
-      {/* If loading, show SSE progress full-screen */}
-      {loading && (
-        <div className="space-y-4 py-6">
-          <AnalysisProgressBar
-            status={progress?.status ?? 'processing'}
-            currentStage={progress ? stageLabel : 'Connecting to analysis agents…'}
-            progressPercent={progress?.progress_percent ?? 5}
-            stageProgressPercent={progress?.stage_progress_percent ?? 20}
-            estimatedSecondsRemaining={progress?.estimated_seconds_remaining}
-          />
-          <p className="text-center text-xs text-slate-500">
-            You'll be redirected to results when analysis completes.
-          </p>
+      {loading ? (
+        <div className="bg-white dark:bg-slate-900/50 rounded-[2.5rem] border border-slate-200 dark:border-white/5 p-12 shadow-2xl shadow-slate-200 dark:shadow-none min-h-[500px] flex flex-col items-center justify-center space-y-12">
+          <div className="relative">
+            <div className="absolute inset-0 bg-primary/20 blur-[100px] rounded-full animate-pulse"></div>
+            <div className="relative w-24 h-24 rounded-[2.5rem] bg-slate-900 dark:bg-white flex items-center justify-center text-white dark:text-slate-900 shadow-2xl">
+              <BrainCircuit size={48} className="animate-spin-slow" />
+            </div>
+          </div>
+          
+          <div className="w-full max-w-2xl space-y-4">
+            <AnalysisProgressBar
+              status={progress?.status ?? 'processing'}
+              currentStage={progress ? stageLabel : 'Waking up analysis agents…'}
+              progressPercent={progress?.progress_percent ?? 5}
+              stageProgressPercent={progress?.stage_progress_percent ?? 20}
+              estimatedSecondsRemaining={progress?.estimated_seconds_remaining}
+            />
+            <p className="text-center text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em] animate-pulse">
+              System: Processing deep-reach optimization vectors...
+            </p>
+          </div>
         </div>
-      )}
+      ) : (
+        <form onSubmit={handleStart} className="grid grid-cols-1 lg:grid-cols-3 gap-10">
+          <div className="lg:col-span-2 space-y-10">
 
-      {!loading && (
-        <form onSubmit={handleStart} className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <div className="lg:col-span-2 space-y-6">
-
-            {/* Brand & Category */}
-            <section className="bg-white/5 border border-white/10 rounded-2xl p-6 space-y-4">
-              <h3 className="font-bold text-white flex items-center gap-2">
-                <span className="h-7 w-7 rounded-lg bg-blue-500/20 flex items-center justify-center text-blue-400 text-sm">1</span>
-                Brand Details
-              </h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-slate-400 uppercase tracking-widest">Brand Name *</label>
+            {/* Step 1: Identity */}
+            <section className="bg-white dark:bg-slate-900/50 rounded-[2.5rem] border border-slate-200 dark:border-white/5 p-8 md:p-10 shadow-sm space-y-8 animate-in slide-in-from-left-4 duration-500">
+              <div className="flex items-center gap-4">
+                <div className="h-10 w-10 rounded-2xl bg-primary text-white flex items-center justify-center font-black italic shadow-lg shadow-primary/20">01</div>
+                <h3 className="text-xl font-black text-slate-900 dark:text-white tracking-tighter uppercase italic">Brand Intelligence</h3>
+              </div>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                <div className="space-y-3">
+                  <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em] px-1">Brand Name *</label>
                   <input
                     value={brandName} onChange={e => setBrandName(e.target.value)}
                     placeholder="e.g. Notion" required
-                    className="w-full rounded-xl bg-black/20 border border-white/10 px-4 py-3 text-sm text-white placeholder-slate-600 focus:outline-none focus:border-blue-500/50 transition-all"
-                  />
+                     className="w-full h-14 bg-slate-50 dark:bg-black/20 border border-slate-100 dark:border-white/10 rounded-2xl px-6 font-medium text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all placeholder:text-slate-400" />
                 </div>
-                <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-slate-400 uppercase tracking-widest">Category *</label>
+                <div className="space-y-3">
+                  <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em] px-1">Product Category *</label>
                   <input
                     value={category} onChange={e => setCategory(e.target.value)}
-                    placeholder="e.g. project management software" required
-                    className="w-full rounded-xl bg-black/20 border border-white/10 px-4 py-3 text-sm text-white placeholder-slate-600 focus:outline-none focus:border-blue-500/50 transition-all"
-                  />
+                    placeholder="e.g. AI Content Platform" required
+                     className="w-full h-14 bg-slate-50 dark:bg-black/20 border border-slate-100 dark:border-white/10 rounded-2xl px-6 font-medium text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all placeholder:text-slate-400" />
                 </div>
-                <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-slate-400 uppercase tracking-widest">Competitors</label>
+                <div className="space-y-3">
+                  <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em] px-1">Top Competitors</label>
                   <input
                     value={competitors} onChange={e => setCompetitors(e.target.value)}
-                    placeholder="e.g. Asana, Trello, Monday.com"
-                    className="w-full rounded-xl bg-black/20 border border-white/10 px-4 py-3 text-sm text-white placeholder-slate-600 focus:outline-none focus:border-blue-500/50 transition-all"
-                  />
+                    placeholder="e.g. Asana, Trello, Monday"
+                     className="w-full h-14 bg-slate-50 dark:bg-black/20 border border-slate-100 dark:border-white/10 rounded-2xl px-6 font-medium text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all placeholder:text-slate-400" />
                 </div>
-                <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-slate-400 uppercase tracking-widest">Target Audience</label>
+                <div className="space-y-3">
+                  <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em] px-1">Target Audience</label>
                   <input
                     value={targetAudience} onChange={e => setTargetAudience(e.target.value)}
-                    placeholder="e.g. startup teams, freelancers"
-                    className="w-full rounded-xl bg-black/20 border border-white/10 px-4 py-3 text-sm text-white placeholder-slate-600 focus:outline-none focus:border-blue-500/50 transition-all"
-                  />
+                    placeholder="e.g. SMB Owners, CEOs"
+                     className="w-full h-14 bg-slate-50 dark:bg-black/20 border border-slate-100 dark:border-white/10 rounded-2xl px-6 font-medium text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all placeholder:text-slate-400" />
                 </div>
               </div>
             </section>
 
-            {/* Discovery Mode */}
-            <section className="bg-white/5 border border-white/10 rounded-2xl p-6 space-y-4">
-              <h3 className="font-bold text-white flex items-center gap-2">
-                <span className="h-7 w-7 rounded-lg bg-amber-500/20 flex items-center justify-center text-amber-400 text-sm">2</span>
-                Discovery Mode
-              </h3>
-              <div className="grid grid-cols-3 gap-3">
+            {/* Step 2: Protocol */}
+            <section className="bg-white dark:bg-slate-900/50 rounded-[2.5rem] border border-slate-200 dark:border-white/5 p-8 md:p-10 shadow-sm space-y-8 animate-in slide-in-from-left-4 duration-500 delay-100">
+               <div className="flex items-center gap-4">
+                <div className="h-10 w-10 rounded-2xl bg-amber-500 text-white flex items-center justify-center font-black italic shadow-lg shadow-amber-500/20">02</div>
+                <h3 className="text-xl font-black text-slate-900 dark:text-white tracking-tighter uppercase italic">Discovery Protocol</h3>
+              </div>
+              
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 {MODES.map(m => (
                   <button type="button" key={m.id} onClick={() => setMode(m.id)}
-                    className={`p-4 rounded-xl text-left border transition-all ${mode === m.id ? 'bg-blue-500/20 border-blue-500/40' : 'bg-black/20 border-white/10 hover:border-white/20'}`}>
-                    <p className={`font-bold text-sm mb-1 ${mode === m.id ? 'text-white' : 'text-slate-400'}`}>{m.label}</p>
-                    <p className="text-[10px] text-slate-500">{m.desc}</p>
-                    <p className={`text-[10px] font-bold mt-1 ${mode === m.id ? 'text-blue-400' : 'text-slate-600'}`}>{m.eta}</p>
+                    className={`group p-6 rounded-[2rem] text-left border transition-all relative overflow-hidden ${
+                      mode === m.id 
+                      ? 'bg-amber-500 border-amber-600 shadow-xl shadow-amber-500/20' 
+                      : 'bg-slate-50 dark:bg-black/20 border-slate-100 dark:border-white/10 hover:border-amber-500/30'
+                    }`}>
+                    <div className={`mb-4 w-10 h-10 rounded-2xl flex items-center justify-center transition-all ${
+                      mode === m.id ? 'bg-white text-amber-500 shadow-lg' : 'bg-white dark:bg-slate-800 text-slate-400 group-hover:text-amber-500'
+                    }`}>
+                      {m.icon}
+                    </div>
+                    <p className={`font-black uppercase tracking-widest text-[10px] mb-1 ${mode === m.id ? 'text-white/80' : 'text-slate-400'}`}>Protocol</p>
+                    <h4 className={`text-lg font-black tracking-tight mb-1 ${mode === m.id ? 'text-white' : 'text-slate-900 dark:text-white'}`}>{m.label}</h4>
+                    <p className={`text-[10px] font-bold leading-relaxed pr-4 ${mode === m.id ? 'text-white/60' : 'text-slate-500 dark:text-slate-400'}`}>{m.desc}</p>
+                    
+                    {mode === m.id && (
+                      <div className="absolute top-4 right-4">
+                        <CheckCircle2 size={16} className="text-white" />
+                      </div>
+                    )}
                   </button>
                 ))}
               </div>
             </section>
 
-            {/* AI Models */}
-            <section className="bg-white/5 border border-white/10 rounded-2xl p-6 space-y-4">
-              <h3 className="font-bold text-white flex items-center gap-2">
-                <span className="h-7 w-7 rounded-lg bg-emerald-500/20 flex items-center justify-center text-emerald-400 text-sm">3</span>
-                AI Models to Test *
-              </h3>
-              <div className="grid grid-cols-2 gap-3">
+            {/* Step 3: Synthesis */}
+            <section className="bg-white dark:bg-slate-900/50 rounded-[2.5rem] border border-slate-200 dark:border-white/5 p-8 md:p-10 shadow-sm space-y-8 animate-in slide-in-from-left-4 duration-500 delay-200">
+               <div className="flex items-center gap-4">
+                <div className="h-10 w-10 rounded-2xl bg-emerald-500 text-white flex items-center justify-center font-black italic shadow-lg shadow-emerald-500/20">03</div>
+                <h3 className="text-xl font-black text-slate-900 dark:text-white tracking-tighter uppercase italic">LLM Synthesis</h3>
+              </div>
+              
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 {LLM_OPTIONS.map(llm => {
                   const selected = selectedLLMs.includes(llm.id);
                   return (
                     <button type="button" key={llm.id} onClick={() => toggleLLM(llm.id)}
-                      className={`flex items-center gap-3 p-4 rounded-xl border transition-all ${selected ? 'bg-blue-500/15 border-blue-500/40' : 'bg-black/20 border-white/10 hover:border-white/20'}`}>
-                      <div className="h-9 w-9 rounded-xl bg-white/5 flex items-center justify-center flex-shrink-0">
+                      className={`flex items-center gap-5 p-5 rounded-[2rem] border transition-all group ${
+                        selected 
+                        ? 'bg-emerald-500/5 border-emerald-500-20 shadow-lg shadow-emerald-500/5' 
+                        : 'bg-slate-50 dark:bg-black/20 border-slate-100 dark:border-white/10 hover:border-emerald-500/30'
+                      }`}>
+                      <div className={`h-14 w-14 rounded-2xl flex items-center justify-center flex-shrink-0 transition-all ${
+                        selected ? 'bg-white dark:bg-slate-800 shadow-md scale-110' : 'bg-white/50 dark:bg-white/5 grayscale opacity-50'
+                      }`}>
                         {llm.icon}
                       </div>
                       <div className="text-left">
-                        <p className={`font-bold text-sm ${selected ? 'text-white' : 'text-slate-400'}`}>{llm.label}</p>
-                        <p className="text-[10px] text-slate-600">{llm.desc}</p>
+                        <p className={`font-black uppercase tracking-widest text-[10px] mb-1 ${selected ? 'text-emerald-500' : 'text-slate-400'}`}>Model</p>
+                        <h4 className={`text-base font-black tracking-tight ${selected ? 'text-slate-900 dark:text-white' : 'text-slate-500'}`}>{llm.label}</h4>
+                        <p className="text-[10px] font-bold text-slate-500 dark:text-slate-400">{llm.desc}</p>
                       </div>
-                      {selected && <span className="ml-auto text-blue-400 text-xs font-bold">✓</span>}
+                      <div className={`ml-auto w-6 h-6 rounded-full flex items-center justify-center border-2 transition-all ${
+                        selected ? 'bg-emerald-500 border-emerald-500 text-white' : 'border-slate-200 dark:border-white/10'
+                      }`}>
+                        {selected && <CheckCircle2 size={12} />}
+                      </div>
                     </button>
                   );
                 })}
@@ -182,50 +219,63 @@ export default function AnalysisPage() {
             </section>
 
             {error && (
-              <div className="rounded-xl bg-red-500/10 border border-red-500/20 p-4 text-sm text-red-400">{error}</div>
+              <div className="rounded-[2rem] bg-red-500/5 border border-red-500/20 p-6 flex items-center gap-4 text-red-500 animate-bounce">
+                <AlertCircle size={24} />
+                <div>
+                   <p className="font-black uppercase tracking-widest text-[10px]">Engine Failure</p>
+                   <p className="text-sm font-bold">{error}</p>
+                </div>
+              </div>
             )}
           </div>
 
-          {/* Sticky sidebar summary */}
-          <div>
-            <div className="sticky top-8 space-y-4">
-              <div className="bg-slate-900 border border-white/5 rounded-2xl p-6">
-                <h3 className="text-xl font-black text-white mb-6">Summary</h3>
-                <div className="space-y-4 text-sm mb-6">
-                  <div className="flex justify-between">
-                    <span className="text-slate-400">Brand</span>
-                    <span className="font-bold text-white truncate max-w-32">{brandName || '—'}</span>
+          {/* Sticky summary sidebar */}
+          <div className="lg:col-span-1">
+            <div className="sticky top-10 space-y-6">
+              <div className="bg-slate-900 dark:bg-white rounded-[2.5rem] p-8 md:p-10 text-white dark:text-slate-900 shadow-2xl relative overflow-hidden">
+                <div className="absolute top-0 right-0 w-40 h-40 bg-primary/20 rounded-full -mr-20 -mt-20 blur-3xl"></div>
+                
+                <h3 className="text-2xl font-black tracking-tighter uppercase italic mb-10 relative z-10">Verification</h3>
+                
+                <div className="space-y-8 relative z-10">
+                  <div className="space-y-1">
+                    <p className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-500">Operation Mode</p>
+                    <p className="text-sm font-black uppercase tracking-widest italic">{mode} Protocol</p>
                   </div>
-                  <div className="flex justify-between">
-                    <span className="text-slate-400">Mode</span>
-                    <span className="font-bold text-white capitalize">{mode}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-slate-400">AI Models</span>
-                    <span className="font-bold text-white">{selectedLLMs.length} selected</span>
-                  </div>
-                  <div className="h-px bg-white/5" />
-                  <div className="flex justify-between">
-                    <span className="text-slate-400">Estimated time</span>
-                    <span className="font-black text-blue-400">{estimatedTime}</span>
-                  </div>
-                </div>
 
-                <button type="submit" disabled={!canSubmit}
-                  className="w-full py-4 rounded-xl bg-blue-600 hover:bg-blue-500 disabled:opacity-40 disabled:cursor-not-allowed text-white font-black flex items-center justify-center gap-2 transition-all">
-                  <Rocket className="h-4 w-4" />
-                  Start Analysis
-                </button>
+                  <div className="space-y-3">
+                    <p className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-500">Resource Allocation</p>
+                    <div className="flex flex-wrap gap-2">
+                       {selectedLLMs.map(llm => (
+                          <div key={llm} className="px-3 py-1.5 rounded-xl bg-white/10 dark:bg-slate-100 text-[9px] font-black uppercase tracking-widest flex items-center gap-1.5">
+                             <div className="h-1 w-1 rounded-full bg-primary animate-pulse"></div>
+                             {llm}
+                          </div>
+                       ))}
+                    </div>
+                  </div>
 
-                <div className="mt-4 flex items-center gap-2 text-emerald-400">
-                  <Clock size={14} />
-                  <span className="text-xs font-bold uppercase tracking-widest">{estimatedTime} ETA</span>
+                  <div className="pt-4 space-y-6 border-t border-white/10 dark:border-slate-100">
+                    <div className="flex justify-between items-end">
+                      <div className="space-y-1">
+                        <p className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-500">Time to Result</p>
+                        <p className="text-2xl font-black text-primary italic">{estimatedTime}</p>
+                      </div>
+                      <Bolt className="text-primary animate-pulse" size={24} />
+                    </div>
+
+                    <Button type="submit" disabled={!canSubmit}
+                      className="w-full h-16 rounded-2xl bg-primary hover:bg-blue-600 disabled:opacity-20 disabled:grayscale text-white font-black uppercase tracking-[0.2em] text-[11px] shadow-2xl shadow-primary/30 active:scale-95 transition-all">
+                      Deploy Engine
+                    </Button>
+                  </div>
                 </div>
               </div>
 
-              <div className="bg-blue-500/5 border border-blue-500/10 rounded-2xl p-4">
-                <p className="text-xs text-blue-400/80 font-medium leading-relaxed">
-                  💡 Results will show which AI models mention your brand, which competitor keywords are gaps, and what content actions to take.
+              <div className="bg-primary/5 dark:bg-primary/10 border border-primary/10 dark:border-primary/20 rounded-[2rem] p-6 flex gap-4">
+                <Info size={18} className="text-primary flex-shrink-0" />
+                <p className="text-[10px] font-bold text-slate-600 dark:text-slate-400 leading-relaxed uppercase tracking-wide">
+                  Analysis utilizes neural ranking vectors to determine your brand's presence across major AI search indexes.
                 </p>
               </div>
             </div>
