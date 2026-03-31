@@ -14,6 +14,8 @@ import type {
   ProgressTrackingRequest,
   ProgressTrendResponse,
   Analysis,
+  BatchKeywordDiscoveryRequest,
+  BatchKeywordDiscoveryResponse,
 } from './geo-types';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
@@ -71,6 +73,12 @@ class GEOApi {
     return data;
   }
 
+  /** Agency mode: discover keywords for multiple brands in one request */
+  async batchDiscover(request: BatchKeywordDiscoveryRequest): Promise<BatchKeywordDiscoveryResponse> {
+    const { data } = await this.client.post('/api/v1/keywords/batch', request);
+    return data;
+  }
+
   // ---- Content ----
 
   async validateContent(request: ContentValidationRequest): Promise<ContentValidationResponse> {
@@ -80,6 +88,13 @@ class GEOApi {
 
   async testContentLive(request: ContentLiveTestRequest): Promise<ContentLiveTestResponse> {
     const { data } = await this.client.post('/api/v1/content/test-live', request);
+    return data;
+  }
+
+  // ---- Full Analyze (legacy) ----
+
+  async runAnalyze(request: KeywordDiscoveryRequest): Promise<KeywordDiscoveryResponse> {
+    const { data } = await this.client.post('/api/v1/analyze', request);
     return data;
   }
 

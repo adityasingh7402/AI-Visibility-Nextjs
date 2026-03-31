@@ -16,6 +16,8 @@ const LLM_OPTIONS: { id: LLMProvider; label: string; icon: React.ReactNode; desc
   { id: 'claude', label: 'Claude', icon: <Zap className="text-amber-500" size={20} />, desc: 'Anthropic Claude' },
   { id: 'gemini', label: 'Gemini', icon: <Cpu className="text-blue-500" size={20} />, desc: 'Google Gemini' },
   { id: 'perplexity', label: 'Perplexity', icon: <Lightbulb className="text-purple-500" />, desc: 'Perplexity AI' },
+  { id: 'grok', label: 'Grok', icon: <Rocket className="text-sky-400" size={20} />, desc: 'xAI Grok' },
+  { id: 'digitalocean', label: 'DigitalOcean AI', icon: <Bolt className="text-blue-400" size={20} />, desc: 'DigitalOcean GenAI' },
 ];
 
 const MODES: { id: DiscoveryMode; label: string; desc: string; eta: string; icon: React.ReactNode }[] = [

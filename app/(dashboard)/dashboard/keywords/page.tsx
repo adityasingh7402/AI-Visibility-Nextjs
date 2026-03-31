@@ -9,15 +9,24 @@ import { KeywordList } from '@/components/geo/KeywordList';
 import { CompetitorCard } from '@/components/geo/CompetitorCard';
 import { OpportunityCard } from '@/components/geo/OpportunityCard';
 import { AnalysisProgressBar } from '@/components/geo/AnalysisProgressBar';
+import { LLMBreakdownTable } from '@/components/geo/LLMBreakdownTable';
+import { ContentGapCard } from '@/components/geo/ContentGapCard';
+import { PromptResultsTable } from '@/components/geo/PromptResultsTable';
 import { Button } from '@/components/ui/button';
 import type { DiscoveryMode, LLMProvider, KeywordValidateResponse } from '@/lib/geo-types';
+import { resolveVisibilitySummary } from '@/lib/geo-types';
 
-const LLM_OPTIONS: { id: LLMProvider; label: string }[] = [
-  { id: 'chatgpt', label: 'ChatGPT' },
-  { id: 'gemini', label: 'Gemini' },
-  { id: 'perplexity', label: 'Perplexity' },
-  { id: 'claude', label: 'Claude' },
+// All 6 LLM providers per BACKEND_HANDOFF_v2.0 §9
+const LLM_OPTIONS: { id: LLMProvider; label: string; icon: string }[] = [
+  { id: 'chatgpt',      label: 'ChatGPT',         icon: '🤖' },
+  { id: 'gemini',       label: 'Gemini',           icon: '✨' },
+  { id: 'perplexity',   label: 'Perplexity',       icon: '🔍' },
+  { id: 'claude',       label: 'Claude',           icon: '🧠' },
+  { id: 'grok',         label: 'Grok',             icon: '⚡' },
+  { id: 'digitalocean', label: 'DigitalOcean AI',  icon: '🌊' },
 ];
+
+type ResultTab = 'opportunities' | 'keywords' | 'competitors' | 'llm_breakdown' | 'content_gaps' | 'prompt_results';
 
 export default function KeywordsPage() {
   const { data, loading, error, discover, reset } = useKeywordDiscovery();
@@ -30,7 +39,7 @@ export default function KeywordsPage() {
   const [targetAudience, setTargetAudience] = useState('');
   const [mode, setMode] = useState<DiscoveryMode>('standard');
   const [selectedLLMs, setSelectedLLMs] = useState<LLMProvider[]>(['chatgpt', 'gemini', 'perplexity']);
-  const [activeTab, setActiveTab] = useState<'opportunities' | 'competitors' | 'keywords'>('opportunities');
+  const [activeTab, setActiveTab] = useState<ResultTab>('opportunities');
 
   // Quick-validate state
   const [qvPrompt, setQvPrompt] = useState('');
@@ -47,7 +56,7 @@ export default function KeywordsPage() {
       const result = await geoApi.validateKeyword({
         prompt: qvPrompt,
         brand_name: qvBrand,
-        llm_providers: ['chatgpt', 'gemini', 'perplexity'],
+        llm_providers: selectedLLMs.length > 0 ? selectedLLMs.slice(0, 3) : ['chatgpt', 'gemini', 'perplexity'],
       });
       setQvResult(result);
     } catch (e: any) {
@@ -66,7 +75,6 @@ export default function KeywordsPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!brandName || !category || selectedLLMs.length === 0) return;
-    // Generate a temporary ID so SSE can connect before Python returns analysis_id
     const tempId = `kd-${brandName.toLowerCase().replace(/\s+/g, '-')}-${Date.now()}`;
     setAnalysisId(tempId);
     const result = await discover({
@@ -79,9 +87,49 @@ export default function KeywordsPage() {
       llm_providers: selectedLLMs,
       runs_per_prompt: 1,
     });
-    // Update to real analysis_id once returned
     if (result?.analysis_id) setAnalysisId(result.analysis_id);
   };
+
+  // Resolve visibility summary (handles both 'your_visibility_summary' and 'visibility_summary')
+  const visSummary = data ? resolveVisibilitySummary(data) : null;
+
+  // Build tabs dynamically based on what data is available
+  const RESULT_TABS: { id: ResultTab; label: string; count?: number; available: boolean }[] = [
+    {
+      id: 'opportunities',
+      label: `🎯 Opportunities`,
+      count: data?.opportunities.length,
+      available: true,
+    },
+    {
+      id: 'keywords',
+      label: `🔑 Keywords`,
+      count: data ? (data.working_keywords.length + data.gap_keywords.length) : 0,
+      available: true,
+    },
+    {
+      id: 'competitors',
+      label: `🏆 Competitors`,
+      count: data?.competitor_patterns.length,
+      available: true,
+    },
+    {
+      id: 'llm_breakdown',
+      label: `📊 LLM Breakdown`,
+      available: !!data?.visibility_by_llm && Object.keys(data.visibility_by_llm).length > 0,
+    },
+    {
+      id: 'content_gaps',
+      label: `📝 Content Gaps`,
+      available: !!data?.content_gap_analysis,
+    },
+    {
+      id: 'prompt_results',
+      label: `📋 Prompt Results`,
+      count: data?.prompt_results?.length,
+      available: !!(data?.prompt_results && data.prompt_results.length > 0),
+    },
+  ];
 
   return (
     <div className="space-y-10">
@@ -144,31 +192,35 @@ export default function KeywordsPage() {
               {(['quick', 'standard', 'deep'] as DiscoveryMode[]).map(m => (
                 <button type="button" key={m} onClick={() => setMode(m)}
                   className={`flex-1 min-w-[140px] py-4 rounded-2xl text-xs font-black capitalize transition-all border ${
-                    mode === m 
-                      ? 'bg-primary/10 border-primary text-primary shadow-sm' 
+                    mode === m
+                      ? 'bg-primary/10 border-primary text-primary shadow-sm'
                       : 'bg-slate-50 dark:bg-black/20 border-slate-100 dark:border-white/10 text-slate-500 dark:text-slate-400 hover:border-slate-200 dark:hover:border-white/20'
                   }`}>
-                  {m === 'quick' ? '⚡ Quick' : m === 'standard' ? '⚙️ Standard' : '🔬 Deep'}
+                  {m === 'quick' ? '⚡ Quick (~15s)' : m === 'standard' ? '⚙️ Standard (~45s)' : '🔬 Deep (~90s)'}
                 </button>
               ))}
             </div>
           </div>
 
-          {/* LLM providers */}
+          {/* LLM providers — all 6 per handoff spec */}
           <div className="space-y-3">
             <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em] px-1">AI Models to Test *</label>
             <div className="flex gap-3 flex-wrap">
               {LLM_OPTIONS.map(opt => (
                 <button type="button" key={opt.id} onClick={() => toggleLLM(opt.id)}
-                  className={`px-6 py-3 rounded-2xl text-xs font-black transition-all border ${
-                    selectedLLMs.includes(opt.id) 
-                      ? 'bg-primary/10 border-primary text-primary shadow-sm' 
+                  className={`flex items-center gap-2 px-5 py-3 rounded-2xl text-xs font-black transition-all border ${
+                    selectedLLMs.includes(opt.id)
+                      ? 'bg-primary/10 border-primary text-primary shadow-sm'
                       : 'bg-slate-50 dark:bg-black/20 border-slate-100 dark:border-white/10 text-slate-500 dark:text-slate-400 hover:border-slate-200 dark:hover:border-white/20'
                   }`}>
+                  <span>{opt.icon}</span>
                   {opt.label}
                 </button>
               ))}
             </div>
+            {selectedLLMs.length === 0 && (
+              <p className="text-xs text-red-400 font-bold px-1">⚠️ Select at least one AI model</p>
+            )}
           </div>
 
           {error && (
@@ -196,60 +248,86 @@ export default function KeywordsPage() {
       )}
 
       {/* Results */}
-      {data && !loading && (
+      {data && !loading && visSummary && (
         <div className="space-y-8 animate-in fade-in duration-700">
           {/* Reset header */}
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white dark:bg-slate-900/50 p-6 rounded-[2rem] border border-slate-200 dark:border-white/5 shadow-sm">
             <div>
               <p className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em] mb-1">Results for</p>
               <h2 className="text-2xl font-black text-slate-900 dark:text-white uppercase tracking-tighter">"{data.brand_name}"</h2>
+              <p className="text-xs text-slate-400 mt-1">
+                {visSummary.total_prompts_tested} prompts · {data.analysis_id}
+              </p>
             </div>
             <Button onClick={reset} variant="outline" className="rounded-xl font-bold border-slate-200 dark:border-white/10 dark:text-white hover:bg-slate-50 dark:hover:bg-white/5 h-11 px-6">
               ← New Discovery
             </Button>
           </div>
 
-          {/* Score cards */}
+          {/* Engine errors — critical */}
+          {data.errors && data.errors.length > 0 && (
+            <div className="rounded-2xl border border-red-500/20 bg-red-500/5 p-5 space-y-2">
+              <p className="text-xs font-black text-red-400 uppercase tracking-widest">⚠️ Engine Errors</p>
+              {data.errors.map((err, i) => (
+                <p key={i} className="text-sm text-red-300 font-medium">{err}</p>
+              ))}
+            </div>
+          )}
+
+          {/* Engine warnings */}
+          {data.warnings && data.warnings.length > 0 && (
+            <div className="rounded-2xl border border-amber-500/20 bg-amber-500/5 p-5 space-y-2">
+              <p className="text-xs font-black text-amber-400 uppercase tracking-widest">⚡ Warnings</p>
+              {data.warnings.map((w, i) => (
+                <p key={i} className="text-sm text-amber-300 font-medium">{w}</p>
+              ))}
+            </div>
+          )}
+
+          {/* Score cards — with confidence intervals */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
             <ScoreCard
               label="RAG Visibility"
-              score={data.visibility_summary.rag_model_visibility}
-              description={`${(data.visibility_summary.mention_rate * 100).toFixed(0)}% mention rate`}
+              score={visSummary.rag_model_visibility}
+              description={`${(visSummary.mention_rate * 100).toFixed(0)}% mention rate`}
+              confidenceLower={visSummary.confidence_lower}
+              confidenceUpper={visSummary.confidence_upper}
+              confidenceLevel={visSummary.confidence_level}
             />
             <ScoreCard
               label="Base Model"
-              score={data.visibility_summary.base_model_visibility}
+              score={visSummary.base_model_visibility}
             />
             <ScoreCard
               label="Opportunity Gap"
-              score={data.visibility_summary.actionable_gap}
+              score={visSummary.actionable_gap}
               description="Potential gains"
             />
             <ScoreCard
               label="Avg Position"
-              score={Math.max(0, 100 - data.visibility_summary.average_position * 10)}
-              description={`#${data.visibility_summary.average_position.toFixed(1)} match`}
+              score={Math.max(0, 100 - visSummary.average_position * 10)}
+              description={`#${visSummary.average_position.toFixed(1)} avg match`}
             />
           </div>
 
           {/* Tabs */}
-          <div className="flex gap-2 bg-slate-100 dark:bg-black/40 p-1.5 rounded-2xl w-fit border border-slate-200/50 dark:border-white/5">
-            {(['opportunities', 'keywords', 'competitors'] as const).map(tab => (
-              <button key={tab} onClick={() => setActiveTab(tab)}
-                className={`px-6 py-2.5 rounded-xl text-[11px] font-black uppercase tracking-widest transition-all ${
-                  activeTab === tab 
-                    ? 'bg-white dark:bg-slate-800 text-primary shadow-sm border border-slate-200 dark:border-white/10' 
+          <div className="flex gap-2 flex-wrap bg-slate-100 dark:bg-black/40 p-1.5 rounded-2xl border border-slate-200/50 dark:border-white/5">
+            {RESULT_TABS.filter(t => t.available).map(tab => (
+              <button key={tab.id} onClick={() => setActiveTab(tab.id)}
+                className={`px-5 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap ${
+                  activeTab === tab.id
+                    ? 'bg-white dark:bg-slate-800 text-primary shadow-sm border border-slate-200 dark:border-white/10'
                     : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
                 }`}>
-                {tab === 'opportunities' ? `🎯 Opportunities (${data.opportunities.length})` :
-                 tab === 'keywords' ? `🔑 Keywords (${data.working_keywords.length + data.gap_keywords.length})` :
-                 `🏆 Competitors (${data.competitor_patterns.length})`}
+                {tab.label}{tab.count !== undefined ? ` (${tab.count})` : ''}
               </button>
             ))}
           </div>
 
           {/* Tab content */}
           <div className="animate-in slide-in-from-bottom-4 duration-500">
+
+            {/* Opportunities */}
             {activeTab === 'opportunities' && (
               <div className="space-y-4">
                 {data.opportunities.length === 0 ? (
@@ -262,11 +340,12 @@ export default function KeywordsPage() {
               </div>
             )}
 
+            {/* Keywords */}
             {activeTab === 'keywords' && (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <KeywordList keywords={data.working_keywords} type="working" />
                 <KeywordList keywords={data.gap_keywords} type="gap" />
-                {data.your_winning_keywords?.length > 0 && (
+                {(data.your_winning_keywords?.length ?? 0) > 0 && (
                   <div className="md:col-span-2">
                     <KeywordList keywords={data.your_winning_keywords} type="winning" />
                   </div>
@@ -274,12 +353,35 @@ export default function KeywordsPage() {
               </div>
             )}
 
+            {/* Competitors */}
             {activeTab === 'competitors' && (
               <div className="space-y-4">
-                {data.competitor_patterns.map((comp) => (
-                  <CompetitorCard key={comp.competitor_name} competitor={comp} />
-                ))}
+                {data.competitor_patterns.length === 0 ? (
+                  <div className="bg-white dark:bg-slate-900/50 rounded-[2.5rem] border border-slate-200 dark:border-white/5 p-16 text-center">
+                    <p className="text-slate-400 font-bold">No competitor patterns found.</p>
+                  </div>
+                ) : (
+                  data.competitor_patterns.map(comp => <CompetitorCard key={comp.competitor_name} competitor={comp} />)
+                )}
               </div>
+            )}
+
+            {/* LLM Breakdown */}
+            {activeTab === 'llm_breakdown' && data.visibility_by_llm && (
+              <LLMBreakdownTable
+                visibilityByLLM={data.visibility_by_llm}
+                confidenceByLLM={data.confidence_by_llm}
+              />
+            )}
+
+            {/* Content Gaps */}
+            {activeTab === 'content_gaps' && data.content_gap_analysis && (
+              <ContentGapCard gapAnalysis={data.content_gap_analysis} />
+            )}
+
+            {/* Prompt Results */}
+            {activeTab === 'prompt_results' && (
+              <PromptResultsTable promptResults={data.prompt_results ?? []} />
             )}
           </div>
 
@@ -290,7 +392,7 @@ export default function KeywordsPage() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {data.next_steps.map((step, i) => (
                   <div key={i} className="flex gap-4 bg-white/50 dark:bg-black/20 p-5 rounded-3xl border border-primary/10">
-                    <span className="flex-shrink-0 w-8 h-8 rounded-xl bg-primary/10 text-primary flex items-center justify-center font-black text-sm">{i + 1}</span>
+                    <span className="shrink-0 w-8 h-8 rounded-xl bg-primary/10 text-primary flex items-center justify-center font-black text-sm">{i + 1}</span>
                     <p className="text-sm text-slate-700 dark:text-slate-300 font-medium leading-relaxed">{step}</p>
                   </div>
                 ))}
@@ -361,16 +463,12 @@ export default function KeywordsPage() {
               </div>
             </div>
             <div className="flex flex-wrap gap-2">
-              {qvResult.results.providers_mentioning.length > 0 && (
-                qvResult.results.providers_mentioning.map(p => (
-                  <span key={p} className="text-[10px] font-black bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 px-3 py-1.5 rounded-xl border border-emerald-500/20 uppercase tracking-widest">✓ {p}</span>
-                ))
-              )}
-              {qvResult.results.providers_not_mentioning.length > 0 && (
-                qvResult.results.providers_not_mentioning.map(p => (
-                  <span key={p} className="text-[10px] font-black bg-red-500/10 text-red-600 dark:text-red-400 px-3 py-1.5 rounded-xl border border-red-500/20 uppercase tracking-widest">✗ {p}</span>
-                ))
-              )}
+              {qvResult.results.providers_mentioning.map(p => (
+                <span key={p} className="text-[10px] font-black bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 px-3 py-1.5 rounded-xl border border-emerald-500/20 uppercase tracking-widest">✓ {p}</span>
+              ))}
+              {qvResult.results.providers_not_mentioning.map(p => (
+                <span key={p} className="text-[10px] font-black bg-red-500/10 text-red-600 dark:text-red-400 px-3 py-1.5 rounded-xl border border-red-500/20 uppercase tracking-widest">✗ {p}</span>
+              ))}
             </div>
           </div>
         )}

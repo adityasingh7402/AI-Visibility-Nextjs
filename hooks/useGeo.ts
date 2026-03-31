@@ -14,6 +14,8 @@ import type {
   ProgressTrackingRequest,
   ProgressTrendResponse,
   Analysis,
+  BatchKeywordDiscoveryRequest,
+  BatchKeywordDiscoveryResponse,
 } from '@/lib/geo-types';
 
 // ---- useKeywordDiscovery ----
@@ -40,6 +42,32 @@ export function useKeywordDiscovery() {
 
   const reset = useCallback(() => { setData(null); setError(null); }, []);
   return { data, loading, error, discover, reset };
+}
+
+// ---- useBatchDiscovery ----
+export function useBatchDiscovery() {
+  const [data, setData] = useState<BatchKeywordDiscoveryResponse | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const batchDiscover = useCallback(async (request: BatchKeywordDiscoveryRequest) => {
+    setLoading(true);
+    setError(null);
+    try {
+      const result = await geoApi.batchDiscover(request);
+      setData(result);
+      return result;
+    } catch (e: any) {
+      const msg = e.response?.data?.error || e.message || 'Batch discovery failed';
+      setError(msg);
+      throw e;
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  const reset = useCallback(() => { setData(null); setError(null); }, []);
+  return { data, loading, error, batchDiscover, reset };
 }
 
 // ---- useKeywordTest ----

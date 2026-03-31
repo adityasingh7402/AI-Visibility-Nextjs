@@ -1,12 +1,13 @@
 // ============================================================
 // GEO Platform — TypeScript Types
-// Based on BACKEND_INTEGRATION.md + FRONTEND_INTEGRATION.md
+// FULLY ALIGNED with BACKEND_HANDOFF_v2.0.md
 // ============================================================
 
 // ---- Enums ----
 export type RegionScope = 'global' | 'north_america' | 'europe' | 'asia_pacific' | 'latin_america' | 'middle_east' | 'country';
 export type DiscoveryMode = 'quick' | 'standard' | 'deep';
-export type LLMProvider = 'chatgpt' | 'gemini' | 'perplexity' | 'claude' | 'openai' | 'google';
+// All 6 providers per BACKEND_HANDOFF_v2.0 §9 — added grok + digitalocean
+export type LLMProvider = 'chatgpt' | 'gemini' | 'perplexity' | 'claude' | 'grok' | 'digitalocean' | 'openai' | 'google';
 export type OpportunityPriority = 'high' | 'medium' | 'low';
 export type EffortLevel = 'easy' | 'medium' | 'hard' | 'moderate';
 export type TimeToImpact = 'days' | 'weeks' | 'months';
@@ -16,6 +17,7 @@ export type AnalysisStatus = 'pending' | 'processing' | 'completed' | 'failed';
 export type AnalysisType = 'keyword_discovery' | 'keyword_test' | 'keyword_validate' | 'content_validation' | 'content_live_test' | 'progress_tracking';
 export type TrendDirection = 'improving' | 'declining' | 'stable';
 export type Verdict = 'strong' | 'promising' | 'weak' | 'not_visible';
+export type ConfidenceLevel = 'HIGH' | 'MEDIUM' | 'LOW';
 
 // ---- Keyword Discovery ----
 
@@ -62,8 +64,14 @@ export interface KeywordOpportunity {
   estimated_impact: string;
   action_items: string[];
   effort_estimate: EffortLevel;
+  // Extended fields from handoff
+  demand_estimate?: string;
+  sentiment_signal?: string;
+  competitor_mentions?: string[];
 }
 
+// VisibilitySummary — supports both key names from engine:
+//   'your_visibility_summary' (handoff spec) and 'visibility_summary' (legacy)
 export interface VisibilitySummary {
   your_brand_mentions: number;
   total_prompts_tested: number;
@@ -72,6 +80,19 @@ export interface VisibilitySummary {
   base_model_visibility: number; // 0-100
   rag_model_visibility: number;  // 0-100
   actionable_gap: number;        // 0-100
+  // Confidence intervals (per handoff spec §10)
+  confidence_lower?: number;
+  confidence_upper?: number;
+  confidence_level?: ConfidenceLevel;
+  sample_size?: number;
+}
+
+// Per-LLM scores from visibility_by_llm + confidence_by_llm fields
+export interface LLMVisibilityScore {
+  visibility_score: number;
+  mention_rate: number;
+  confidence?: number;
+  average_position?: number;
 }
 
 export interface LLMProfile {
@@ -79,6 +100,28 @@ export interface LLMProfile {
   mention_rate: number;
   citation_quality: string;
   data_freshness: string;
+}
+
+// Individual prompt test result (for Prompt Results detailed view)
+export interface PromptResult {
+  prompt: string;
+  prompt_type: string;
+  signal_weight?: number;
+  brand_mentioned: boolean;
+  mention_rate: number;
+  average_position: number;
+  per_llm_results?: Record<string, {
+    mentioned: boolean;
+    position?: number;
+    raw_response?: string;
+  }>;
+}
+
+// Content gap analysis
+export interface ContentGapAnalysis {
+  covered: string[];     // keywords with strong coverage
+  thin: string[];        // keywords with weak coverage
+  missing: string[];     // keywords with no coverage
 }
 
 export interface KeywordDiscoveryResponse {
@@ -95,12 +138,57 @@ export interface KeywordDiscoveryResponse {
   };
   competitor_patterns: CompetitorPattern[];
   opportunities: KeywordOpportunity[];
-  visibility_summary: VisibilitySummary;
+  // Both field names supported (engine may return either)
+  your_visibility_summary?: VisibilitySummary;
+  visibility_summary?: VisibilitySummary;
+  // Per-LLM breakdowns
+  visibility_by_llm?: Record<string, LLMVisibilityScore>;
+  confidence_by_llm?: Record<string, number>;
   llm_profiles: Record<string, LLMProfile>;
+  // Prompt-level results
+  prompt_results?: PromptResult[];
+  // Content gap analysis
+  content_gap_analysis?: ContentGapAnalysis;
   next_steps: string[];
   processing_time_seconds: number;
   timestamp: string;
   analysis_id: string;
+  // Warning/error arrays from engine
+  errors?: string[];
+  warnings?: string[];
+}
+
+// Helper: resolve visibility summary from either field name
+export function resolveVisibilitySummary(data: KeywordDiscoveryResponse): VisibilitySummary | null {
+  return data.your_visibility_summary || data.visibility_summary || null;
+}
+
+// ---- Batch Keyword Discovery ----
+
+export interface BatchBrandInput {
+  brand_name: string;
+  brand_aliases?: string[];
+  category: string;
+  competitors?: string[];
+  target_audience?: string;
+  region?: RegionScope;
+  mode?: DiscoveryMode;
+}
+
+export interface BatchKeywordDiscoveryRequest {
+  brands: BatchBrandInput[];
+  llm_providers: LLMProvider[];
+  runs_per_prompt?: number;
+}
+
+export interface BatchKeywordDiscoveryResponse {
+  total_brands: number;
+  completed: number;
+  failed: number;
+  results: KeywordDiscoveryResponse[];
+  errors?: Array<{ brand_name: string; error: string }>;
+  processing_time_seconds: number;
+  timestamp: string;
 }
 
 // ---- Keyword Test ----
@@ -140,6 +228,8 @@ export interface KeywordTestResponse {
   results: KeywordTestResult[];
   processing_time_seconds: number;
   timestamp: string;
+  errors?: string[];
+  warnings?: string[];
 }
 
 // ---- Keyword Validate ----
@@ -202,6 +292,8 @@ export interface ContentValidationResponse {
   processing_time_seconds: number;
   timestamp: string;
   verdict?: Verdict;
+  errors?: string[];
+  warnings?: string[];
 }
 
 // ---- Content Live Test ----
@@ -347,3 +439,13 @@ export const VISIBILITY_LEVELS = {
   low: { color: '#EF4444', icon: '📉', label: 'Low Potential' },
   none: { color: '#6B7280', icon: '🚫', label: 'No Potential' },
 } as const;
+
+// LLM provider display info — all 6 providers per handoff spec
+export const LLM_PROVIDER_INFO: Record<string, { label: string; icon: string; color: string }> = {
+  chatgpt:      { label: 'ChatGPT',          icon: '🤖', color: '#10A37F' },
+  gemini:       { label: 'Gemini',           icon: '✨', color: '#4285F4' },
+  perplexity:   { label: 'Perplexity',       icon: '🔍', color: '#20B2AA' },
+  claude:       { label: 'Claude',           icon: '🧠', color: '#CC785C' },
+  grok:         { label: 'Grok',             icon: '⚡', color: '#1DA1F2' },
+  digitalocean: { label: 'DigitalOcean AI',  icon: '🌊', color: '#0080FF' },
+};
