@@ -239,6 +239,38 @@ class GEOApi {
     const { data } = await this.client.get('/api/v1/progress/health');
     return data;
   }
+
+  // ---- Brands ----
+
+  async getBrands() {
+    const { data } = await this.client.get('/api/brands');
+    return data;
+  }
+
+  async getBrand(id: string) {
+    const { data } = await this.client.get(`/api/brands/${id}`);
+    return data;
+  }
+
+  async createBrand(body: Record<string, unknown>) {
+    const { data } = await this.client.post('/api/brands', body);
+    return data;
+  }
+
+  async updateBrand(id: string, body: Record<string, unknown>) {
+    const { data } = await this.client.put(`/api/brands/${id}`, body);
+    return data;
+  }
+
+  async deleteBrand(id: string) {
+    const { data } = await this.client.delete(`/api/brands/${id}`);
+    return data;
+  }
+
+  async getBrandAnalyses(id: string, limit = 20) {
+    const { data } = await this.client.get(`/api/brands/${id}/analyses?limit=${limit}`);
+    return data;
+  }
 }
 
 // Export as singleton
