@@ -32,6 +32,22 @@ export default function DashboardPage() {
     ? (analyses.reduce((sum, a) => sum + (a.mention_rate ?? 0), 0) / analyses.length * 100).toFixed(0)
     : '0';
 
+  // Helper: safely extract visibility summary from JSONB payload (cast needed since type is Record<string,unknown>)
+  const getVisSummary = (a: typeof analyses[0]) => {
+    const p = a.response_payload as any;
+    return p?.your_visibility_summary ?? p?.visibility_summary ?? {};
+  };
+
+  const avgBaseModel = analyses.length > 0
+    ? Math.round(analyses.reduce((sum, a) => sum + (getVisSummary(a).base_model_visibility ?? 0), 0) / analyses.length)
+    : 0;
+  const avgRag = analyses.length > 0
+    ? Math.round(analyses.reduce((sum, a) => sum + (getVisSummary(a).rag_model_visibility ?? 0), 0) / analyses.length)
+    : 0;
+  const avgGap = analyses.length > 0
+    ? Math.round(analyses.reduce((sum, a) => sum + (getVisSummary(a).actionable_gap ?? 0), 0) / analyses.length)
+    : 0;
+
   const recentAnalyses = analyses.slice(0, 5);
 
   const stats = [
@@ -42,16 +58,28 @@ export default function DashboardPage() {
       icon: <BarChart3 className="text-primary" />,
     },
     {
-      label: 'Avg Visibility Score',
-      value: loading ? '…' : `${avgScore}%`,
-      change: 'GEO score',
+      label: 'RAG Visibility',
+      value: loading ? '…' : `${avgRag}%`,
+      change: '§10.1 RAG',
       icon: <TrendingUp className="text-emerald-500" />,
+    },
+    {
+      label: 'Base Model',
+      value: loading ? '…' : `${avgBaseModel}%`,
+      change: 'baseline',
+      icon: <BarChart3 className="text-blue-500" />,
     },
     {
       label: 'Avg Mention Rate',
       value: loading ? '…' : `${totalMentionRate}%`,
       change: 'across LLMs',
-      icon: <MessageSquare className="text-blue-500" />,
+      icon: <MessageSquare className="text-purple-500" />,
+    },
+    {
+      label: 'Opportunity Gap',
+      value: loading ? '…' : `${avgGap}pt`,
+      change: 'actionable',
+      icon: <ArrowUpRight className="text-amber-500" />,
     },
   ];
 
@@ -85,8 +113,8 @@ export default function DashboardPage() {
         </div>
       )}
 
-      {/* Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      {/* Stats Grid — §10.1 visibility breakdown */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-6">
         {stats.map((stat, i) => (
           <div key={i} className="bg-white dark:bg-slate-900/50 p-8 rounded-[2.5rem] border border-slate-200 dark:border-white/5 shadow-sm hover:shadow-md transition-shadow relative overflow-hidden group">
             <div className="absolute top-0 right-0 w-32 h-32 bg-primary/5 rounded-full -mr-16 -mt-16 blur-2xl group-hover:bg-primary/10 transition-colors"></div>
@@ -101,7 +129,7 @@ export default function DashboardPage() {
                 </span>
               </div>
               <p className="text-slate-500 dark:text-slate-400 text-xs font-black uppercase tracking-[0.2em] mb-2">{stat.label}</p>
-              <p className="text-5xl font-black text-slate-900 dark:text-white tracking-tighter">{stat.value}</p>
+              <p className="text-4xl font-black text-slate-900 dark:text-white tracking-tighter">{stat.value}</p>
             </div>
           </div>
         ))}

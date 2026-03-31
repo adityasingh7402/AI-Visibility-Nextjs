@@ -228,6 +228,34 @@ export default function ContentPage() {
                   </div>
                 </div>
               )}
+
+              {/* Warnings — non-fatal messages from engine (§10) */}
+              {data.warnings && data.warnings.length > 0 && (
+                <div className="rounded-[2.5rem] border border-amber-500/20 bg-amber-500/5 p-6 space-y-3">
+                  <h3 className="text-xs font-black text-amber-600 dark:text-amber-400 uppercase tracking-[0.2em] flex items-center gap-2">
+                    <span>⚠️</span> Warnings
+                  </h3>
+                  <ul className="space-y-1.5">
+                    {data.warnings.map((w, i) => (
+                      <li key={i} className="text-xs text-amber-700 dark:text-amber-300 font-medium">{w}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              {/* Errors — engine-level errors (§10) */}
+              {data.errors && data.errors.length > 0 && (
+                <div className="rounded-[2.5rem] border border-red-500/20 bg-red-500/5 p-6 space-y-3">
+                  <h3 className="text-xs font-black text-red-600 dark:text-red-400 uppercase tracking-[0.2em] flex items-center gap-2">
+                    <span>🔴</span> Engine Errors
+                  </h3>
+                  <ul className="space-y-1.5">
+                    {data.errors.map((e, i) => (
+                      <li key={i} className="text-xs text-red-700 dark:text-red-300 font-medium">{e}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
             </div>
           )}
         </div>

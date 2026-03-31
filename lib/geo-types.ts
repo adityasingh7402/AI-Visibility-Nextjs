@@ -32,6 +32,7 @@ export interface KeywordDiscoveryRequest {
   mode: DiscoveryMode;
   llm_providers: LLMProvider[];
   runs_per_prompt: number;
+  skip_cache?: boolean; // Set true to bypass 24h cache
 }
 
 export interface VisibilityFactor {
@@ -176,8 +177,14 @@ export interface BatchBrandInput {
 }
 
 export interface BatchKeywordDiscoveryRequest {
-  brands: BatchBrandInput[];
-  llm_providers: LLMProvider[];
+  // BACKEND_HANDOFF_v2.0 §3.1 spec field name
+  clients?: BatchBrandInput[];
+  // Legacy field name (backward compat)
+  brands?: BatchBrandInput[];
+  shared_competitors?: string[];
+  default_mode?: DiscoveryMode;
+  default_llm_providers?: LLMProvider[];
+  llm_providers?: LLMProvider[];
   runs_per_prompt?: number;
 }
 
@@ -337,6 +344,11 @@ export interface TrendDataPoint {
   overall_visibility: number;
   base_model_visibility: number;
   rag_model_visibility: number;
+  // Confidence intervals for shading (BACKEND_HANDOFF_v2.0 §10.7)
+  confidence_lower?: number;
+  confidence_upper?: number;
+  // Per-LLM breakdown scores for individual provider lines
+  visibility_by_llm?: Record<string, { visibility_score?: number; score?: number } | number>;
 }
 
 export interface VisibilityTrend {
