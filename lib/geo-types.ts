@@ -74,10 +74,12 @@ export interface KeywordOpportunity {
 // VisibilitySummary — supports both key names from engine:
 //   'your_visibility_summary' (handoff spec) and 'visibility_summary' (legacy)
 export interface VisibilitySummary {
+  overall_visibility_score?: number; // 0-100 — main metric (§10.1)
   your_brand_mentions: number;
   total_prompts_tested: number;
   mention_rate: number;         // 0-1
   average_position: number;
+  avg_position?: number;        // alias used by some engine responses
   base_model_visibility: number; // 0-100
   rag_model_visibility: number;  // 0-100
   actionable_gap: number;        // 0-100
@@ -86,6 +88,7 @@ export interface VisibilitySummary {
   confidence_upper?: number;
   confidence_level?: ConfidenceLevel;
   sample_size?: number;
+  data_completeness?: number;   // §8 — how many agents ran successfully
 }
 
 // Per-LLM scores from visibility_by_llm + confidence_by_llm fields

@@ -16,6 +16,17 @@ export interface AnalysisProgress {
 }
 
 const STAGE_LABELS: Record<string, string> = {
+  // BACKEND_HANDOFF_v2.0 §6 — spec-defined SSE phase names
+  'queued': 'Waiting in queue…',
+  'crawling': 'Crawling web content…',
+  'researching': 'Researching competitors…',
+  'testing_llms': 'Testing AI model visibility…',
+  'analyzing_images': 'Analyzing brand imagery…',
+  'optimizing': 'Generating GEO score…',
+  'verifying': 'Verifying results…',
+  'completed': 'Analysis complete!',
+  'failed': 'Analysis failed',
+  // Legacy agent-style names (backward compat)
   'Starting Analysis': 'Initializing agents…',
   'Running Crawler Agent': 'Crawling web content…',
   'Running Researcher Agent': 'Researching competitors…',

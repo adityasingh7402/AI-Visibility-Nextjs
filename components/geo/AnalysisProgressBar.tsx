@@ -9,12 +9,12 @@ interface AnalysisProgressBarProps {
 }
 
 const STAGES = [
-  { name: 'Crawler', icon: '🕷️' },
-  { name: 'Researcher', icon: '🔍' },
-  { name: 'LLM Tester', icon: '🤖' },
-  { name: 'Image Analyzer', icon: '🖼️' },
-  { name: 'Optimizer', icon: '⚡' },
-  { name: 'Verifier', icon: '✅' },
+  { name: 'Crawler', icon: '🕷️', specPhase: 'crawling' },
+  { name: 'Researcher', icon: '🔍', specPhase: 'researching' },
+  { name: 'LLM Tester', icon: '🤖', specPhase: 'testing_llms' },
+  { name: 'Image Analyzer', icon: '🖼️', specPhase: 'analyzing_images' },
+  { name: 'Optimizer', icon: '⚡', specPhase: 'optimizing' },
+  { name: 'Verifier', icon: '✅', specPhase: 'verifying' },
 ];
 
 export function AnalysisProgressBar({
@@ -23,7 +23,11 @@ export function AnalysisProgressBar({
   const isRunning = status === 'processing' || status === 'pending';
   const barColor = status === 'completed' ? '#10B981' : status === 'failed' ? '#EF4444' : '#3B82F6';
 
-  const currentIdx = STAGES.findIndex(s => currentStage.toLowerCase().includes(s.name.toLowerCase()));
+  // Detect current stage from both legacy (agent name) and spec (phase name) formats
+  const stageLower = currentStage.toLowerCase();
+  const currentIdx = STAGES.findIndex(s =>
+    stageLower.includes(s.name.toLowerCase()) || stageLower === s.specPhase
+  );
 
   return (
     <div className="rounded-2xl border border-white/10 bg-white/5 backdrop-blur-sm p-6 space-y-5">
