@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useKeywordDiscovery, useAnalyses } from '@/hooks/useGeo';
 import { useSSEProgress } from '@/hooks/useSSEProgress';
 import { AnalysisProgressBar } from '@/components/geo/AnalysisProgressBar';
+import { ApiErrorToast } from '@/components/geo/ApiErrorToast';
 import type { DiscoveryMode, LLMProvider } from '@/lib/geo-types';
 import {
   BrainCircuit, Zap, Cpu, Lightbulb, Rocket, Clock, Bolt, CheckCircle2, AlertCircle, Info
@@ -44,6 +45,7 @@ export default function AnalysisPage() {
   const { data: recentAnalyses, fetchAnalyses } = useAnalyses();
   const [analysisId, setAnalysisId] = useState<string | null>(null);
   const { progress, stageLabel } = useSSEProgress(loading ? analysisId : null);
+  const [apiError, setApiError] = useState<unknown>(null);
 
   // Fetch latest analysis on mount for the "Last Analysis" badge
   useEffect(() => { fetchAnalyses(undefined, undefined, 1); }, [fetchAnalyses]);
@@ -67,25 +69,26 @@ export default function AnalysisPage() {
 
   const handleStart = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!brandName || !category || selectedLLMs.length === 0) return;
-
+    setApiError(null);
     const tempId = `kd-${brandName.toLowerCase().replace(/\s+/g, '-')}-${Date.now()}`;
     setAnalysisId(tempId);
 
-    const result = await discover({
-      brand_name: brandName,
-      category,
-      competitors: competitors.split(',').map(c => c.trim()).filter(Boolean),
-      target_audience: targetAudience || undefined,
-      region: 'global',
-      mode,
-      llm_providers: selectedLLMs,
-      runs_per_prompt: 1,
-    });
-
-    if (result?.analysis_id) setAnalysisId(result.analysis_id);
-    router.push('/dashboard/keywords');
-  };
+    try {
+      const result = await discover({
+        brand_name: brandName,
+        category,
+        competitors: competitors.split(',').map(c => c.trim()).filter(Boolean),
+        target_audience: targetAudience || undefined,
+        region: 'global',
+        mode,
+        llm_providers: selectedLLMs,
+        runs_per_prompt: 1,
+      });
+      if (result?.analysis_id) setAnalysisId(result.analysis_id);
+      router.push('/dashboard/keywords');
+    } catch (err) {
+      setApiError(err);
+    }};
 
   const estimatedTime = MODES.find(m => m.id === mode)?.eta ?? '~45s';
   const canSubmit = brandName.trim() && category.trim() && selectedLLMs.length > 0;
@@ -305,6 +308,9 @@ export default function AnalysisPage() {
           </div>
         </form>
       )}
+
+      {/* Error toast for 413/422/429 per §8 */}
+      <ApiErrorToast error={apiError} onDismiss={() => setApiError(null)} />
     </div>
   );
 }

@@ -9,6 +9,7 @@ import { KeywordList } from '@/components/geo/KeywordList';
 import { CompetitorCard } from '@/components/geo/CompetitorCard';
 import { OpportunityCard } from '@/components/geo/OpportunityCard';
 import { AnalysisProgressBar } from '@/components/geo/AnalysisProgressBar';
+import { ApiErrorToast } from '@/components/geo/ApiErrorToast';
 import { LLMBreakdownTable } from '@/components/geo/LLMBreakdownTable';
 import { ContentGapCard } from '@/components/geo/ContentGapCard';
 import { PromptResultsTable } from '@/components/geo/PromptResultsTable';
@@ -32,6 +33,9 @@ export default function KeywordsPage() {
   const { data, loading, error, discover, reset } = useKeywordDiscovery();
   const [analysisId, setAnalysisId] = useState<string | null>(null);
   const { progress, stageLabel } = useSSEProgress(loading ? analysisId : null);
+
+  // API error toast state per §8
+  const [apiError, setApiError] = useState<unknown>(null);
 
   const [brandName, setBrandName] = useState('');
   const [category, setCategory] = useState('');
@@ -74,20 +78,24 @@ export default function KeywordsPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!brandName || !category || selectedLLMs.length === 0) return;
+    setApiError(null); // clear previous errors
     const tempId = `kd-${brandName.toLowerCase().replace(/\s+/g, '-')}-${Date.now()}`;
     setAnalysisId(tempId);
-    const result = await discover({
-      brand_name: brandName,
-      category,
-      competitors: competitors.split(',').map(c => c.trim()).filter(Boolean),
-      target_audience: targetAudience || undefined,
-      region: 'global',
-      mode,
-      llm_providers: selectedLLMs,
-      runs_per_prompt: 1,
-    });
-    if (result?.analysis_id) setAnalysisId(result.analysis_id);
+    try {
+      const result = await discover({
+        brand_name: brandName,
+        category,
+        competitors: competitors.split(',').map(c => c.trim()).filter(Boolean),
+        target_audience: targetAudience || undefined,
+        region: 'global',
+        mode,
+        llm_providers: selectedLLMs,
+        runs_per_prompt: 1,
+      });
+      if (result?.analysis_id) setAnalysisId(result.analysis_id);
+    } catch (err) {
+      setApiError(err);
+    }
   };
 
   // Resolve visibility summary (handles both 'your_visibility_summary' and 'visibility_summary')
@@ -473,6 +481,9 @@ export default function KeywordsPage() {
           </div>
         )}
       </div>
+
+      {/* Error toast for 413/422/429 per §8 */}
+      <ApiErrorToast error={apiError} onDismiss={() => setApiError(null)} />
     </div>
   );
 }

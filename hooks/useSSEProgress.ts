@@ -27,7 +27,10 @@ const STAGE_LABELS: Record<string, string> = {
 
 /**
  * useSSEProgress — connects to the Express SSE endpoint
- * and streams real-time progress for a running analysis.
+ * per BACKEND_HANDOFF_v2.0 §6 (SSE Progress Streaming).
+ *
+ * Uses GET /api/v1/events/{job_id}?token=<jwt> (the spec-defined alias)
+ * which internally routes to /api/v1/progress/stream/:analysisId.
  *
  * Passes the Supabase JWT as a query param since EventSource
  * doesn't support custom Authorization headers.
@@ -61,7 +64,8 @@ export function useSSEProgress(analysisId: string | null) {
 
       if (cancelled) return;
 
-      const url = `${apiBase}/api/v1/progress/stream/${analysisId}?token=${encodeURIComponent(token)}`;
+      // BACKEND_HANDOFF_v2.0 §3.4 / §6 — Use the spec-defined SSE alias endpoint
+      const url = `${apiBase}/api/v1/events/${analysisId}?token=${encodeURIComponent(token)}`;
 
       // Close any existing connection
       if (eventSourceRef.current) {
@@ -89,7 +93,7 @@ export function useSSEProgress(analysisId: string | null) {
         try {
           const data = JSON.parse(event.data);
           setProgress(prev => prev ? { ...prev, status: data.status } : null);
-        } catch {}
+        } catch { /* ignore */ }
         es.close();
         setConnected(false);
       });
@@ -105,9 +109,12 @@ export function useSSEProgress(analysisId: string | null) {
       });
 
       es.onerror = () => {
-        setError('Connection lost. Progress tracking stopped.');
-        es.close();
-        setConnected(false);
+        // Only close on CLOSED state; EventSource auto-reconnects on transient errors
+        if (es.readyState === EventSource.CLOSED) {
+          setError('Connection lost. Progress tracking stopped.');
+          setConnected(false);
+          eventSourceRef.current = null;
+        }
       };
     };
 
@@ -122,6 +129,7 @@ export function useSSEProgress(analysisId: string | null) {
 
   const disconnect = () => {
     eventSourceRef.current?.close();
+    eventSourceRef.current = null;
     setConnected(false);
   };
 
