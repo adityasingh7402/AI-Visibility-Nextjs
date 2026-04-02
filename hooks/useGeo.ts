@@ -10,13 +10,20 @@ import type {
   ContentValidationRequest,
   ContentValidationResponse,
   ContentLiveTestRequest,
-  ContentLiveTestResponse,
   ProgressTrackingRequest,
   ProgressTrendResponse,
   Analysis,
   BatchKeywordDiscoveryRequest,
   BatchKeywordDiscoveryResponse,
+  AnalyzeResultResponse,
 } from '@/lib/geo-types';
+
+// Helper: extract error message from unknown catch value
+type ApiErr = { response?: { data?: { error?: string } }; message?: string };
+function apiMsg(e: unknown, fallback: string): string {
+  const err = e as ApiErr;
+  return err?.response?.data?.error || err?.message || fallback;
+}
 
 // ---- useKeywordDiscovery ----
 export function useKeywordDiscovery() {
@@ -31,9 +38,8 @@ export function useKeywordDiscovery() {
       const result = await geoApi.discoverKeywords(request);
       setData(result);
       return result;
-    } catch (e: any) {
-      const msg = e.response?.data?.error || e.message || 'Keyword discovery failed';
-      setError(msg);
+    } catch (e: unknown) {
+      setError(apiMsg(e, 'Keyword discovery failed'));
       throw e;
     } finally {
       setLoading(false);
@@ -57,9 +63,8 @@ export function useBatchDiscovery() {
       const result = await geoApi.batchDiscover(request);
       setData(result);
       return result;
-    } catch (e: any) {
-      const msg = e.response?.data?.error || e.message || 'Batch discovery failed';
-      setError(msg);
+    } catch (e: unknown) {
+      setError(apiMsg(e, 'Batch discovery failed'));
       throw e;
     } finally {
       setLoading(false);
@@ -83,9 +88,8 @@ export function useKeywordTest() {
       const result = await geoApi.testKeywords(request);
       setData(result);
       return result;
-    } catch (e: any) {
-      const msg = e.response?.data?.error || e.message || 'Keyword test failed';
-      setError(msg);
+    } catch (e: unknown) {
+      setError(apiMsg(e, 'Keyword test failed'));
       throw e;
     } finally {
       setLoading(false);
@@ -108,9 +112,8 @@ export function useContentValidation() {
       const result = await geoApi.validateContent(request);
       setData(result);
       return result;
-    } catch (e: any) {
-      const msg = e.response?.data?.error || e.message || 'Content validation failed';
-      setError(msg);
+    } catch (e: unknown) {
+      setError(apiMsg(e, 'Content validation failed'));
       throw e;
     } finally {
       setLoading(false);
@@ -124,9 +127,8 @@ export function useContentValidation() {
       const result = await geoApi.testContentLive(request);
       setData(result as ContentValidationResponse);
       return result;
-    } catch (e: any) {
-      const msg = e.response?.data?.error || e.message || 'Live test failed';
-      setError(msg);
+    } catch (e: unknown) {
+      setError(apiMsg(e, 'Live test failed'));
       throw e;
     } finally {
       setLoading(false);
@@ -150,9 +152,8 @@ export function useVisibilityTrend() {
       const result = await geoApi.getVisibilityTrend(request);
       setData(result);
       return result;
-    } catch (e: any) {
-      const msg = e.response?.data?.error || e.message || 'Failed to load trend data';
-      setError(msg);
+    } catch (e: unknown) {
+      setError(apiMsg(e, 'Failed to load trend data'));
       throw e;
     } finally {
       setLoading(false);
@@ -175,9 +176,8 @@ export function useAnalyses() {
       const result = await geoApi.getAnalyses(brand, type, limit);
       setData(result);
       return result;
-    } catch (e: any) {
-      const msg = e.response?.data?.error || e.message || 'Failed to load analyses';
-      setError(msg);
+    } catch (e: unknown) {
+      setError(apiMsg(e, 'Failed to load analyses'));
       throw e;
     } finally {
       setLoading(false);
@@ -200,9 +200,8 @@ export function useAnalysis() {
       const result = await geoApi.getAnalysis(id);
       setData(result);
       return result;
-    } catch (e: any) {
-      const msg = e.response?.data?.error || e.message || 'Analysis not found';
-      setError(msg);
+    } catch (e: unknown) {
+      setError(apiMsg(e, 'Analysis not found'));
       throw e;
     } finally {
       setLoading(false);
@@ -210,4 +209,51 @@ export function useAnalysis() {
   }, []);
 
   return { data, loading, error, fetchAnalysis };
+}
+
+// ---- useFullAnalysis (async 6-agent pipeline) ----
+export function useFullAnalysis() {
+  const [data, setData] = useState<AnalyzeResultResponse | null>(null);
+  const [analysisId, setAnalysisId] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const submit = useCallback(async (request: Record<string, unknown>) => {
+    setLoading(true);
+    setError(null);
+    setData(null);
+    try {
+      const result = await geoApi.runAnalyzeAsync(request);
+      setAnalysisId(result.analysis_id);
+      return result;
+    } catch (e: unknown) {
+      setError(apiMsg(e, 'Analysis failed'));
+      setLoading(false);
+      throw e;
+    }
+  }, []);
+
+  const fetchResult = useCallback(async (id: string) => {
+    try {
+      const result = await geoApi.getAnalyzeResult(id);
+      if (result.visibility_score) {
+        setData(result);
+        setLoading(false);
+      }
+      return result;
+    } catch (e: unknown) {
+      setError(apiMsg(e, 'Failed to fetch result'));
+      setLoading(false);
+      throw e;
+    }
+  }, []);
+
+  const reset = useCallback(() => {
+    setData(null);
+    setAnalysisId(null);
+    setError(null);
+    setLoading(false);
+  }, []);
+
+  return { data, analysisId, loading, error, submit, fetchResult, reset };
 }

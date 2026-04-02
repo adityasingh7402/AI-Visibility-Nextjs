@@ -125,7 +125,7 @@ export default function DocsPage() {
         <div className="max-w-4xl mx-auto bg-slate-900 dark:bg-slate-800 rounded-3xl p-10 text-center text-white">
           <h2 className="text-3xl font-bold mb-6">Need more help?</h2>
           <p className="text-slate-400 mb-8 text-lg">
-            Can't find what you're looking for? Our support team is here to help with your technical questions.
+            Can&apos;t find what you&apos;re looking for? Our support team is here to help with your technical questions.
           </p>
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
             <Button size="lg" className="bg-primary hover:bg-blue-600 text-white font-bold px-8 py-6 rounded-xl w-full sm:w-auto">

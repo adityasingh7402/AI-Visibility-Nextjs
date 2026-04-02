@@ -1,9 +1,9 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { useAnalyses } from '@/hooks/useGeo';
 import type { Analysis } from '@/lib/geo-types';
-import { BarChart3, FileText, Search, Filter, ArrowRight, Clock, TrendingUp, AlertCircle, RefreshCw } from 'lucide-react';
+import { BarChart3, Search, Filter, ArrowRight, Clock, TrendingUp, AlertCircle, RefreshCw } from 'lucide-react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 
@@ -29,14 +29,16 @@ function ScoreBadge({ score }: { score: number | null }) {
 function AnalysisRow({ analysis }: { analysis: Analysis }) {
   const type = TYPE_LABELS[analysis.analysis_type] ?? { label: analysis.analysis_type, color: 'text-slate-500 bg-slate-100 dark:bg-white/5 border-slate-200 dark:border-white/10', icon: '📊' };
   const date = new Date(analysis.created_at);
-  const relativeTime = (() => {
-    const diff = Date.now() - date.getTime();
+  const relativeTime = useMemo(() => {
+    const now = date.getTime(); // stable: date object doesn't change
+    const diff = new Date().getTime() - now;
     const min = Math.floor(diff / 60000);
     if (min < 60) return `${min}m ago`;
     const hrs = Math.floor(min / 60);
     if (hrs < 24) return `${hrs}h ago`;
     return date.toLocaleDateString();
-  })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [analysis.created_at]);
 
   return (
     <Link href={`/dashboard/analysis?id=${analysis.id}`} className="block group">
@@ -167,6 +169,7 @@ export default function ReportsPage() {
         <div className="relative w-full sm:w-64">
           <Filter className="absolute left-5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 dark:text-slate-600 pointer-events-none" />
           <select
+            aria-label="Filter by type"
             value={filterType}
             onChange={e => setFilterType(e.target.value)}
             className="w-full pl-12 pr-10 py-4 rounded-2xl bg-white dark:bg-slate-900/80 border border-slate-200 dark:border-white/5 text-sm font-black uppercase tracking-widest text-slate-600 dark:text-slate-400 focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all appearance-none cursor-pointer"

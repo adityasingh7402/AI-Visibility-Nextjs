@@ -16,9 +16,6 @@ import {
   Lock
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Separator } from "@/components/ui/separator";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 export default function SettingsPage() {
@@ -90,7 +87,7 @@ export default function SettingsPage() {
                      <span className="text-primary">70%</span>
                   </div>
                   <div className="h-1.5 w-full bg-white/10 dark:bg-slate-100 rounded-full overflow-hidden">
-                     <div className="h-full bg-primary shadow-[0_0_10px_rgba(59,130,246,0.5)]" style={{ width: '70%' }}></div>
+                     <div className="h-full w-[70%] bg-primary shadow-[0_0_10px_rgba(59,130,246,0.5)]"></div>
                   </div>
                </div>
                
@@ -118,7 +115,7 @@ export default function SettingsPage() {
                              <AvatarFallback className="bg-slate-50 dark:bg-black text-3xl font-black text-primary uppercase italic">AR</AvatarFallback>
                           </Avatar>
                         </div>
-                        <button className="absolute -bottom-2 -right-2 h-10 w-10 bg-primary rounded-2xl flex items-center justify-center text-white border-4 border-white dark:border-slate-900 shadow-xl group-hover:scale-110 transition-all active:scale-90">
+                        <button aria-label="Upload profile photo" className="absolute -bottom-2 -right-2 h-10 w-10 bg-primary rounded-2xl flex items-center justify-center text-white border-4 border-white dark:border-slate-900 shadow-xl group-hover:scale-110 transition-all active:scale-90">
                            <Camera size={18} />
                         </button>
                      </div>
@@ -134,20 +131,20 @@ export default function SettingsPage() {
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                      <div className="space-y-3">
-                        <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em] px-1">First Name</label>
-                        <input defaultValue="Alex" 
+                        <label htmlFor="settings-first-name" className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em] px-1">First Name</label>
+                        <input id="settings-first-name" defaultValue="Alex" 
                           className="w-full h-14 bg-slate-50 dark:bg-black/20 border border-slate-100 dark:border-white/10 rounded-2xl px-6 font-medium text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all" />
                      </div>
                      <div className="space-y-3">
-                        <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em] px-1">Last Name</label>
-                        <input defaultValue="Rivers" 
+                        <label htmlFor="settings-last-name" className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em] px-1">Last Name</label>
+                        <input id="settings-last-name" defaultValue="Rivers" 
                           className="w-full h-14 bg-slate-50 dark:bg-black/20 border border-slate-100 dark:border-white/10 rounded-2xl px-6 font-medium text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all" />
                      </div>
                      <div className="space-y-3 md:col-span-2">
-                        <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em] px-1">Primary Email</label>
+                        <label htmlFor="settings-email" className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em] px-1">Primary Email</label>
                         <div className="relative group">
                            <Mail className="absolute left-6 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 group-focus-within:text-primary transition-colors" />
-                           <input defaultValue="alex.rivers@enterprisehub.com" 
+                           <input id="settings-email" defaultValue="alex.rivers@enterprisehub.com" 
                             className="w-full h-14 pl-14 pr-6 bg-slate-50 dark:bg-black/20 border border-slate-100 dark:border-white/10 rounded-2xl font-medium text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all" />
                         </div>
                      </div>
@@ -183,19 +180,19 @@ export default function SettingsPage() {
 
                   <div className="space-y-6">
                      <div className="space-y-3">
-                        <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em] px-1">Current Password</label>
-                        <input type="password" placeholder="••••••••••••" 
+                        <label htmlFor="settings-current-password" className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em] px-1">Current Password</label>
+                        <input id="settings-current-password" type="password" placeholder="••••••••••••" 
                           className="w-full h-14 bg-slate-50 dark:bg-black/20 border border-slate-100 dark:border-white/10 rounded-2xl px-6 font-medium text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all" />
                      </div>
                      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                         <div className="space-y-3">
-                           <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em] px-1">New Password</label>
-                           <input type="password" placeholder="••••••••••••" 
+                           <label htmlFor="settings-new-password" className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em] px-1">New Password</label>
+                           <input id="settings-new-password" type="password" placeholder="••••••••••••" 
                             className="w-full h-14 bg-slate-50 dark:bg-black/20 border border-slate-100 dark:border-white/10 rounded-2xl px-6 font-medium text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all" />
                         </div>
                         <div className="space-y-3">
-                           <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em] px-1">Confirm New Password</label>
-                           <input type="password" placeholder="••••••••••••" 
+                           <label htmlFor="settings-confirm-password" className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em] px-1">Confirm New Password</label>
+                           <input id="settings-confirm-password" type="password" placeholder="••••••••••••" 
                             className="w-full h-14 bg-slate-50 dark:bg-black/20 border border-slate-100 dark:border-white/10 rounded-2xl px-6 font-medium text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all" />
                         </div>
                      </div>

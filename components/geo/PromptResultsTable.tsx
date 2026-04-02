@@ -70,7 +70,21 @@ export function PromptResultsTable({ promptResults }: PromptResultsTableProps) {
           {displayed.map((result, idx) => {
             const isExpanded = expanded === idx;
             const typeClass = TYPE_COLORS[result.prompt_type] ?? 'bg-slate-500/10 text-slate-400 border-slate-500/20';
-            const perLLMEntries = result.per_llm_results ? Object.entries(result.per_llm_results) : [];
+
+            // Resolve per-LLM results: Python returns llm_results (LLMMention[]), legacy returns per_llm_results
+            const rawLLM = result.llm_results || result.per_llm_results;
+            const perLLMEntries: [string, { mentioned: boolean; position?: number; raw_response?: string }][] = rawLLM
+              ? Object.entries(rawLLM).map(([provider, val]) => {
+                  if (Array.isArray(val)) {
+                    // LLMMention[] — aggregate: mentioned if any mention, take first position
+                    const anyMentioned = val.some((m: { mentioned?: boolean }) => m.mentioned);
+                    const pos = val.find((m: { position?: number }) => m.position)?.position;
+                    const raw = val.find((m: { raw_response?: string }) => m.raw_response)?.raw_response;
+                    return [provider, { mentioned: anyMentioned, position: pos, raw_response: raw }];
+                  }
+                  return [provider, val as { mentioned: boolean; position?: number; raw_response?: string }];
+                })
+              : [];
 
             return (
               <div key={idx}>
@@ -117,7 +131,7 @@ export function PromptResultsTable({ promptResults }: PromptResultsTableProps) {
                     {result.signal_weight !== undefined && (
                       <p className="text-[10px] text-slate-400 font-bold">
                         Signal weight: <span className="text-white">{result.signal_weight.toFixed(2)}</span>
-                        {' · '}Avg position: <span className="text-white">#{result.average_position?.toFixed(1) ?? '—'}</span>
+                        {' · '}Avg position: <span className="text-white">#{(result.avg_position ?? result.average_position)?.toFixed(1) ?? '—'}</span>
                       </p>
                     )}
 
@@ -142,7 +156,7 @@ export function PromptResultsTable({ promptResults }: PromptResultsTableProps) {
                               )}
                               {llmResult.raw_response && (
                                 <p className="text-[10px] text-slate-500 mt-1 line-clamp-2 leading-relaxed italic">
-                                  "{llmResult.raw_response}"
+                                  &ldquo;{llmResult.raw_response}&rdquo;
                                 </p>
                               )}
                             </div>

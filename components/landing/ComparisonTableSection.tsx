@@ -1,7 +1,6 @@
 "use client";
 import { motion } from "framer-motion";
 import { BarChart3, Settings, Lightbulb } from "lucide-react";
-import SectionWatermark from "./SectionWatermark";
 import BackgroundHexagons from "./BackgroundHexagons";
 
 const rows = [

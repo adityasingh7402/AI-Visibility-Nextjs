@@ -2,7 +2,6 @@ import Link from "next/link";
 import { 
   LayoutDashboard, 
   Users, 
-  FolderRoot, 
   Bolt, 
   FileText, 
   CreditCard, 

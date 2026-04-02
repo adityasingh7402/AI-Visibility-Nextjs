@@ -1,15 +1,21 @@
 'use client';
 
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Area, AreaChart } from 'recharts';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import type { VisibilityTrend } from '@/lib/geo-types';
 import { LLM_PROVIDER_INFO } from '@/lib/geo-types';
 
-function CustomTooltip({ active, payload, label }: any) {
+interface TooltipProps {
+  active?: boolean;
+  payload?: Array<{ name: string; value: unknown; color: string }>;
+  label?: string;
+}
+
+function CustomTooltip({ active, payload, label }: TooltipProps) {
   if (!active || !payload?.length) return null;
   return (
     <div className="rounded-xl border border-white/10 bg-slate-900/95 p-3 shadow-xl min-w-[160px]">
-      <p className="text-xs text-slate-400 mb-2">{new Date(label).toLocaleDateString()}</p>
-      {payload.map((p: any) => (
+      <p className="text-xs text-slate-400 mb-2">{label ? new Date(label).toLocaleDateString() : ''}</p>
+      {payload.map((p) => (
         p.name !== 'confidence_range' && (
           <p key={p.name} className="text-xs font-bold" style={{ color: p.color }}>
             {p.name}: {typeof p.value === 'number' ? p.value.toFixed(1) + '%' : '—'}
@@ -42,7 +48,7 @@ export function TrendChart({ trend }: { trend: VisibilityTrend }) {
 
   // Build chart data — flatten per-LLM scores into top-level keys
   const chartData = data_points.map(point => {
-    const flat: Record<string, any> = {
+    const flat: Record<string, unknown> = {
       timestamp: point.timestamp,
       overall_visibility: point.overall_visibility,
       base_model_visibility: point.base_model_visibility,
@@ -54,7 +60,7 @@ export function TrendChart({ trend }: { trend: VisibilityTrend }) {
 
     // Flatten per-LLM scores from visibility_by_llm object
     if (point.visibility_by_llm) {
-      for (const [provider, scores] of Object.entries(point.visibility_by_llm as Record<string, any>)) {
+      for (const [provider, scores] of Object.entries(point.visibility_by_llm as Record<string, Record<string, number> | number>)) {
         flat[`llm_${provider}`] = typeof scores === 'object'
           ? (scores.visibility_score ?? scores.score ?? null)
           : scores;
@@ -108,7 +114,7 @@ export function TrendChart({ trend }: { trend: VisibilityTrend }) {
             <Tooltip content={<CustomTooltip />} />
             <Legend
               wrapperStyle={{ paddingTop: '12px', fontSize: '12px' }}
-              formatter={(v) => <span style={{ color: '#94a3b8' }}>{v}</span>}
+              formatter={(v) => <span className="text-[#94a3b8]">{v}</span>}
             />
 
             {/* Confidence interval shading (§10.7) — rendered as two area lines */}

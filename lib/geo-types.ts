@@ -7,7 +7,7 @@
 export type RegionScope = 'global' | 'north_america' | 'europe' | 'asia_pacific' | 'latin_america' | 'middle_east' | 'country';
 export type DiscoveryMode = 'quick' | 'standard' | 'deep';
 // All 6 providers per BACKEND_HANDOFF_v2.0 §9 — added grok + digitalocean
-export type LLMProvider = 'chatgpt' | 'gemini' | 'perplexity' | 'claude' | 'grok' | 'digitalocean' | 'openai' | 'google';
+export type LLMProvider = 'chatgpt' | 'gemini' | 'perplexity' | 'claude' | 'grok' | 'digitalocean' | 'nvidia' | 'openai' | 'google';
 export type OpportunityPriority = 'high' | 'medium' | 'low';
 export type EffortLevel = 'easy' | 'medium' | 'hard' | 'moderate';
 export type TimeToImpact = 'days' | 'weeks' | 'months';
@@ -47,24 +47,35 @@ export interface VisibilityFactor {
 }
 
 export interface CompetitorPattern {
-  competitor_name: string;
-  visibility_score: number;   // 0-100
-  mention_rate: number;       // 0-1
-  average_position: number;
+  competitor: string;                    // Python field name
+  competitor_name?: string;              // backward compat alias
+  mention_rate: number;                  // 0-1
+  avg_position: number;
+  average_position?: number;             // backward compat alias
+  consistency_score?: number;
+  visibility_by_llm?: Record<string, number>;  // Python field: per-LLM scores
+  featured_in_llms?: string[];                 // backward compat alias
+  visibility_score?: number;                   // computed: mention_rate * 100
   visibility_factors: VisibilityFactor[];
-  featured_in_llms: string[];
-  key_differentiators: string[];
+  common_descriptors?: string[];
+  associated_features?: string[];
+  competitor_confidence?: number;
 }
 
 export interface KeywordOpportunity {
   keyword: string;
   priority: OpportunityPriority;
-  visibility_potential: 'high' | 'medium' | 'low' | 'none';
-  reason: string;
-  target_position: number;
+  gap_size?: number;                     // Python field name
+  visibility_potential?: 'high' | 'medium' | 'low' | 'none';  // backward compat alias
+  reason?: string;
+  difficulty?: EffortLevel;              // Python field name
+  effort_estimate?: EffortLevel;         // backward compat alias
   estimated_impact: string;
-  action_items: string[];
-  effort_estimate: EffortLevel;
+  specific_actions?: string[];           // Python field name
+  action_items?: string[];               // backward compat alias
+  recommended_action?: string;
+  competitors_visible?: string[];
+  your_visibility?: boolean;
   // Extended fields from handoff
   demand_estimate?: string;
   sentiment_signal?: string;
@@ -75,11 +86,11 @@ export interface KeywordOpportunity {
 //   'your_visibility_summary' (handoff spec) and 'visibility_summary' (legacy)
 export interface VisibilitySummary {
   overall_visibility_score?: number; // 0-100 — main metric (§10.1)
-  your_brand_mentions: number;
+  your_brand_mentions?: number;
   total_prompts_tested: number;
   mention_rate: number;         // 0-1
-  average_position: number;
-  avg_position?: number;        // alias used by some engine responses
+  average_position?: number;    // backward compat
+  avg_position?: number;        // Python field name
   base_model_visibility: number; // 0-100
   rag_model_visibility: number;  // 0-100
   actionable_gap: number;        // 0-100
@@ -107,13 +118,25 @@ export interface LLMProfile {
 }
 
 // Individual prompt test result (for Prompt Results detailed view)
+export interface LLMMention {
+  brand_name: string;
+  mentioned: boolean;
+  position: number;
+  strength?: string;
+  raw_response?: string;
+}
+
 export interface PromptResult {
   prompt: string;
   prompt_type: string;
   signal_weight?: number;
   brand_mentioned: boolean;
   mention_rate: number;
-  average_position: number;
+  average_position?: number;
+  avg_position?: number;
+  // Python field name: dict of LLMMention lists
+  llm_results?: Record<string, LLMMention[]>;
+  // backward compat alias
   per_llm_results?: Record<string, {
     mentioned: boolean;
     position?: number;
@@ -131,7 +154,8 @@ export interface ContentGapAnalysis {
 export interface KeywordDiscoveryResponse {
   brand_name: string;
   category: string;
-  discovery_mode: DiscoveryMode;
+  mode?: DiscoveryMode;                 // Python field name
+  discovery_mode?: DiscoveryMode;       // backward compat alias
   working_keywords: string[];
   gap_keywords: string[];
   your_winning_keywords: string[];
@@ -145,15 +169,16 @@ export interface KeywordDiscoveryResponse {
   // Both field names supported (engine may return either)
   your_visibility_summary?: VisibilitySummary;
   visibility_summary?: VisibilitySummary;
-  // Per-LLM breakdowns
-  visibility_by_llm?: Record<string, LLMVisibilityScore>;
+  // Per-LLM breakdowns — Python returns Record<string, number>
+  visibility_by_llm?: Record<string, LLMVisibilityScore | number>;
   confidence_by_llm?: Record<string, number>;
-  llm_profiles: Record<string, LLMProfile>;
+  llm_profiles?: Record<string, LLMProfile>;
   // Prompt-level results
   prompt_results?: PromptResult[];
   // Content gap analysis
   content_gap_analysis?: ContentGapAnalysis;
-  next_steps: string[];
+  recommended_next_steps?: string[];    // Python field name
+  next_steps?: string[];                // backward compat alias
   processing_time_seconds: number;
   timestamp: string;
   analysis_id: string;
@@ -439,6 +464,44 @@ export interface DBRecommendation {
   created_at: string;
 }
 
+// ---- Full Analysis (Async) ----
+
+export interface AnalyzeAsyncResponse {
+  analysis_id: string;
+  status: 'processing';
+  brand_name: string;
+  category: string;
+}
+
+export interface AnalyzeResultResponse {
+  url?: string;
+  brand_name: string;
+  executive_summary: string;
+  visibility_score: {
+    overall: number;
+    sub_scores: Record<string, number>;
+    grade: string;
+  };
+  visibility_score_v19?: {
+    overall: number;
+    sub_scores: Record<string, number>;
+    grade: string;
+    platform_readiness?: Record<string, unknown>;
+    eeat_breakdown?: Record<string, unknown>;
+    schema_audit?: Record<string, unknown>;
+    citability_dimensions?: Record<string, unknown>;
+  };
+  recommendations: Array<Record<string, unknown>>;
+  generated_content?: Record<string, unknown>;
+  battle_cards?: Array<Record<string, unknown>>;
+  llm_visibility?: Array<Record<string, unknown>>;
+  competitor_comparison?: Array<Record<string, unknown>>;
+  improvement_roadmap?: Array<Record<string, unknown>>;
+  processing_time_seconds: number;
+  quality_check_passed?: boolean;
+  layers_completed?: string[];
+}
+
 // ---- Score helpers ----
 
 export function getScoreGrade(score: number): { grade: string; color: string; label: string } {
@@ -463,4 +526,5 @@ export const LLM_PROVIDER_INFO: Record<string, { label: string; icon: string; co
   claude:       { label: 'Claude',           icon: '🧠', color: '#CC785C' },
   grok:         { label: 'Grok',             icon: '⚡', color: '#1DA1F2' },
   digitalocean: { label: 'DigitalOcean AI',  icon: '🌊', color: '#0080FF' },
+  nvidia:       { label: 'NVIDIA NIM',       icon: '🟢', color: '#76B900' },
 };

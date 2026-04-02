@@ -2,9 +2,8 @@
 
 import { useEffect } from 'react';
 import { useAnalyses } from '@/hooks/useGeo';
-import { TrendingUp, BarChart3, MessageSquare, ArrowUpRight, Plus, MoreHorizontal, ChevronRight, RefreshCw, AlertCircle } from 'lucide-react';
+import { TrendingUp, BarChart3, MessageSquare, ArrowUpRight, Plus, ChevronRight, RefreshCw, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { TrendChart } from '@/components/geo/TrendChart';
 import Link from 'next/link';
 
 function ScoreBar({ score }: { score: number }) {
@@ -25,16 +24,14 @@ export default function DashboardPage() {
 
   // Aggregate stats from real data
   const totalAnalyses = analyses.length;
-  const avgScore = analyses.length > 0
-    ? Math.round(analyses.reduce((sum, a) => sum + (a.visibility_score ?? a.overall_score ?? 0), 0) / analyses.length)
-    : 0;
   const totalMentionRate = analyses.length > 0
     ? (analyses.reduce((sum, a) => sum + (a.mention_rate ?? 0), 0) / analyses.length * 100).toFixed(0)
     : '0';
 
-  // Helper: safely extract visibility summary from JSONB payload (cast needed since type is Record<string,unknown>)
-  const getVisSummary = (a: typeof analyses[0]) => {
-    const p = a.response_payload as any;
+  // Helper: safely extract visibility summary from JSONB payload
+  type VisSummary = { base_model_visibility?: number; rag_model_visibility?: number; actionable_gap?: number };
+  const getVisSummary = (a: typeof analyses[0]): VisSummary => {
+    const p = a.response_payload as { your_visibility_summary?: VisSummary; visibility_summary?: VisSummary } | null;
     return p?.your_visibility_summary ?? p?.visibility_summary ?? {};
   };
 

@@ -1,7 +1,6 @@
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { CheckCircle2 } from "lucide-react";
 import { signup, loginWithGoogle } from "../actions";
 
 export const metadata = {
@@ -10,21 +9,6 @@ export const metadata = {
 };
 
 export default function SignupPage() {
-  const benefits = [
-    {
-      title: "Analyze",
-      description: "Deep crawl of your visibility across GPT, Claude, and Gemini.",
-    },
-    {
-      title: "Diagnose",
-      description: "Identify authority gaps and semantic mismatch in real-time.",
-    },
-    {
-      title: "Fix",
-      description: "AI-suggested content optimizations to improve citations.",
-    },
-  ];
-
   return (
     <div className="space-y-8">
       <div>

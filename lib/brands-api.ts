@@ -26,7 +26,7 @@ export interface CreateBrandRequest {
   default_llm_providers?: string[];
 }
 
-export interface UpdateBrandRequest extends Partial<CreateBrandRequest> {}
+export type UpdateBrandRequest = Partial<CreateBrandRequest>;
 
 export interface QuotaInfo {
   used: number;
@@ -87,9 +87,10 @@ export async function getBrandAnalyses(id: string, limit = 20) {
  * Get current user's quota information
  * This is embedded in error responses (429 status code)
  */
-export function getQuotaFromError(error: any): QuotaInfo | null {
-  if (error.response?.status === 429 && error.response?.data?.quota) {
-    const quota = error.response.data.quota;
+export function getQuotaFromError(error: unknown): QuotaInfo | null {
+  const e = error as { response?: { status?: number; data?: { quota?: { used: number; limit: number; plan: string } } } };
+  if (e.response?.status === 429 && e.response?.data?.quota) {
+    const quota = e.response.data.quota;
     return {
       used: quota.used,
       limit: quota.limit,

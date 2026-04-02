@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useContentValidation } from '@/hooks/useGeo';
+import type { ContentType } from '@/lib/geo-types';
 import { ScoreCard } from '@/components/geo/ScoreCard';
 import { Button } from '@/components/ui/button';
 
@@ -23,7 +24,7 @@ export default function ContentPage() {
     if (mode === 'live') {
       await testLive({ content, brand_name: brandName, target_queries: queries, providers: ['chatgpt', 'gemini'], competitors: comps });
     } else {
-      await validate({ content, brand_name: brandName, target_queries: queries, content_type: contentType as any, competitors: comps });
+      await validate({ content, brand_name: brandName, target_queries: queries, content_type: contentType as ContentType, competitors: comps });
     }
   };
 
@@ -75,8 +76,8 @@ export default function ContentPage() {
               </div>
 
               <div className="space-y-2">
-                <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em] px-1">Content Type</label>
-                <select value={contentType} onChange={e => setContentType(e.target.value)}
+                <label htmlFor="content-type-select" className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em] px-1">Content Type</label>
+                <select id="content-type-select" value={contentType} onChange={e => setContentType(e.target.value)}
                   className="w-full rounded-2xl bg-slate-50 dark:bg-black/20 border border-slate-100 dark:border-white/10 px-5 py-4 text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all font-medium appearance-none">
                   <option value="blog_post">Blog Post</option>
                   <option value="faq_page">FAQ Page</option>

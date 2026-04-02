@@ -44,8 +44,18 @@ export default function AuthLayout({
              <div className="h-32 w-full bg-slate-800/50 rounded-xl relative overflow-hidden flex items-end p-4">
                 {/* Visual representation of a chart or something */}
                 <div className="absolute inset-0 flex items-end justify-between px-4 pb-2">
-                   {[40, 60, 45, 75, 55, 90, 85].map((h, i) => (
-                      <div key={i} className="w-4 bg-primary rounded-t-sm" style={{ height: `${h}%` }}></div>
+                   {[
+                     { h: 40 }, { h: 60 }, { h: 45 }, { h: 75 },
+                     { h: 55 }, { h: 90 }, { h: 85 },
+                   ].map(({ h }, i) => (
+                      <div key={i} className={`w-4 bg-primary rounded-t-sm ${
+                        h === 40 ? 'h-[40%]' :
+                        h === 60 ? 'h-[60%]' :
+                        h === 45 ? 'h-[45%]' :
+                        h === 75 ? 'h-[75%]' :
+                        h === 55 ? 'h-[55%]' :
+                        h === 90 ? 'h-[90%]' : 'h-[85%]'
+                      }`}></div>
                    ))}
                 </div>
              </div>
@@ -53,7 +63,7 @@ export default function AuthLayout({
 
           <blockquote className="space-y-6">
             <p className="text-2xl font-medium text-white leading-relaxed italic">
-              "GEO has transformed how we approach search. We saw a 40% increase in AI-generated citations within the first month."
+              &ldquo;GEO has transformed how we approach search. We saw a 40% increase in AI-generated citations within the first month.&rdquo;
             </p>
             <footer className="flex items-center gap-4">
               <div className="h-12 w-12 rounded-full bg-slate-800 border border-white/10 flex items-center justify-center font-bold text-slate-400">JD</div>

@@ -1,4 +1,3 @@
-// @ts-nocheck
 "use client";
 import * as React from "react";
 import { Slot } from "@radix-ui/react-slot";
@@ -109,7 +108,7 @@ const SidebarProvider = React.forwardRef<
 
   return (
     <SidebarContext.Provider value={contextValue}>
-      <TooltipProvider delayDuration={0}>
+      <TooltipProvider delay={0}>
         <div
           style={
             {
@@ -469,7 +468,7 @@ const SidebarMenuButton = React.forwardRef<
 
   return (
     <Tooltip>
-      <TooltipTrigger asChild>{button}</TooltipTrigger>
+      <TooltipTrigger>{button}</TooltipTrigger>
       <TooltipContent side="right" align="center" hidden={state !== "collapsed" || isMobile} {...tooltip} />
     </Tooltip>
   );
@@ -533,10 +532,8 @@ const SidebarMenuSkeleton = React.forwardRef<
     showIcon?: boolean;
   }
 >(({ className, showIcon = false, ...props }, ref) => {
-  // Random width between 50 to 90%.
-  const width = React.useMemo(() => {
-    return `${Math.floor(Math.random() * 40) + 50}%`;
-  }, []);
+  // Random width between 50 to 90% — computed once on mount via lazy state initializer
+  const [width] = React.useState(() => `${Math.floor(Math.random() * 40) + 50}%`);
 
   return (
     <div

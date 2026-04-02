@@ -15,7 +15,7 @@ export default function AboutPage() {
             Redefining visibility for the <span className="text-primary italic">Generative Era</span>.
           </h1>
           <p className="text-xl text-slate-500 dark:text-slate-400 max-w-2xl mx-auto leading-relaxed mb-10">
-            From the era of SEO to the future of AI search, we are redefining how brands stay visible in the age of Generative Engine Optimization. We help B2B leaders ensure their narrative isn't lost in the LLM black box.
+            From the era of SEO to the future of AI search, we are redefining how brands stay visible in the age of Generative Engine Optimization. We help B2B leaders ensure their narrative isn&apos;t lost in the LLM black box.
           </p>
         </div>
       </section>

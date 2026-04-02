@@ -17,7 +17,7 @@ import { Button } from '@/components/ui/button';
 import type { DiscoveryMode, LLMProvider, KeywordValidateResponse } from '@/lib/geo-types';
 import { resolveVisibilitySummary } from '@/lib/geo-types';
 
-// All 6 LLM providers per BACKEND_HANDOFF_v2.0 §9
+// All 7 LLM providers per BACKEND_HANDOFF_v2.0 §9
 const LLM_OPTIONS: { id: LLMProvider; label: string; icon: string }[] = [
   { id: 'chatgpt',      label: 'ChatGPT',         icon: '🤖' },
   { id: 'gemini',       label: 'Gemini',           icon: '✨' },
@@ -25,7 +25,59 @@ const LLM_OPTIONS: { id: LLMProvider; label: string; icon: string }[] = [
   { id: 'claude',       label: 'Claude',           icon: '🧠' },
   { id: 'grok',         label: 'Grok',             icon: '⚡' },
   { id: 'digitalocean', label: 'DigitalOcean AI',  icon: '🌊' },
+  { id: 'nvidia',       label: 'NVIDIA NIM',       icon: '🟢' },
 ];
+
+// Provider → model registry (mirrors providers_registry.yaml)
+const PROVIDER_MODELS: Record<string, { id: string; label: string; default?: boolean }[]> = {
+  digitalocean: [
+    { id: 'llama3.3-70b-instruct', label: 'Llama 3.3 70B (default)', default: true },
+    { id: 'nvidia-nemotron-3-super-120b', label: 'Nemotron 3 Super 120B' },
+    { id: 'alibaba-qwen3-32b', label: 'Qwen3 32B' },
+    { id: 'kimi-k2.5', label: 'Kimi K2.5' },
+    { id: 'glm-5', label: 'GLM-5' },
+    { id: 'minimax-m2.5', label: 'MiniMax M2.5' },
+    { id: 'mistral-nemo-instruct-2407', label: 'Mistral Nemo' },
+    { id: 'openai-gpt-oss-20b', label: 'GPT-OSS 20B' },
+  ],
+  chatgpt: [
+    { id: 'gpt-5.4-mini', label: 'GPT-5.4 Mini (default)', default: true },
+    { id: 'gpt-5.4-nano', label: 'GPT-5.4 Nano' },
+    { id: 'gpt-5.4', label: 'GPT-5.4' },
+    { id: 'gpt-4o', label: 'GPT-4o' },
+  ],
+  gemini: [
+    { id: 'gemini-2.5-flash', label: 'Gemini 2.5 Flash (default)', default: true },
+    { id: 'gemini-2.5-flash-lite', label: 'Gemini 2.5 Flash Lite' },
+    { id: 'gemini-3-flash-preview', label: 'Gemini 3 Flash Preview' },
+    { id: 'gemini-3.1-flash-lite-preview', label: 'Gemini 3.1 Flash Lite' },
+  ],
+  perplexity: [
+    { id: 'sonar-pro', label: 'Sonar Pro (default)', default: true },
+    { id: 'sonar', label: 'Sonar' },
+    { id: 'sonar-reasoning-pro', label: 'Sonar Reasoning Pro' },
+  ],
+  claude: [
+    { id: 'claude-sonnet-4-6', label: 'Sonnet 4.6 (default)', default: true },
+    { id: 'claude-haiku-4-5', label: 'Haiku 4.5' },
+  ],
+  grok: [
+    { id: 'grok-4-1-fast', label: 'Grok 4.1 Fast (default)', default: true },
+    { id: 'grok-4', label: 'Grok 4' },
+    { id: 'grok-4.20', label: 'Grok 4.20' },
+  ],
+  nvidia: [
+    { id: 'meta/llama-3.3-70b-instruct', label: 'Llama 3.3 70B (default)', default: true },
+    { id: 'mistralai/mixtral-8x22b-instruct-v0.1', label: 'Mixtral 8x22B' },
+    { id: 'nvidia/llama-3.3-nemotron-super-49b-v1', label: 'Nemotron Super 49B' },
+    { id: 'meta/llama-3.1-70b-instruct', label: 'Llama 3.1 70B' },
+  ],
+};
+
+function getDefaultModel(providerId: string): string {
+  const models = PROVIDER_MODELS[providerId];
+  return models?.find(m => m.default)?.id ?? models?.[0]?.id ?? '';
+}
 
 type ResultTab = 'opportunities' | 'keywords' | 'competitors' | 'llm_breakdown' | 'content_gaps' | 'prompt_results';
 
@@ -43,6 +95,11 @@ export default function KeywordsPage() {
   const [targetAudience, setTargetAudience] = useState('');
   const [mode, setMode] = useState<DiscoveryMode>('standard');
   const [selectedLLMs, setSelectedLLMs] = useState<LLMProvider[]>(['chatgpt', 'gemini', 'perplexity']);
+  const [selectedModels, setSelectedModels] = useState<Record<string, string>>(() => {
+    const defaults: Record<string, string> = {};
+    ['chatgpt', 'gemini', 'perplexity'].forEach(p => { defaults[p] = getDefaultModel(p); });
+    return defaults;
+  });
   const [activeTab, setActiveTab] = useState<ResultTab>('opportunities');
 
   // Quick-validate state
@@ -63,17 +120,28 @@ export default function KeywordsPage() {
         llm_providers: selectedLLMs.length > 0 ? selectedLLMs.slice(0, 3) : ['chatgpt', 'gemini', 'perplexity'],
       });
       setQvResult(result);
-    } catch (e: any) {
-      setQvError(e.response?.data?.error || e.message || 'Quick validate failed');
+    } catch (e: unknown) {
+      const err = e as { response?: { data?: { error?: string } }; message?: string };
+      setQvError(err.response?.data?.error || err.message || 'Quick validate failed');
     } finally {
       setQvLoading(false);
     }
   };
 
   const toggleLLM = (llm: LLMProvider) => {
-    setSelectedLLMs(prev =>
-      prev.includes(llm) ? prev.filter(l => l !== llm) : [...prev, llm]
-    );
+    setSelectedLLMs(prev => {
+      if (prev.includes(llm)) {
+        setSelectedModels(m => { const next = { ...m }; delete next[llm]; return next; });
+        return prev.filter(l => l !== llm);
+      } else {
+        setSelectedModels(m => ({ ...m, [llm]: getDefaultModel(llm) }));
+        return [...prev, llm];
+      }
+    });
+  };
+
+  const setModelForProvider = (providerId: string, modelId: string) => {
+    setSelectedModels(prev => ({ ...prev, [providerId]: modelId }));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -214,17 +282,40 @@ export default function KeywordsPage() {
           <div className="space-y-3">
             <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em] px-1">AI Models to Test *</label>
             <div className="flex gap-3 flex-wrap">
-              {LLM_OPTIONS.map(opt => (
-                <button type="button" key={opt.id} onClick={() => toggleLLM(opt.id)}
-                  className={`flex items-center gap-2 px-5 py-3 rounded-2xl text-xs font-black transition-all border ${
-                    selectedLLMs.includes(opt.id)
-                      ? 'bg-primary/10 border-primary text-primary shadow-sm'
-                      : 'bg-slate-50 dark:bg-black/20 border-slate-100 dark:border-white/10 text-slate-500 dark:text-slate-400 hover:border-slate-200 dark:hover:border-white/20'
+              {LLM_OPTIONS.map(opt => {
+                const isSelected = selectedLLMs.includes(opt.id);
+                const models = PROVIDER_MODELS[opt.id] || [];
+                const currentModel = selectedModels[opt.id] || getDefaultModel(opt.id);
+                return (
+                  <div key={opt.id} className={`rounded-2xl border transition-all ${
+                    isSelected
+                      ? 'bg-primary/10 border-primary shadow-sm'
+                      : 'bg-slate-50 dark:bg-black/20 border-slate-100 dark:border-white/10 hover:border-slate-200 dark:hover:border-white/20'
                   }`}>
-                  <span>{opt.icon}</span>
-                  {opt.label}
-                </button>
-              ))}
+                    <button type="button" onClick={() => toggleLLM(opt.id)}
+                      className={`flex items-center gap-2 px-5 py-3 text-xs font-black ${
+                        isSelected ? 'text-primary' : 'text-slate-500 dark:text-slate-400'
+                      }`}>
+                      <span>{opt.icon}</span>
+                      {opt.label}
+                    </button>
+                    {isSelected && models.length > 1 && (
+                      <div className="px-3 pb-2">
+                        <select
+                          aria-label="Select AI model"
+                          value={currentModel}
+                          onChange={e => setModelForProvider(opt.id, e.target.value)}
+                          className="w-full text-[10px] font-bold bg-white/10 dark:bg-black/30 border border-primary/20 rounded-lg px-2 py-1 text-slate-700 dark:text-slate-200 focus:outline-none cursor-pointer"
+                        >
+                          {models.map(m => (
+                            <option key={m.id} value={m.id}>{m.label}</option>
+                          ))}
+                        </select>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
             </div>
             {selectedLLMs.length === 0 && (
               <p className="text-xs text-red-400 font-bold px-1">⚠️ Select at least one AI model</p>
@@ -262,7 +353,7 @@ export default function KeywordsPage() {
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white dark:bg-slate-900/50 p-6 rounded-[2rem] border border-slate-200 dark:border-white/5 shadow-sm">
             <div>
               <p className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em] mb-1">Results for</p>
-              <h2 className="text-2xl font-black text-slate-900 dark:text-white uppercase tracking-tighter">"{data.brand_name}"</h2>
+              <h2 className="text-2xl font-black text-slate-900 dark:text-white uppercase tracking-tighter">&ldquo;{data.brand_name}&rdquo;</h2>
               <p className="text-xs text-slate-400 mt-1">
                 {visSummary.total_prompts_tested} prompts · {data.analysis_id}
               </p>
@@ -313,8 +404,8 @@ export default function KeywordsPage() {
             />
             <ScoreCard
               label="Avg Position"
-              score={Math.max(0, 100 - visSummary.average_position * 10)}
-              description={`#${visSummary.average_position.toFixed(1)} avg match`}
+              score={Math.max(0, 100 - (visSummary.avg_position ?? visSummary.average_position ?? 0) * 10)}
+              description={`#${(visSummary.avg_position ?? visSummary.average_position ?? 0).toFixed(1)} avg match`}
             />
           </div>
 
@@ -369,7 +460,7 @@ export default function KeywordsPage() {
                     <p className="text-slate-400 font-bold">No competitor patterns found.</p>
                   </div>
                 ) : (
-                  data.competitor_patterns.map(comp => <CompetitorCard key={comp.competitor_name} competitor={comp} />)
+                  data.competitor_patterns.map((comp, i) => <CompetitorCard key={comp.competitor || comp.competitor_name || i} competitor={comp} />)
                 )}
               </div>
             )}
@@ -394,11 +485,11 @@ export default function KeywordsPage() {
           </div>
 
           {/* Next steps */}
-          {data.next_steps?.length > 0 && (
+          {((data.recommended_next_steps || data.next_steps)?.length ?? 0) > 0 && (
             <div className="rounded-[2.5rem] border border-primary/20 bg-primary/5 p-8 md:p-10 space-y-6">
               <h3 className="text-lg font-black text-primary uppercase tracking-widest">Recommended Strategy</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {data.next_steps.map((step, i) => (
+                {(data.recommended_next_steps || data.next_steps || []).map((step, i) => (
                   <div key={i} className="flex gap-4 bg-white/50 dark:bg-black/20 p-5 rounded-3xl border border-primary/10">
                     <span className="shrink-0 w-8 h-8 rounded-xl bg-primary/10 text-primary flex items-center justify-center font-black text-sm">{i + 1}</span>
                     <p className="text-sm text-slate-700 dark:text-slate-300 font-medium leading-relaxed">{step}</p>
@@ -459,7 +550,7 @@ export default function KeywordsPage() {
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div>
                 <p className="text-[10px] font-black text-purple-500 uppercase tracking-[0.2em] mb-1">Result</p>
-                <p className="text-sm font-bold text-slate-700 dark:text-slate-300 italic">"{qvResult.prompt}"</p>
+                <p className="text-sm font-bold text-slate-700 dark:text-slate-300 italic">&ldquo;{qvResult.prompt}&rdquo;</p>
               </div>
               <div className="text-right">
                 <p className={`text-3xl font-black tracking-tighter ${qvResult.results.brand_mentioned ? 'text-emerald-500' : 'text-red-500'}`}>

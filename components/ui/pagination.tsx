@@ -1,7 +1,7 @@
-// @ts-nocheck
 "use client";
 import * as React from "react";
 import { ChevronLeft, ChevronRight, MoreHorizontal } from "lucide-react";
+import type { VariantProps } from "class-variance-authority";
 
 import { cn } from "@/lib/utils";
 import { buttonVariants } from "@/components/ui/button";
@@ -30,7 +30,7 @@ PaginationItem.displayName = "PaginationItem";
 
 type PaginationLinkProps = {
   isActive?: boolean;
-} & Pick<ButtonProps, "size"> &
+} & Pick<VariantProps<typeof buttonVariants>, "size"> &
   React.ComponentProps<"a">;
 
 const PaginationLink = ({ className, isActive, size = "icon", ...props }: PaginationLinkProps) => (

@@ -16,6 +16,8 @@ import type {
   Analysis,
   BatchKeywordDiscoveryRequest,
   BatchKeywordDiscoveryResponse,
+  AnalyzeAsyncResponse,
+  AnalyzeResultResponse,
 } from './geo-types';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
@@ -148,7 +150,7 @@ class GEOApi {
         if (session?.access_token) {
           config.headers.Authorization = `Bearer ${session.access_token}`;
         }
-      } catch (e) {
+      } catch {
         // no-op if supabase not available
       }
       return config;
@@ -205,10 +207,18 @@ class GEOApi {
     return data;
   }
 
-  // ---- Full Analyze (legacy) ----
+  // ---- Full Analyze (async pipeline) ----
 
-  async runAnalyze(request: KeywordDiscoveryRequest & { url?: string; scan_mode?: string }): Promise<KeywordDiscoveryResponse> {
+  /** Submit a full GEO analysis — returns immediately with {analysis_id, status: "processing"} */
+  async runAnalyzeAsync(request: Record<string, unknown>): Promise<AnalyzeAsyncResponse> {
     const { data } = await this.client.post('/api/v1/analyze', request);
+    return data;
+  }
+
+  /** Fetch completed analysis result by job ID */
+  async getAnalyzeResult(analysisId: string): Promise<AnalyzeResultResponse> {
+    // Full pipeline can take up to 420s — use extended timeout
+    const { data } = await this.client.get(`/api/v1/analyze/${analysisId}/result`, { timeout: 480000 });
     return data;
   }
 

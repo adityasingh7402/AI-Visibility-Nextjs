@@ -10,7 +10,16 @@ interface CompetitorCardProps {
 
 export function CompetitorCard({ competitor }: CompetitorCardProps) {
   const [expanded, setExpanded] = useState(false);
-  const { color } = getScoreGrade(competitor.visibility_score);
+
+  // Resolve fields: Python field first, backward compat fallback
+  const name = competitor.competitor || competitor.competitor_name || 'Unknown';
+  const score = competitor.visibility_score ?? Math.round((competitor.mention_rate ?? 0) * 100);
+  const position = competitor.avg_position ?? competitor.average_position ?? 0;
+  const llmList = competitor.visibility_by_llm
+    ? Object.keys(competitor.visibility_by_llm)
+    : (competitor.featured_in_llms ?? []);
+
+  const { color } = getScoreGrade(score);
 
   return (
     <div className="rounded-2xl border border-white/10 bg-white/5 overflow-hidden">
@@ -24,18 +33,18 @@ export function CompetitorCard({ competitor }: CompetitorCardProps) {
             className="w-10 h-10 rounded-xl flex items-center justify-center text-sm font-black"
             style={{ backgroundColor: `${color}20`, color }}
           >
-            {competitor.competitor_name.charAt(0)}
+            {name.charAt(0)}
           </div>
           <div className="text-left">
-            <p className="font-bold text-white">{competitor.competitor_name}</p>
+            <p className="font-bold text-white">{name}</p>
             <p className="text-xs text-slate-400">
-              {(competitor.mention_rate * 100).toFixed(0)}% mention rate · #{competitor.average_position.toFixed(1)} avg position
+              {((competitor.mention_rate ?? 0) * 100).toFixed(0)}% mention rate · #{position.toFixed(1)} avg position
             </p>
           </div>
         </div>
         <div className="flex items-center gap-3">
           <div className="text-right">
-            <p className="text-2xl font-black" style={{ color }}>{Math.round(competitor.visibility_score)}</p>
+            <p className="text-2xl font-black" style={{ color }}>{Math.round(score)}</p>
             <p className="text-xs text-slate-500">visibility</p>
           </div>
           <span className="text-slate-400 text-sm">{expanded ? '▲' : '▼'}</span>
@@ -43,9 +52,9 @@ export function CompetitorCard({ competitor }: CompetitorCardProps) {
       </button>
 
       {/* LLMs */}
-      {competitor.featured_in_llms?.length > 0 && (
+      {llmList.length > 0 && (
         <div className="px-5 pb-3 flex gap-2">
-          {competitor.featured_in_llms.map(llm => (
+          {llmList.map(llm => (
             <span key={llm} className="text-xs bg-blue-500/10 text-blue-400 border border-blue-500/20 px-2 py-0.5 rounded-full font-medium">
               {llm}
             </span>
@@ -56,7 +65,7 @@ export function CompetitorCard({ competitor }: CompetitorCardProps) {
       {/* Expanded: why they rank */}
       {expanded && (
         <div className="border-t border-white/10 p-5 space-y-4">
-          <h4 className="text-sm font-bold text-white">Why they're visible</h4>
+          <h4 className="text-sm font-bold text-white">Why they&apos;re visible</h4>
           <div className="space-y-2">
             {competitor.visibility_factors.map((factor, idx) => (
               <div key={idx} className="rounded-xl bg-white/5 p-3 space-y-1">

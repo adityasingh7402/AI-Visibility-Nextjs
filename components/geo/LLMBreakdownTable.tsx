@@ -4,8 +4,16 @@ import type { LLMVisibilityScore } from '@/lib/geo-types';
 import { LLM_PROVIDER_INFO } from '@/lib/geo-types';
 
 interface LLMBreakdownTableProps {
-  visibilityByLLM: Record<string, LLMVisibilityScore>;
+  visibilityByLLM: Record<string, LLMVisibilityScore | number>;
   confidenceByLLM?: Record<string, number>;
+}
+
+// Normalize: Python may return raw floats (0-1) or LLMVisibilityScore objects
+function normalizeScore(val: LLMVisibilityScore | number): LLMVisibilityScore {
+  if (typeof val === 'number') {
+    return { visibility_score: val * 100, mention_rate: val };
+  }
+  return val;
 }
 
 function ScoreBar({ value, color }: { value: number; color: string }) {
@@ -25,9 +33,9 @@ function ScoreBar({ value, color }: { value: number; color: string }) {
 }
 
 export function LLMBreakdownTable({ visibilityByLLM, confidenceByLLM }: LLMBreakdownTableProps) {
-  const entries = Object.entries(visibilityByLLM).sort(
-    ([, a], [, b]) => b.visibility_score - a.visibility_score
-  );
+  const entries = Object.entries(visibilityByLLM)
+    .map(([k, v]) => [k, normalizeScore(v)] as [string, LLMVisibilityScore])
+    .sort(([, a], [, b]) => b.visibility_score - a.visibility_score);
 
   if (entries.length === 0) {
     return (

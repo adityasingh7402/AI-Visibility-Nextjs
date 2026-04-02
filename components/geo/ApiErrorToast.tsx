@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { parseGEOError, type GEOApiError } from '@/lib/geo-api';
 
 // ---- Error code styling ----
@@ -90,27 +90,21 @@ interface ApiErrorToastProps {
  *   <ApiErrorToast error={apiError} onDismiss={() => setApiError(null)} />
  */
 export function ApiErrorToast({ error, autoDismissMs = 8000, onDismiss }: ApiErrorToastProps) {
-  const [visible, setVisible] = useState(false);
-  const [parsed, setParsed] = useState<GEOApiError | null>(null);
+  const [dismissedError, setDismissedError] = useState<unknown>(null);
+  const parsed = useMemo(() => (error ? parseGEOError(error) : null), [error]);
+  const visible = !!error && error !== dismissedError;
 
   useEffect(() => {
-    if (error) {
-      const geoError = parseGEOError(error);
-      setParsed(geoError);
-      setVisible(true);
+    if (!error || !visible) return;
 
-      if (autoDismissMs > 0) {
-        const timer = setTimeout(() => {
-          setVisible(false);
-          onDismiss?.();
-        }, autoDismissMs);
-        return () => clearTimeout(timer);
-      }
-    } else {
-      setVisible(false);
-      setParsed(null);
+    if (autoDismissMs > 0) {
+      const timer = setTimeout(() => {
+        setDismissedError(error);
+        onDismiss?.();
+      }, autoDismissMs);
+      return () => clearTimeout(timer);
     }
-  }, [error, autoDismissMs, onDismiss]);
+  }, [error, visible, autoDismissMs, onDismiss]);
 
   if (!visible || !parsed) return null;
 
@@ -166,7 +160,7 @@ export function ApiErrorToast({ error, autoDismissMs = 8000, onDismiss }: ApiErr
         </div>
 
         <button
-          onClick={() => { setVisible(false); onDismiss?.(); }}
+          onClick={() => { setDismissedError(error); onDismiss?.(); }}
           className="text-slate-500 hover:text-white transition-colors text-sm flex-shrink-0"
         >
           ✕

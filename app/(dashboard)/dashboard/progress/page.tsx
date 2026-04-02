@@ -8,7 +8,7 @@ import { ScoreCard } from '@/components/geo/ScoreCard';
 
 export default function ProgressPage() {
   const { data: trendData, loading: trendLoading, error: trendError, fetchTrend } = useVisibilityTrend();
-  const { data: analyses, loading: analysesLoading, fetchAnalyses } = useAnalyses();
+  const { data: analyses, fetchAnalyses } = useAnalyses();
 
   const [brandName, setBrandName] = useState('');
   const [category, setCategory] = useState('');
@@ -132,7 +132,7 @@ export default function ProgressPage() {
           <div className="w-20 h-20 rounded-[2.5rem] bg-slate-100 dark:bg-white/5 flex items-center justify-center mx-auto mb-6">
             <span className="text-3xl">📊</span>
           </div>
-          <h2 className="text-2xl font-black text-slate-900 dark:text-white uppercase tracking-tighter mb-2">No historical data for "{brandName}"</h2>
+          <h2 className="text-2xl font-black text-slate-900 dark:text-white uppercase tracking-tighter mb-2">No historical data for &ldquo;{brandName}&rdquo;</h2>
           <p className="text-slate-500 dark:text-slate-400 font-medium max-w-sm mx-auto leading-relaxed">
             Run a Keyword Discovery analysis first — historical tracking begins after your initial brand mapping.
           </p>

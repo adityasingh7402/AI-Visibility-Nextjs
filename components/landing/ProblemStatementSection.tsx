@@ -1,7 +1,6 @@
 "use client";
 import { motion } from "framer-motion";
 import { TrendingDown, MousePointerClick, VolumeX, ArrowDownRight, Search, AlertTriangle } from "lucide-react";
-import SectionWatermark from "./SectionWatermark";
 import BackgroundHexagons from "./BackgroundHexagons";
 
 const problems = [
@@ -180,16 +179,16 @@ const ProblemStatementSection = () => {
                 whileInView={{ opacity: 1, y: 0, filter: "blur(0px)" }}
                 viewport={{ once: true, amount: 0.2 }}
                 transition={{ duration: 0.7, delay: 0.1, ease: [0.16, 1, 0.3, 1] }}
-                className={`grid md:grid-cols-2 gap-8 items-center ${isReversed ? "md:direction-rtl" : ""}`}
-                style={isReversed ? { direction: "rtl" } : undefined}
+                className="grid md:grid-cols-2 gap-8 items-center"
+                dir={isReversed ? "rtl" : undefined}
               >
                 {/* Text side */}
-                <div className="flex flex-col justify-center" style={isReversed ? { direction: "ltr" } : undefined}>
+                <div className="flex flex-col justify-center" dir={isReversed ? "ltr" : undefined}>
                   <span className={`inline-flex items-center gap-1.5 text-xs font-medium px-3 py-1 rounded-full w-fit mb-5 ${problem.tagColor}`}>
                     <problem.icon className="w-3.5 h-3.5" />
                     {problem.tag}
                   </span>
-                  <h3 className="text-2xl md:text-3xl font-semibold text-foreground mb-3 tracking-tight" style={{ textWrap: "balance" } as React.CSSProperties}>
+                  <h3 className="text-2xl md:text-3xl font-semibold text-foreground mb-3 tracking-tight text-balance">
                     {problem.title}
                   </h3>
                   <p className="text-muted-foreground leading-relaxed mb-6 max-w-lg">{problem.description}</p>
@@ -199,7 +198,7 @@ const ProblemStatementSection = () => {
                 </div>
 
                 {/* Visual side */}
-                <div style={isReversed ? { direction: "ltr" } : undefined}>
+                <div dir={isReversed ? "ltr" : undefined}>
                   <Visual />
                 </div>
               </motion.div>

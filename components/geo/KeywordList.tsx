@@ -1,7 +1,5 @@
 'use client';
 
-import { VISIBILITY_LEVELS } from '@/lib/geo-types';
-
 interface KeywordListProps {
   keywords: string[];
   type: 'working' | 'gap' | 'winning';
