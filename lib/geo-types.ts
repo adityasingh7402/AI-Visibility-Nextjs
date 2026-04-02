@@ -519,12 +519,12 @@ export const VISIBILITY_LEVELS = {
 } as const;
 
 // LLM provider display info — all 6 providers per handoff spec
-export const LLM_PROVIDER_INFO: Record<string, { label: string; icon: string; color: string }> = {
-  chatgpt:      { label: 'ChatGPT',          icon: '🤖', color: '#10A37F' },
-  gemini:       { label: 'Gemini',           icon: '✨', color: '#4285F4' },
-  perplexity:   { label: 'Perplexity',       icon: '🔍', color: '#20B2AA' },
-  claude:       { label: 'Claude',           icon: '🧠', color: '#CC785C' },
-  grok:         { label: 'Grok',             icon: '⚡', color: '#1DA1F2' },
-  digitalocean: { label: 'DigitalOcean AI',  icon: '🌊', color: '#0080FF' },
-  nvidia:       { label: 'NVIDIA NIM',       icon: '🟢', color: '#76B900' },
+export const LLM_PROVIDER_INFO: Record<string, { label: string; icon: string; color: string; textClass: string; barClass: string; iconBadgeClass: string }> = {
+  chatgpt:      { label: 'ChatGPT',          icon: '🤖', color: '#10A37F', textClass: 'text-emerald-600', barClass: 'bg-emerald-600', iconBadgeClass: 'bg-emerald-600/10 border border-emerald-600/20' },
+  gemini:       { label: 'Gemini',           icon: '✨', color: '#4285F4', textClass: 'text-blue-500',    barClass: 'bg-blue-500',    iconBadgeClass: 'bg-blue-500/10 border border-blue-500/20' },
+  perplexity:   { label: 'Perplexity',       icon: '🔍', color: '#20B2AA', textClass: 'text-teal-400',   barClass: 'bg-teal-400',    iconBadgeClass: 'bg-teal-400/10 border border-teal-400/20' },
+  claude:       { label: 'Claude',           icon: '🧠', color: '#CC785C', textClass: 'text-orange-400', barClass: 'bg-orange-400',  iconBadgeClass: 'bg-orange-400/10 border border-orange-400/20' },
+  grok:         { label: 'Grok',             icon: '⚡', color: '#1DA1F2', textClass: 'text-sky-400',    barClass: 'bg-sky-400',     iconBadgeClass: 'bg-sky-400/10 border border-sky-400/20' },
+  digitalocean: { label: 'DigitalOcean AI',  icon: '🌊', color: '#0080FF', textClass: 'text-blue-600',   barClass: 'bg-blue-600',    iconBadgeClass: 'bg-blue-600/10 border border-blue-600/20' },
+  nvidia:       { label: 'NVIDIA NIM',       icon: '🟢', color: '#76B900', textClass: 'text-lime-500',   barClass: 'bg-lime-500',    iconBadgeClass: 'bg-lime-500/10 border border-lime-500/20' },
 };
