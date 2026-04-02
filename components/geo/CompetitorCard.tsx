@@ -19,7 +19,8 @@ export function CompetitorCard({ competitor }: CompetitorCardProps) {
     ? Object.keys(competitor.visibility_by_llm)
     : (competitor.featured_in_llms ?? []);
 
-  const { color } = getScoreGrade(score);
+  const { color, textClass: scoreTextClass, badgeClass: scoreBadgeClass } = getScoreGrade(score);
+  void color; // retained for potential future use
 
   return (
     <div className="rounded-2xl border border-white/10 bg-white/5 overflow-hidden">
@@ -30,8 +31,7 @@ export function CompetitorCard({ competitor }: CompetitorCardProps) {
       >
         <div className="flex items-center gap-4">
           <div
-            className="w-10 h-10 rounded-xl flex items-center justify-center text-sm font-black"
-            style={{ backgroundColor: `${color}20`, color }}
+            className={`w-10 h-10 rounded-xl flex items-center justify-center text-sm font-black ${scoreBadgeClass}`}
           >
             {name.charAt(0)}
           </div>
@@ -44,7 +44,7 @@ export function CompetitorCard({ competitor }: CompetitorCardProps) {
         </div>
         <div className="flex items-center gap-3">
           <div className="text-right">
-            <p className="text-2xl font-black" style={{ color }}>{Math.round(score)}</p>
+            <p className={`text-2xl font-black ${scoreTextClass}`}>{Math.round(score)}</p>
             <p className="text-xs text-slate-500">visibility</p>
           </div>
           <span className="text-slate-400 text-sm">{expanded ? '▲' : '▼'}</span>

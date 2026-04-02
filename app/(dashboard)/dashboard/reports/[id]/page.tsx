@@ -63,7 +63,8 @@ export default function ReportDetailPage() {
 
   const score = data.visibility_score;
   const v19 = data.visibility_score_v19;
-  const { grade, color, label: gradeLabel } = getScoreGrade(score.overall);
+  const { grade, color, label: gradeLabel, textClass: scoreTextClass, badgeClass: scoreBadgeClass } = getScoreGrade(score.overall);
+  void color; // retained for potential future use
 
   return (
     <div className="space-y-10 animate-in fade-in duration-700">
@@ -108,8 +109,8 @@ export default function ReportDetailPage() {
         <div className="flex flex-col md:flex-row items-center gap-8">
           <div className="text-center md:text-left">
             <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-2">GEO Visibility Score</p>
-            <p className="text-7xl font-black tracking-tighter" style={{ color }}>{Math.round(score.overall)}</p>
-            <span className="text-sm font-black px-3 py-1 rounded-full mt-2 inline-block" style={{ backgroundColor: `${color}20`, color }}>
+            <p className={`text-7xl font-black tracking-tighter ${scoreTextClass}`}>{Math.round(score.overall)}</p>
+            <span className={`text-sm font-black px-3 py-1 rounded-full mt-2 inline-block ${scoreBadgeClass}`}>
               Grade {score.grade || grade} — {gradeLabel}
             </span>
           </div>

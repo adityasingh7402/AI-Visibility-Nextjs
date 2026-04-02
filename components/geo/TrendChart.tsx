@@ -39,6 +39,8 @@ const LLM_CHART_COLORS: Record<string, string> = {
 export function TrendChart({ trend }: { trend: VisibilityTrend }) {
   const { data_points, overall_change, trend_direction } = trend;
   const trendColor = trend_direction === 'improving' ? '#10B981' : trend_direction === 'declining' ? '#EF4444' : '#F59E0B';
+  const trendColorClass = trend_direction === 'improving' ? 'text-emerald-500' : trend_direction === 'declining' ? 'text-red-500' : 'text-amber-500';
+  void trendColor; // retained for potential future use
   const trendIcon = trend_direction === 'improving' ? '📈' : trend_direction === 'declining' ? '📉' : '→';
 
   // Discover which LLM providers appear in the data for per-LLM lines (§10.7)
@@ -78,11 +80,11 @@ export function TrendChart({ trend }: { trend: VisibilityTrend }) {
       <div className="flex gap-3 flex-wrap">
         <div className="flex items-center gap-2 bg-white/5 rounded-full px-3 py-1.5">
           <span>{trendIcon}</span>
-          <span className="text-xs font-bold capitalize" style={{ color: trendColor }}>{trend_direction}</span>
+          <span className={`text-xs font-bold capitalize ${trendColorClass}`}>{trend_direction}</span>
         </div>
         <div className="flex items-center gap-2 bg-white/5 rounded-full px-3 py-1.5">
           <span className="text-xs text-slate-400">Change:</span>
-          <span className="text-xs font-bold" style={{ color: overall_change >= 0 ? '#10B981' : '#EF4444' }}>
+          <span className={`text-xs font-bold ${overall_change >= 0 ? 'text-emerald-500' : 'text-red-500'}`}>
             {overall_change >= 0 ? '+' : ''}{overall_change.toFixed(1)}%
           </span>
         </div>

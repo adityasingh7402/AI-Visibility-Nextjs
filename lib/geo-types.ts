@@ -504,11 +504,11 @@ export interface AnalyzeResultResponse {
 
 // ---- Score helpers ----
 
-export function getScoreGrade(score: number): { grade: string; color: string; label: string } {
-  if (score >= 80) return { grade: 'A', color: '#10B981', label: 'Excellent' };
-  if (score >= 60) return { grade: 'B', color: '#F59E0B', label: 'Good' };
-  if (score >= 40) return { grade: 'C', color: '#EF4444', label: 'Fair' };
-  return { grade: 'D', color: '#7C3AED', label: 'Poor' };
+export function getScoreGrade(score: number): { grade: string; color: string; label: string; textClass: string; badgeClass: string } {
+  if (score >= 80) return { grade: 'A', color: '#10B981', label: 'Excellent', textClass: 'text-emerald-500', badgeClass: 'bg-emerald-500/10 text-emerald-500' };
+  if (score >= 60) return { grade: 'B', color: '#F59E0B', label: 'Good', textClass: 'text-amber-500', badgeClass: 'bg-amber-500/10 text-amber-500' };
+  if (score >= 40) return { grade: 'C', color: '#EF4444', label: 'Fair', textClass: 'text-red-500', badgeClass: 'bg-red-500/10 text-red-500' };
+  return { grade: 'D', color: '#7C3AED', label: 'Poor', textClass: 'text-violet-600', badgeClass: 'bg-violet-600/10 text-violet-600' };
 }
 
 export const VISIBILITY_LEVELS = {
