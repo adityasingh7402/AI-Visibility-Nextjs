@@ -2,30 +2,12 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { createClient } from '@/utils/supabase/client';
-
-export interface AnalysisProgress {
-  analysis_id: string;
-  status: 'pending' | 'processing' | 'completed' | 'failed';
-  current_stage: string;
-  progress_percent: number;
-  stage_progress_percent: number;
-  completed_stages: string[];
-  error_message?: string;
-  estimated_seconds_remaining?: number;
-  timestamp: string;
-}
+import type { AnalysisProgress } from '@/lib/report-types';
+import { PHASE_DISPLAY } from '@/lib/report-types';
 
 const STAGE_LABELS: Record<string, string> = {
-  // BACKEND_HANDOFF_v2.0 §6 — spec-defined SSE phase names
-  'queued': 'Waiting in queue…',
-  'crawling': 'Crawling web content…',
-  'researching': 'Researching competitors…',
-  'testing_llms': 'Testing AI model visibility…',
-  'analyzing_images': 'Analyzing brand imagery…',
-  'optimizing': 'Generating GEO score…',
-  'verifying': 'Verifying results…',
-  'completed': 'Analysis complete!',
-  'failed': 'Analysis failed',
+  // Uses PHASE_DISPLAY from report-types.ts as source of truth
+  ...Object.fromEntries(Object.entries(PHASE_DISPLAY).map(([k, v]) => [k, v.description])),
   // Legacy agent-style names (backward compat)
   'Starting Analysis': 'Initializing agents…',
   'Running Crawler Agent': 'Crawling web content…',
