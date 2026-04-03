@@ -1,9 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { useKeywordDiscovery } from '@/hooks/useGeo';
 import { useSSEProgress } from '@/hooks/useSSEProgress';
-import { geoApi } from '@/lib/geo-api';
 import { ScoreCard } from '@/components/geo/ScoreCard';
 import { KeywordList } from '@/components/geo/KeywordList';
 import { CompetitorCard } from '@/components/geo/CompetitorCard';
@@ -12,569 +11,400 @@ import { AnalysisProgressBar } from '@/components/geo/AnalysisProgressBar';
 import { ApiErrorToast } from '@/components/geo/ApiErrorToast';
 import { LLMBreakdownTable } from '@/components/geo/LLMBreakdownTable';
 import { ContentGapCard } from '@/components/geo/ContentGapCard';
-import { PromptResultsTable } from '@/components/geo/PromptResultsTable';
 import { Button } from '@/components/ui/button';
-import type { DiscoveryMode, LLMProvider, KeywordValidateResponse } from '@/lib/geo-types';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { Badge } from '@/components/ui/badge';
+import type { DiscoveryMode, LLMProvider, KeywordDiscoveryRequest } from '@/lib/geo-types';
 import { resolveVisibilitySummary } from '@/lib/geo-types';
+import {
+  Search, ChevronDown, RotateCcw, Zap, Timer, Microscope,
+  TrendingUp, Key, Users, BarChart3, FileWarning, Lightbulb,
+} from 'lucide-react';
 
-// All 7 LLM providers per BACKEND_HANDOFF_v2.0 §9
-const LLM_OPTIONS: { id: LLMProvider; label: string; icon: string }[] = [
-  { id: 'chatgpt',      label: 'ChatGPT',         icon: '🤖' },
-  { id: 'gemini',       label: 'Gemini',           icon: '✨' },
-  { id: 'perplexity',   label: 'Perplexity',       icon: '🔍' },
-  { id: 'claude',       label: 'Claude',           icon: '🧠' },
-  { id: 'grok',         label: 'Grok',             icon: '⚡' },
-  { id: 'digitalocean', label: 'DigitalOcean AI',  icon: '🌊' },
-  { id: 'nvidia',       label: 'NVIDIA NIM',       icon: '🟢' },
+/* ------------------------------------------------------------------ */
+/*  Constants                                                          */
+/* ------------------------------------------------------------------ */
+
+const PROVIDERS: { id: LLMProvider; name: string; icon: string; models: string[] }[] = [
+  { id: 'chatgpt',      name: 'ChatGPT',        icon: '🤖', models: ['gpt-4o-mini', 'gpt-4o'] },
+  { id: 'gemini',       name: 'Gemini',          icon: '✨', models: ['gemini-2.5-flash'] },
+  { id: 'perplexity',   name: 'Perplexity',      icon: '🔍', models: ['sonar-pro'] },
+  { id: 'claude',       name: 'Claude',          icon: '🧠', models: ['claude-sonnet-4-20250514'] },
+  { id: 'grok',         name: 'Grok',            icon: '⚡', models: ['grok-3-fast'] },
+  { id: 'digitalocean', name: 'DigitalOcean',    icon: '🌊', models: ['llama-3.3-70b'] },
 ];
 
-// Provider → model registry (mirrors providers_registry.yaml)
-const PROVIDER_MODELS: Record<string, { id: string; label: string; default?: boolean }[]> = {
-  digitalocean: [
-    { id: 'llama3.3-70b-instruct', label: 'Llama 3.3 70B (default)', default: true },
-    { id: 'nvidia-nemotron-3-super-120b', label: 'Nemotron 3 Super 120B' },
-    { id: 'alibaba-qwen3-32b', label: 'Qwen3 32B' },
-    { id: 'kimi-k2.5', label: 'Kimi K2.5' },
-    { id: 'glm-5', label: 'GLM-5' },
-    { id: 'minimax-m2.5', label: 'MiniMax M2.5' },
-    { id: 'mistral-nemo-instruct-2407', label: 'Mistral Nemo' },
-    { id: 'openai-gpt-oss-20b', label: 'GPT-OSS 20B' },
-  ],
-  chatgpt: [
-    { id: 'gpt-5.4-mini', label: 'GPT-5.4 Mini (default)', default: true },
-    { id: 'gpt-5.4-nano', label: 'GPT-5.4 Nano' },
-    { id: 'gpt-5.4', label: 'GPT-5.4' },
-    { id: 'gpt-4o', label: 'GPT-4o' },
-  ],
-  gemini: [
-    { id: 'gemini-2.5-flash', label: 'Gemini 2.5 Flash (default)', default: true },
-    { id: 'gemini-2.5-flash-lite', label: 'Gemini 2.5 Flash Lite' },
-    { id: 'gemini-3-flash-preview', label: 'Gemini 3 Flash Preview' },
-    { id: 'gemini-3.1-flash-lite-preview', label: 'Gemini 3.1 Flash Lite' },
-  ],
-  perplexity: [
-    { id: 'sonar-pro', label: 'Sonar Pro (default)', default: true },
-    { id: 'sonar', label: 'Sonar' },
-    { id: 'sonar-reasoning-pro', label: 'Sonar Reasoning Pro' },
-  ],
-  claude: [
-    { id: 'claude-sonnet-4-6', label: 'Sonnet 4.6 (default)', default: true },
-    { id: 'claude-haiku-4-5', label: 'Haiku 4.5' },
-  ],
-  grok: [
-    { id: 'grok-4-1-fast', label: 'Grok 4.1 Fast (default)', default: true },
-    { id: 'grok-4', label: 'Grok 4' },
-    { id: 'grok-4.20', label: 'Grok 4.20' },
-  ],
-  nvidia: [
-    { id: 'meta/llama-3.3-70b-instruct', label: 'Llama 3.3 70B (default)', default: true },
-    { id: 'mistralai/mixtral-8x22b-instruct-v0.1', label: 'Mixtral 8x22B' },
-    { id: 'nvidia/llama-3.3-nemotron-super-49b-v1', label: 'Nemotron Super 49B' },
-    { id: 'meta/llama-3.1-70b-instruct', label: 'Llama 3.1 70B' },
-  ],
-};
+const DISCOVERY_MODES: { id: DiscoveryMode; label: string; time: string; icon: React.ReactNode; desc: string }[] = [
+  { id: 'quick',    label: 'Quick',    time: '~30s', icon: <Zap className="h-5 w-5" />,        desc: 'Fast scan, fewer prompts' },
+  { id: 'standard', label: 'Standard', time: '~60s', icon: <Timer className="h-5 w-5" />,      desc: 'Balanced depth & speed' },
+  { id: 'deep',     label: 'Deep',     time: '~90s', icon: <Microscope className="h-5 w-5" />, desc: 'Maximum prompt coverage' },
+];
 
-function getDefaultModel(providerId: string): string {
-  const models = PROVIDER_MODELS[providerId];
-  return models?.find(m => m.default)?.id ?? models?.[0]?.id ?? '';
-}
+const DEFAULT_PROVIDERS: LLMProvider[] = ['chatgpt', 'gemini', 'perplexity'];
 
-type ResultTab = 'opportunities' | 'keywords' | 'competitors' | 'llm_breakdown' | 'content_gaps' | 'prompt_results';
+/* ------------------------------------------------------------------ */
+/*  Page Component                                                     */
+/* ------------------------------------------------------------------ */
 
-export default function KeywordsPage() {
-  const { data, loading, error, discover, reset } = useKeywordDiscovery();
-  const [analysisId, setAnalysisId] = useState<string | null>(null);
-  const { progress, stageLabel } = useSSEProgress(loading ? analysisId : null);
-
-  // API error toast state per §8
-  const [apiError, setApiError] = useState<unknown>(null);
-
+export default function KeywordDiscoveryPage() {
+  // ── Form state ──
   const [brandName, setBrandName] = useState('');
   const [category, setCategory] = useState('');
-  const [competitors, setCompetitors] = useState('');
-  const [targetAudience, setTargetAudience] = useState('');
   const [mode, setMode] = useState<DiscoveryMode>('standard');
-  const [selectedLLMs, setSelectedLLMs] = useState<LLMProvider[]>(['chatgpt', 'gemini', 'perplexity']);
-  const [selectedModels, setSelectedModels] = useState<Record<string, string>>(() => {
-    const defaults: Record<string, string> = {};
-    ['chatgpt', 'gemini', 'perplexity'].forEach(p => { defaults[p] = getDefaultModel(p); });
-    return defaults;
-  });
-  const [activeTab, setActiveTab] = useState<ResultTab>('opportunities');
+  const [selectedProviders, setSelectedProviders] = useState<LLMProvider[]>(DEFAULT_PROVIDERS);
+  const [optionalOpen, setOptionalOpen] = useState(false);
+  const [competitors, setCompetitors] = useState('');
+  const [aliases, setAliases] = useState('');
+  const [targetAudience, setTargetAudience] = useState('');
+  const [region, setRegion] = useState('');
 
-  // Quick-validate state
-  const [qvPrompt, setQvPrompt] = useState('');
-  const [qvBrand, setQvBrand] = useState('');
-  const [qvLoading, setQvLoading] = useState(false);
-  const [qvResult, setQvResult] = useState<KeywordValidateResponse | null>(null);
-  const [qvError, setQvError] = useState<string | null>(null);
+  // ── API / progress state ──
+  const { data, loading, error, discover, reset } = useKeywordDiscovery();
+  const [analysisId, setAnalysisId] = useState<string | null>(null);
+  const { progress, stageLabel } = useSSEProgress(analysisId);
 
-  const handleQuickValidate = async () => {
-    if (!qvPrompt || !qvBrand) return;
-    setQvLoading(true);
-    setQvError(null);
+  // ── Derived ──
+  const vis = data ? resolveVisibilitySummary(data) : null;
+  const hasResults = !!data;
+  const canSubmit = brandName.trim().length > 0 && category.trim().length > 0 && selectedProviders.length > 0 && !loading;
+
+  // ── Handlers ──
+  const toggleProvider = useCallback((id: LLMProvider) => {
+    setSelectedProviders(prev =>
+      prev.includes(id) ? prev.filter(p => p !== id) : [...prev, id],
+    );
+  }, []);
+
+  const handleSubmit = useCallback(async () => {
+    const splitCsv = (s: string) => s.split(',').map(v => v.trim()).filter(Boolean);
+
+    const req: KeywordDiscoveryRequest = {
+      brand_name: brandName.trim(),
+      category: category.trim(),
+      mode,
+      llm_providers: selectedProviders,
+      region: 'global',
+      runs_per_prompt: 1,
+      ...(competitors && { competitors: splitCsv(competitors) }),
+      ...(aliases && { brand_aliases: splitCsv(aliases) }),
+      ...(targetAudience && { target_audience: targetAudience.trim() }),
+      ...(region && { region: region.trim() as KeywordDiscoveryRequest['region'] }),
+    };
+
     try {
-      const result = await geoApi.validateKeyword({
-        prompt: qvPrompt,
-        brand_name: qvBrand,
-        llm_providers: selectedLLMs.length > 0 ? selectedLLMs.slice(0, 3) : ['chatgpt', 'gemini', 'perplexity'],
-      });
-      setQvResult(result);
-    } catch (e: unknown) {
-      const err = e as { response?: { data?: { error?: string } }; message?: string };
-      setQvError(err.response?.data?.error || err.message || 'Quick validate failed');
-    } finally {
-      setQvLoading(false);
+      const result = await discover(req);
+      setAnalysisId(result.analysis_id ?? null);
+    } catch {
+      // error is surfaced via the hook
     }
-  };
+  }, [brandName, category, mode, selectedProviders, competitors, aliases, targetAudience, region, discover]);
 
-  const toggleLLM = (llm: LLMProvider) => {
-    setSelectedLLMs(prev => {
-      if (prev.includes(llm)) {
-        setSelectedModels(m => { const next = { ...m }; delete next[llm]; return next; });
-        return prev.filter(l => l !== llm);
-      } else {
-        setSelectedModels(m => ({ ...m, [llm]: getDefaultModel(llm) }));
-        return [...prev, llm];
-      }
-    });
-  };
+  const handleReset = useCallback(() => {
+    reset();
+    setAnalysisId(null);
+    setBrandName('');
+    setCategory('');
+    setMode('standard');
+    setSelectedProviders(DEFAULT_PROVIDERS);
+    setOptionalOpen(false);
+    setCompetitors('');
+    setAliases('');
+    setTargetAudience('');
+    setRegion('');
+  }, [reset]);
 
-  const setModelForProvider = (providerId: string, modelId: string) => {
-    setSelectedModels(prev => ({ ...prev, [providerId]: modelId }));
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setApiError(null); // clear previous errors
-    const tempId = `kd-${brandName.toLowerCase().replace(/\s+/g, '-')}-${Date.now()}`;
-    setAnalysisId(tempId);
-    try {
-      const result = await discover({
-        brand_name: brandName,
-        category,
-        competitors: competitors.split(',').map(c => c.trim()).filter(Boolean),
-        target_audience: targetAudience || undefined,
-        region: 'global',
-        mode,
-        llm_providers: selectedLLMs,
-        runs_per_prompt: 1,
-      });
-      if (result?.analysis_id) setAnalysisId(result.analysis_id);
-    } catch (err) {
-      setApiError(err);
-    }
-  };
-
-  // Resolve visibility summary (handles both 'your_visibility_summary' and 'visibility_summary')
-  const visSummary = data ? resolveVisibilitySummary(data) : null;
-
-  // Build tabs dynamically based on what data is available
-  const RESULT_TABS: { id: ResultTab; label: string; count?: number; available: boolean }[] = [
-    {
-      id: 'opportunities',
-      label: `🎯 Opportunities`,
-      count: data?.opportunities.length,
-      available: true,
-    },
-    {
-      id: 'keywords',
-      label: `🔑 Keywords`,
-      count: data ? (data.working_keywords.length + data.gap_keywords.length) : 0,
-      available: true,
-    },
-    {
-      id: 'competitors',
-      label: `🏆 Competitors`,
-      count: data?.competitor_patterns.length,
-      available: true,
-    },
-    {
-      id: 'llm_breakdown',
-      label: `📊 LLM Breakdown`,
-      available: !!data?.visibility_by_llm && Object.keys(data.visibility_by_llm).length > 0,
-    },
-    {
-      id: 'content_gaps',
-      label: `📝 Content Gaps`,
-      available: !!data?.content_gap_analysis,
-    },
-    {
-      id: 'prompt_results',
-      label: `📋 Prompt Results`,
-      count: data?.prompt_results?.length,
-      available: !!(data?.prompt_results && data.prompt_results.length > 0),
-    },
-  ];
-
+  /* ---------------------------------------------------------------- */
+  /*  Render                                                           */
+  /* ---------------------------------------------------------------- */
   return (
-    <div className="space-y-10">
-      {/* Page header */}
-      <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
-        <div>
-          <h1 className="text-3xl font-black text-foreground tracking-tight mb-2">Keyword Discovery</h1>
-          <p className="text-muted-foreground font-medium tracking-tight">Identify the keywords AI models use to mention your brand and competitors.</p>
-        </div>
+    <div className="mx-auto max-w-4xl space-y-8 px-4 py-8">
+      {/* ── Header ── */}
+      <div>
+        <h1 className="text-3xl font-bold tracking-tight">Keyword Discovery</h1>
+        <p className="mt-1 text-muted-foreground">
+          Find how your brand appears across AI models — discover keywords, gaps, and opportunities.
+        </p>
       </div>
 
-      {/* Form */}
-      {!data && (
-        <form onSubmit={handleSubmit} className="rounded-[2.5rem] border border-border bg-card p-8 md:p-10 shadow-sm space-y-8">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="space-y-2">
-              <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em] px-1">Brand Name *</label>
-              <input
-                value={brandName}
-                onChange={e => setBrandName(e.target.value)}
-                placeholder="e.g. Notion"
-                required
-                className="w-full rounded-2xl bg-slate-50 dark:bg-black/20 border border-slate-100 dark:border-white/10 px-5 py-4 text-sm text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all font-medium"
-              />
-            </div>
-            <div className="space-y-2">
-              <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em] px-1">Category *</label>
-              <input
-                value={category}
-                onChange={e => setCategory(e.target.value)}
-                placeholder="e.g. project management software"
-                required
-                className="w-full rounded-2xl bg-slate-50 dark:bg-black/20 border border-slate-100 dark:border-white/10 px-5 py-4 text-sm text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all font-medium"
-              />
-            </div>
-            <div className="space-y-2">
-              <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em] px-1">Competitors (comma-separated)</label>
-              <input
-                value={competitors}
-                onChange={e => setCompetitors(e.target.value)}
-                placeholder="e.g. Asana, Trello, Monday.com"
-                className="w-full rounded-2xl bg-slate-50 dark:bg-black/20 border border-slate-100 dark:border-white/10 px-5 py-4 text-sm text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all font-medium"
-              />
-            </div>
-            <div className="space-y-2">
-              <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em] px-1">Target Audience</label>
-              <input
-                value={targetAudience}
-                onChange={e => setTargetAudience(e.target.value)}
-                placeholder="e.g. startup teams, freelancers"
-                className="w-full rounded-2xl bg-slate-50 dark:bg-black/20 border border-slate-100 dark:border-white/10 px-5 py-4 text-sm text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all font-medium"
-              />
-            </div>
-          </div>
+      {/* ── Form Card ── */}
+      <div className={`rounded-xl border bg-card p-6 shadow-sm transition-all ${hasResults ? 'ring-1 ring-primary/20' : ''}`}>
 
-          {/* Mode */}
-          <div className="space-y-3">
-            <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em] px-1">Discovery Mode</label>
-            <div className="flex gap-3 flex-wrap">
-              {(['quick', 'standard', 'deep'] as DiscoveryMode[]).map(m => (
-                <button type="button" key={m} onClick={() => setMode(m)}
-                  className={`flex-1 min-w-[140px] py-4 rounded-2xl text-xs font-black capitalize transition-all border ${
-                    mode === m
-                      ? 'bg-primary/10 border-primary text-primary shadow-sm'
-                      : 'bg-slate-50 dark:bg-black/20 border-slate-100 dark:border-white/10 text-slate-500 dark:text-slate-400 hover:border-slate-200 dark:hover:border-white/20'
-                  }`}>
-                  {m === 'quick' ? '⚡ Quick (~15s)' : m === 'standard' ? '⚙️ Standard (~45s)' : '🔬 Deep (~90s)'}
+        {/* Brand Name — Hero Input */}
+        <div className="space-y-2">
+          <Label htmlFor="brand" className="text-base font-semibold">Brand Name *</Label>
+          <Input
+            id="brand"
+            placeholder="e.g. Stripe, Notion, your company…"
+            value={brandName}
+            onChange={e => setBrandName(e.target.value)}
+            className="h-12 text-lg"
+            autoFocus
+          />
+        </div>
+
+        {/* Category */}
+        <div className="mt-5 space-y-2">
+          <Label htmlFor="category" className="text-base font-semibold">Category *</Label>
+          <Input
+            id="category"
+            placeholder="e.g. payment processing, project management…"
+            value={category}
+            onChange={e => setCategory(e.target.value)}
+          />
+        </div>
+
+        {/* Discovery Mode — Visual Cards */}
+        <div className="mt-6 space-y-3">
+          <Label className="text-base font-semibold">Discovery Mode</Label>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+            {DISCOVERY_MODES.map(dm => (
+              <button
+                key={dm.id}
+                type="button"
+                onClick={() => setMode(dm.id)}
+                className={`flex flex-col items-center gap-1.5 rounded-lg border-2 p-4 transition-all
+                  ${mode === dm.id
+                    ? 'border-primary bg-primary/5 shadow-sm'
+                    : 'border-muted hover:border-primary/40'
+                  }`}
+              >
+                {dm.icon}
+                <span className="font-medium">{dm.label}</span>
+                <Badge variant="secondary" className="text-xs">{dm.time}</Badge>
+                <span className="text-xs text-muted-foreground">{dm.desc}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* LLM Providers — Toggle Cards */}
+        <div className="mt-6 space-y-3">
+          <Label className="text-base font-semibold">LLM Providers</Label>
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
+            {PROVIDERS.map(p => {
+              const active = selectedProviders.includes(p.id);
+              return (
+                <button
+                  key={p.id}
+                  type="button"
+                  onClick={() => toggleProvider(p.id)}
+                  className={`flex flex-col items-center gap-1 rounded-lg border-2 px-3 py-3 text-sm transition-all
+                    ${active
+                      ? 'border-primary bg-primary/5 shadow-sm'
+                      : 'border-muted opacity-60 hover:border-primary/40 hover:opacity-100'
+                    }`}
+                >
+                  <span className="text-xl">{p.icon}</span>
+                  <span className="font-medium leading-tight">{p.name}</span>
                 </button>
-              ))}
-            </div>
+              );
+            })}
           </div>
-
-          {/* LLM providers — all 6 per handoff spec */}
-          <div className="space-y-3">
-            <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em] px-1">AI Models to Test *</label>
-            <div className="flex gap-3 flex-wrap">
-              {LLM_OPTIONS.map(opt => {
-                const isSelected = selectedLLMs.includes(opt.id);
-                const models = PROVIDER_MODELS[opt.id] || [];
-                const currentModel = selectedModels[opt.id] || getDefaultModel(opt.id);
-                return (
-                  <div key={opt.id} className={`rounded-2xl border transition-all ${
-                    isSelected
-                      ? 'bg-primary/10 border-primary shadow-sm'
-                      : 'bg-slate-50 dark:bg-black/20 border-slate-100 dark:border-white/10 hover:border-slate-200 dark:hover:border-white/20'
-                  }`}>
-                    <button type="button" onClick={() => toggleLLM(opt.id)}
-                      className={`flex items-center gap-2 px-5 py-3 text-xs font-black ${
-                        isSelected ? 'text-primary' : 'text-slate-500 dark:text-slate-400'
-                      }`}>
-                      <span>{opt.icon}</span>
-                      {opt.label}
-                    </button>
-                    {isSelected && models.length > 1 && (
-                      <div className="px-3 pb-2">
-                        <select
-                          aria-label="Select AI model"
-                          value={currentModel}
-                          onChange={e => setModelForProvider(opt.id, e.target.value)}
-                          className="w-full text-[10px] font-bold bg-white/10 dark:bg-black/30 border border-primary/20 rounded-lg px-2 py-1 text-slate-700 dark:text-slate-200 focus:outline-none cursor-pointer"
-                        >
-                          {models.map(m => (
-                            <option key={m.id} value={m.id}>{m.label}</option>
-                          ))}
-                        </select>
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-            {selectedLLMs.length === 0 && (
-              <p className="text-xs text-red-400 font-bold px-1">⚠️ Select at least one AI model</p>
-            )}
-          </div>
-
-          {error && (
-            <div className="rounded-2xl bg-red-500/10 border border-red-500/20 p-4 text-sm text-red-600 dark:text-red-400 font-semibold">{error}</div>
+          {selectedProviders.length === 0 && (
+            <p className="text-sm text-destructive">Select at least one provider</p>
           )}
+        </div>
 
-          <Button type="submit" disabled={loading || !brandName || !category || selectedLLMs.length === 0}
-            className="w-full py-7 rounded-2xl bg-primary hover:bg-blue-600 disabled:opacity-40 disabled:cursor-not-allowed text-white font-black text-base shadow-xl shadow-primary/25 transition-all active:scale-[0.99]">
-            {loading ? 'Discovering keywords...' : 'Discover Brand Keywords'}
-          </Button>
-        </form>
-      )}
+        {/* Optional Details — Collapsible */}
+        <Collapsible open={optionalOpen} onOpenChange={setOptionalOpen} className="mt-6">
+          <CollapsibleTrigger className="flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">
+            <ChevronDown className={`h-4 w-4 transition-transform ${optionalOpen ? 'rotate-180' : ''}`} />
+            Optional Details
+          </CollapsibleTrigger>
+          <CollapsibleContent className="mt-4 grid gap-4 sm:grid-cols-2">
+            <div className="space-y-1.5">
+              <Label htmlFor="competitors">Competitors</Label>
+              <Input id="competitors" placeholder="Comma-separated" value={competitors} onChange={e => setCompetitors(e.target.value)} />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="aliases">Brand Aliases</Label>
+              <Input id="aliases" placeholder="Comma-separated" value={aliases} onChange={e => setAliases(e.target.value)} />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="audience">Target Audience</Label>
+              <Input id="audience" placeholder="e.g. SMBs, developers…" value={targetAudience} onChange={e => setTargetAudience(e.target.value)} />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="region">Region</Label>
+              <Input id="region" placeholder="e.g. north_america, europe…" value={region} onChange={e => setRegion(e.target.value)} />
+            </div>
+          </CollapsibleContent>
+        </Collapsible>
 
-      {/* Loading state */}
-      {loading && (
-        <div className="bg-card rounded-[2.5rem] border border-border p-12 shadow-sm">
+        {/* Submit */}
+        <Button
+          className="mt-6 w-full h-12 text-base"
+          size="lg"
+          disabled={!canSubmit}
+          onClick={handleSubmit}
+        >
+          {loading ? (
+            <span className="flex items-center gap-2">
+              <span className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
+              Discovering…
+            </span>
+          ) : (
+            <span className="flex items-center gap-2"><Search className="h-5 w-5" /> Discover Keywords</span>
+          )}
+        </Button>
+      </div>
+
+      {/* ── Error Toast ── */}
+      <ApiErrorToast error={error} />
+
+      {/* ── Progress ── */}
+      {loading && progress && (
+        <div className="rounded-xl border bg-card p-6 shadow-sm">
           <AnalysisProgressBar
-            status={progress?.status ?? 'processing'}
-            currentStage={progress ? stageLabel : 'Connecting to analysis agents…'}
-            progressPercent={progress?.progress_percent ?? 10}
-            stageProgressPercent={progress?.stage_progress_percent ?? 30}
-            estimatedSecondsRemaining={progress?.estimated_seconds_remaining}
+            status={progress.status}
+            currentStage={stageLabel}
+            progressPercent={progress.progress_percent}
+            stageProgressPercent={progress.stage_progress_percent}
+            estimatedSecondsRemaining={progress.estimated_seconds_remaining}
           />
         </div>
       )}
 
-      {/* Results */}
-      {data && !loading && visSummary && (
-        <div className="space-y-8 animate-in fade-in duration-700">
-          {/* Reset header */}
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white dark:bg-slate-900/50 p-6 rounded-[2rem] border border-slate-200 dark:border-white/5 shadow-sm">
-            <div>
-              <p className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em] mb-1">Results for</p>
-              <h2 className="text-2xl font-black text-slate-900 dark:text-white uppercase tracking-tighter">&ldquo;{data.brand_name}&rdquo;</h2>
-              <p className="text-xs text-slate-400 mt-1">
-                {visSummary.total_prompts_tested} prompts · {data.analysis_id}
-              </p>
+      {/* ── Results ── */}
+      {hasResults && (
+        <div className="space-y-6">
+          {/* Visibility Score Cards */}
+          {vis && (
+            <div className="grid gap-4 sm:grid-cols-3">
+              <ScoreCard
+                label="Overall Visibility"
+                score={vis.overall_visibility_score ?? 0}
+                description="Combined score across all tested LLMs"
+                size="lg"
+                confidenceLower={vis.confidence_lower}
+                confidenceUpper={vis.confidence_upper}
+                confidenceLevel={vis.confidence_level}
+              />
+              <ScoreCard
+                label="Base Model"
+                score={vis.base_model_visibility}
+                description="Visibility in standard LLM responses"
+              />
+              <ScoreCard
+                label="RAG Model"
+                score={vis.rag_model_visibility}
+                description="Visibility in retrieval-augmented responses"
+              />
             </div>
-            <Button onClick={reset} variant="outline" className="rounded-xl font-bold border-slate-200 dark:border-white/10 dark:text-white hover:bg-slate-50 dark:hover:bg-white/5 h-11 px-6">
-              ← New Discovery
+          )}
+
+          {/* Tabbed Results */}
+          <ResultsTabs data={data} />
+
+          {/* Recommended Next Steps */}
+          {(data.recommended_next_steps ?? data.next_steps)?.length ? (
+            <div className="rounded-xl border bg-card p-6 shadow-sm">
+              <h3 className="flex items-center gap-2 text-lg font-semibold mb-3">
+                <Lightbulb className="h-5 w-5 text-yellow-500" /> Recommended Next Steps
+              </h3>
+              <ul className="space-y-2">
+                {(data.recommended_next_steps ?? data.next_steps)!.map((step, i) => (
+                  <li key={i} className="flex items-start gap-2 text-sm">
+                    <Badge variant="outline" className="mt-0.5 shrink-0">{i + 1}</Badge>
+                    <span>{step}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
+
+          {/* New Discovery */}
+          <div className="flex justify-center">
+            <Button variant="outline" size="lg" onClick={handleReset}>
+              <RotateCcw className="mr-2 h-4 w-4" /> New Discovery
             </Button>
           </div>
-
-          {/* Engine errors — critical */}
-          {data.errors && data.errors.length > 0 && (
-            <div className="rounded-2xl border border-red-500/20 bg-red-500/5 p-5 space-y-2">
-              <p className="text-xs font-black text-red-400 uppercase tracking-widest">⚠️ Engine Errors</p>
-              {data.errors.map((err, i) => (
-                <p key={i} className="text-sm text-red-300 font-medium">{err}</p>
-              ))}
-            </div>
-          )}
-
-          {/* Engine warnings */}
-          {data.warnings && data.warnings.length > 0 && (
-            <div className="rounded-2xl border border-amber-500/20 bg-amber-500/5 p-5 space-y-2">
-              <p className="text-xs font-black text-amber-400 uppercase tracking-widest">⚡ Warnings</p>
-              {data.warnings.map((w, i) => (
-                <p key={i} className="text-sm text-amber-300 font-medium">{w}</p>
-              ))}
-            </div>
-          )}
-
-          {/* Score cards — with confidence intervals */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-            <ScoreCard
-              label="RAG Visibility"
-              score={visSummary.rag_model_visibility}
-              description={`${(visSummary.mention_rate * 100).toFixed(0)}% mention rate`}
-              confidenceLower={visSummary.confidence_lower}
-              confidenceUpper={visSummary.confidence_upper}
-              confidenceLevel={visSummary.confidence_level}
-            />
-            <ScoreCard
-              label="Base Model"
-              score={visSummary.base_model_visibility}
-            />
-            <ScoreCard
-              label="Opportunity Gap"
-              score={visSummary.actionable_gap}
-              description="Potential gains"
-            />
-            <ScoreCard
-              label="Avg Position"
-              score={Math.max(0, 100 - (visSummary.avg_position ?? visSummary.average_position ?? 0) * 10)}
-              description={`#${(visSummary.avg_position ?? visSummary.average_position ?? 0).toFixed(1)} avg match`}
-            />
-          </div>
-
-          {/* Tabs */}
-          <div className="flex gap-2 flex-wrap bg-slate-100 dark:bg-black/40 p-1.5 rounded-2xl border border-slate-200/50 dark:border-white/5">
-            {RESULT_TABS.filter(t => t.available).map(tab => (
-              <button key={tab.id} onClick={() => setActiveTab(tab.id)}
-                className={`px-5 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap ${
-                  activeTab === tab.id
-                    ? 'bg-white dark:bg-slate-800 text-primary shadow-sm border border-slate-200 dark:border-white/10'
-                    : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
-                }`}>
-                {tab.label}{tab.count !== undefined ? ` (${tab.count})` : ''}
-              </button>
-            ))}
-          </div>
-
-          {/* Tab content */}
-          <div className="animate-in slide-in-from-bottom-4 duration-500">
-
-            {/* Opportunities */}
-            {activeTab === 'opportunities' && (
-              <div className="space-y-4">
-                {data.opportunities.length === 0 ? (
-                  <div className="bg-white dark:bg-slate-900/50 rounded-[2.5rem] border border-slate-200 dark:border-white/5 p-16 text-center">
-                    <p className="text-slate-400 font-bold">No opportunities found for this brand yet.</p>
-                  </div>
-                ) : (
-                  data.opportunities.map((opp, i) => <OpportunityCard key={i} opportunity={opp} index={i} />)
-                )}
-              </div>
-            )}
-
-            {/* Keywords */}
-            {activeTab === 'keywords' && (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <KeywordList keywords={data.working_keywords} type="working" />
-                <KeywordList keywords={data.gap_keywords} type="gap" />
-                {(data.your_winning_keywords?.length ?? 0) > 0 && (
-                  <div className="md:col-span-2">
-                    <KeywordList keywords={data.your_winning_keywords} type="winning" />
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* Competitors */}
-            {activeTab === 'competitors' && (
-              <div className="space-y-4">
-                {data.competitor_patterns.length === 0 ? (
-                  <div className="bg-white dark:bg-slate-900/50 rounded-[2.5rem] border border-slate-200 dark:border-white/5 p-16 text-center">
-                    <p className="text-slate-400 font-bold">No competitor patterns found.</p>
-                  </div>
-                ) : (
-                  data.competitor_patterns.map((comp, i) => <CompetitorCard key={comp.competitor || comp.competitor_name || i} competitor={comp} />)
-                )}
-              </div>
-            )}
-
-            {/* LLM Breakdown */}
-            {activeTab === 'llm_breakdown' && data.visibility_by_llm && (
-              <LLMBreakdownTable
-                visibilityByLLM={data.visibility_by_llm}
-                confidenceByLLM={data.confidence_by_llm}
-              />
-            )}
-
-            {/* Content Gaps */}
-            {activeTab === 'content_gaps' && data.content_gap_analysis && (
-              <ContentGapCard gapAnalysis={data.content_gap_analysis} />
-            )}
-
-            {/* Prompt Results */}
-            {activeTab === 'prompt_results' && (
-              <PromptResultsTable promptResults={data.prompt_results ?? []} />
-            )}
-          </div>
-
-          {/* Next steps */}
-          {((data.recommended_next_steps || data.next_steps)?.length ?? 0) > 0 && (
-            <div className="rounded-[2.5rem] border border-primary/20 bg-primary/5 p-8 md:p-10 space-y-6">
-              <h3 className="text-lg font-black text-primary uppercase tracking-widest">Recommended Strategy</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {(data.recommended_next_steps || data.next_steps || []).map((step, i) => (
-                  <div key={i} className="flex gap-4 bg-white/50 dark:bg-black/20 p-5 rounded-3xl border border-primary/10">
-                    <span className="shrink-0 w-8 h-8 rounded-xl bg-primary/10 text-primary flex items-center justify-center font-black text-sm">{i + 1}</span>
-                    <p className="text-sm text-slate-700 dark:text-slate-300 font-medium leading-relaxed">{step}</p>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
         </div>
       )}
-
-      {/* ──── Quick Prompt Validate ──── */}
-      <div className="rounded-[2.5rem] border border-slate-200 dark:border-white/5 bg-white dark:bg-slate-900/50 p-8 md:p-10 shadow-sm space-y-6">
-        <div className="flex items-center gap-4">
-          <div className="w-10 h-10 rounded-2xl bg-purple-500/10 flex items-center justify-center text-lg">⚡</div>
-          <div>
-            <h2 className="text-lg font-black text-slate-900 dark:text-white tracking-tight">Quick Prompt Check</h2>
-            <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">Test a single prompt to see if your brand gets mentioned by AI models.</p>
-          </div>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-end">
-          <div className="md:col-span-3 space-y-2">
-            <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em] px-1">Brand Name</label>
-            <input
-              value={qvBrand}
-              onChange={e => setQvBrand(e.target.value)}
-              placeholder="e.g. Notion"
-              className="w-full rounded-2xl bg-slate-50 dark:bg-black/20 border border-slate-100 dark:border-white/10 px-5 py-3.5 text-sm text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 transition-all font-medium"
-            />
-          </div>
-          <div className="md:col-span-6 space-y-2">
-            <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em] px-1">Test Prompt</label>
-            <input
-              value={qvPrompt}
-              onChange={e => setQvPrompt(e.target.value)}
-              placeholder="e.g. What is the best project management tool for startups?"
-              className="w-full rounded-2xl bg-slate-50 dark:bg-black/20 border border-slate-100 dark:border-white/10 px-5 py-3.5 text-sm text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 transition-all font-medium"
-            />
-          </div>
-          <div className="md:col-span-3">
-            <Button
-              onClick={handleQuickValidate}
-              disabled={qvLoading || !qvPrompt || !qvBrand}
-              className="w-full py-[14px] rounded-2xl bg-purple-600 hover:bg-purple-700 disabled:opacity-40 disabled:cursor-not-allowed text-white font-black text-sm shadow-lg shadow-purple-600/20 transition-all active:scale-[0.98]"
-            >
-              {qvLoading ? 'Checking…' : 'Check Now'}
-            </Button>
-          </div>
-        </div>
-
-        {qvError && (
-          <div className="rounded-2xl bg-red-500/10 border border-red-500/20 p-4 text-sm text-red-600 dark:text-red-400 font-semibold">{qvError}</div>
-        )}
-
-        {qvResult && (
-          <div className="rounded-[2rem] border border-purple-500/20 bg-purple-500/5 p-6 space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-              <div>
-                <p className="text-[10px] font-black text-purple-500 uppercase tracking-[0.2em] mb-1">Result</p>
-                <p className="text-sm font-bold text-slate-700 dark:text-slate-300 italic">&ldquo;{qvResult.prompt}&rdquo;</p>
-              </div>
-              <div className="text-right">
-                <p className={`text-3xl font-black tracking-tighter ${qvResult.results.brand_mentioned ? 'text-emerald-500' : 'text-red-500'}`}>
-                  {qvResult.results.brand_mentioned ? '✓ Mentioned' : '✗ Not found'}
-                </p>
-                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
-                  {(qvResult.results.mention_rate * 100).toFixed(0)}% mention rate · Pos #{qvResult.results.average_position.toFixed(1)}
-                </p>
-              </div>
-            </div>
-            <div className="flex flex-wrap gap-2">
-              {qvResult.results.providers_mentioning.map(p => (
-                <span key={p} className="text-[10px] font-black bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 px-3 py-1.5 rounded-xl border border-emerald-500/20 uppercase tracking-widest">✓ {p}</span>
-              ))}
-              {qvResult.results.providers_not_mentioning.map(p => (
-                <span key={p} className="text-[10px] font-black bg-red-500/10 text-red-600 dark:text-red-400 px-3 py-1.5 rounded-xl border border-red-500/20 uppercase tracking-widest">✗ {p}</span>
-              ))}
-            </div>
-          </div>
-        )}
-      </div>
-
-      {/* Error toast for 413/422/429 per §8 */}
-      <ApiErrorToast error={apiError} onDismiss={() => setApiError(null)} />
     </div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/*  Results Tabs (extracted for clarity)                                */
+/* ------------------------------------------------------------------ */
+
+import type { KeywordDiscoveryResponse } from '@/lib/geo-types';
+
+function ResultsTabs({ data }: { data: KeywordDiscoveryResponse }) {
+  const opportunities = data.opportunities ?? [];
+  const allKeywords = [
+    ...(data.working_keywords ?? []),
+    ...(data.gap_keywords ?? []),
+    ...(data.your_winning_keywords ?? []),
+  ];
+  const competitors = data.competitor_patterns ?? [];
+  const llmBreakdown = data.visibility_by_llm;
+  const contentGap = data.content_gap_analysis;
+
+  // Build tabs dynamically — only show tabs with data
+  const tabs: { id: string; label: string; icon: React.ReactNode; count?: number }[] = [];
+  if (opportunities.length)          tabs.push({ id: 'opportunities', label: 'Opportunities', icon: <TrendingUp className="h-4 w-4" />, count: opportunities.length });
+  if (allKeywords.length)            tabs.push({ id: 'keywords',      label: 'Keywords',      icon: <Key className="h-4 w-4" />,         count: allKeywords.length });
+  if (competitors.length)            tabs.push({ id: 'competitors',   label: 'Competitors',   icon: <Users className="h-4 w-4" />,       count: competitors.length });
+  if (llmBreakdown && Object.keys(llmBreakdown).length) tabs.push({ id: 'llm', label: 'LLM Breakdown', icon: <BarChart3 className="h-4 w-4" /> });
+  if (contentGap)                    tabs.push({ id: 'gaps',          label: 'Content Gaps',  icon: <FileWarning className="h-4 w-4" /> });
+
+  if (tabs.length === 0) return null;
+
+  return (
+    <Tabs defaultValue={tabs[0].id} className="rounded-xl border bg-card shadow-sm">
+      <TabsList className="w-full justify-start overflow-x-auto border-b bg-transparent px-4 pt-2">
+        {tabs.map(t => (
+          <TabsTrigger key={t.id} value={t.id} className="gap-1.5 data-[state=active]:shadow-none">
+            {t.icon}
+            <span className="hidden sm:inline">{t.label}</span>
+            {t.count != null && <Badge variant="secondary" className="ml-1 text-xs">{t.count}</Badge>}
+          </TabsTrigger>
+        ))}
+      </TabsList>
+
+      {/* Opportunities */}
+      <TabsContent value="opportunities" className="p-4 space-y-3">
+        {opportunities.map((opp, i) => (
+          <OpportunityCard key={i} opportunity={opp} index={i} />
+        ))}
+      </TabsContent>
+
+      {/* Keywords */}
+      <TabsContent value="keywords" className="p-4 space-y-4">
+        {(data.your_winning_keywords ?? []).length > 0 && (
+          <KeywordList keywords={data.your_winning_keywords!} type="winning" emptyMessage="No winning keywords yet" />
+        )}
+        {(data.working_keywords ?? []).length > 0 && (
+          <KeywordList keywords={data.working_keywords!} type="working" emptyMessage="No working keywords yet" />
+        )}
+        {(data.gap_keywords ?? []).length > 0 && (
+          <KeywordList keywords={data.gap_keywords!} type="gap" emptyMessage="No gap keywords found" />
+        )}
+      </TabsContent>
+
+      {/* Competitors */}
+      <TabsContent value="competitors" className="p-4 space-y-3">
+        {competitors.map((comp, i) => (
+          <CompetitorCard key={i} competitor={comp} />
+        ))}
+      </TabsContent>
+
+      {/* LLM Breakdown */}
+      <TabsContent value="llm" className="p-4">
+        {llmBreakdown && (
+          <LLMBreakdownTable visibilityByLLM={llmBreakdown} confidenceByLLM={data.confidence_by_llm} />
+        )}
+      </TabsContent>
+
+      {/* Content Gaps */}
+      <TabsContent value="gaps" className="p-4">
+        {contentGap && <ContentGapCard gapAnalysis={contentGap} />}
+      </TabsContent>
+    </Tabs>
   );
 }
