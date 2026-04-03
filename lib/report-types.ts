@@ -253,6 +253,7 @@ export interface GeoAnalysisRequest {
   industry_profile?: IndustryProfile;
   providers?: GeoProvider[];
   provider_weights?: Record<string, number>;
+  models?: Record<string, string>;
 }
 
 export interface GeoAnalysisAsyncResponse {
