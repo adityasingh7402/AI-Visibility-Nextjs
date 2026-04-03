@@ -373,6 +373,11 @@ class GEOApi {
     const { data } = await this.client.get('/api/v1/reports', { params });
     return data;
   }
+
+  async getReport(id: string): Promise<Record<string, unknown>> {
+    const { data } = await this.client.get(`/api/v1/reports/${id}`);
+    return data as Record<string, unknown>;
+  }
 }
 
 // Export as singleton
