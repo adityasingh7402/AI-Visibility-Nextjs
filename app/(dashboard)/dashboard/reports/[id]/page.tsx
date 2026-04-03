@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { geoApi } from '@/lib/geo-api';
 import { getScoreGrade } from '@/lib/geo-types';
-import type { AnalyzeResultResponse } from '@/lib/geo-types';
+import type { GeoAnalysisResponse } from '@/lib/report-types';
 import { ScoreCard } from '@/components/geo/ScoreCard';
 import { Button } from '@/components/ui/button';
 import {
@@ -16,7 +16,7 @@ export default function ReportDetailPage() {
   const router = useRouter();
   const id = params.id as string;
 
-  const [data, setData] = useState<AnalyzeResultResponse | null>(null);
+  const [data, setData] = useState<GeoAnalysisResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
