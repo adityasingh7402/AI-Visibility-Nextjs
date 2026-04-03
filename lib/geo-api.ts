@@ -16,8 +16,6 @@ import type {
   Analysis,
   BatchKeywordDiscoveryRequest,
   BatchKeywordDiscoveryResponse,
-  AnalyzeAsyncResponse,
-  AnalyzeResultResponse,
 } from './geo-types';
 import type {
   GeoAnalysisRequest,

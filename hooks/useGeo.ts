@@ -18,7 +18,6 @@ import type {
 } from '@/lib/geo-types';
 import type {
   GeoAnalysisRequest,
-  GeoAnalysisAsyncResponse,
   GeoAnalysisResponse,
   StoredGeoAnalysis,
   AnalysisProgress,
