@@ -19,11 +19,11 @@ import {
 // Map route segments to display labels
 const SEGMENT_LABELS: Record<string, string> = {
   dashboard: 'Dashboard',
-  analysis: 'Run Analysis',
+  analysis: 'GEO Analysis',
   reports: 'Reports',
-  keywords: 'Keyword Discovery',
-  content: 'Content Validator',
-  progress: 'Visibility Trends',
+  keywords: 'Keywords',
+  content: 'Content',
+  progress: 'Trends',
   clients: 'Clients',
   billing: 'Billing',
   settings: 'Settings',
