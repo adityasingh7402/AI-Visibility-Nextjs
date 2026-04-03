@@ -16,27 +16,17 @@ import { ArrowLeft, Calendar, Globe, Key, FileText } from 'lucide-react';
 interface RawReport {
   _type: 'geo' | 'keywords' | 'content';
   id: string;
+  report_type?: string;
   brand_name?: string;
-  url?: string;
+  category?: string;
   created_at?: string;
   status?: string;
-  // GEO fields
-  response_payload?: Record<string, unknown>;
   overall_score?: number;
-  // Keywords fields
-  visibility_score?: number;
-  overall_visibility_score?: number;
-  category?: string;
-  mode?: string;
-  response_data?: Record<string, unknown>;
-  // Content fields
-  rag_citability_score?: number;
-  structure_score?: number;
-  factual_density_score?: number;
-  brand_visibility_score?: number;
-  improvement_areas?: Array<{ area: string; severity: string; suggestion: string }>;
-  recommendations?: string[];
-  verdict?: string;
+  grade?: string;
+  scan_mode?: string;
+  // Full payloads from unified reports table
+  response_payload?: Record<string, unknown>;
+  request_payload?: Record<string, unknown>;
 }
 
 const TYPE_META: Record<string, { label: string; color: string; icon: React.ReactNode }> = {
@@ -46,19 +36,24 @@ const TYPE_META: Record<string, { label: string; color: string; icon: React.Reac
 };
 
 function getMainScore(report: RawReport): number | null {
+  // The unified reports table extracts overall_score at save time
+  if (report.overall_score != null) return report.overall_score;
+
+  // Fallback: dig into response_payload for specific report types
+  const payload = report.response_payload || {};
   if (report._type === 'geo') {
-    const payload = report.response_payload || {};
     const vs = payload.visibility_score;
     if (typeof vs === 'object' && vs !== null && 'overall' in (vs as Record<string, unknown>)) {
       return (vs as Record<string, number>).overall;
     }
-    return (payload.visibility_score as number) ?? report.overall_score ?? null;
+    return typeof vs === 'number' ? vs : null;
   }
   if (report._type === 'keywords') {
-    return report.overall_visibility_score ?? report.visibility_score ?? null;
+    const summary = payload.your_visibility_summary as Record<string, unknown> | undefined;
+    return (summary?.overall_visibility_score as number) ?? null;
   }
   if (report._type === 'content') {
-    return report.rag_citability_score ?? null;
+    return (payload.rag_citability_score as number) ?? null;
   }
   return null;
 }
@@ -162,10 +157,10 @@ function GeoDetails({ report }: { report: RawReport }) {
 
 // --- Keywords Report Details ---
 function KeywordsDetails({ report }: { report: RawReport }) {
-  const data = (report.response_data || {}) as Record<string, unknown>;
-  const keywords = (data.keywords || data.working_keywords || []) as Array<{ keyword: string; score?: number; status?: string }>;
-  const opportunities = (data.opportunities || []) as Array<{ keyword: string; potential?: number; description?: string }>;
-  const gaps = (data.content_gaps || data.gaps || []) as Array<{ gap: string; description?: string }>;
+  const payload = (report.response_payload || {}) as Record<string, unknown>;
+  const keywords = (payload.keywords || payload.working_keywords || []) as Array<{ keyword: string; score?: number; status?: string }>;
+  const opportunities = (payload.opportunities || []) as Array<{ keyword: string; potential?: number; description?: string }>;
+  const gaps = (payload.content_gaps || payload.gaps || []) as Array<{ gap: string; description?: string }>;
 
   return (
     <div className="space-y-6">
@@ -231,17 +226,22 @@ function KeywordsDetails({ report }: { report: RawReport }) {
 
 // --- Content Report Details ---
 function ContentDetails({ report }: { report: RawReport }) {
-  const areas = report.improvement_areas || [];
-  const recs = report.recommendations || [];
+  const payload = (report.response_payload || {}) as Record<string, unknown>;
+  const areas = (payload.improvement_areas || payload.issues || []) as Array<{ area: string; severity: string; suggestion: string }>;
+  const recs = (payload.recommendations || []) as string[];
+  const structureScore = payload.structure_score as number | undefined;
+  const factualScore = payload.factual_density_score as number | undefined;
+  const brandScore = payload.brand_visibility_score as number | undefined;
+  const ragScore = payload.rag_citability_score as number | undefined;
 
   return (
     <div className="space-y-6">
       {/* Score Cards */}
       <div className="grid grid-cols-2 gap-3">
-        {report.structure_score != null && <ScoreCard label="Structure" score={report.structure_score} size="sm" />}
-        {report.factual_density_score != null && <ScoreCard label="Fact Density" score={report.factual_density_score} size="sm" />}
-        {report.brand_visibility_score != null && <ScoreCard label="Brand Focus" score={report.brand_visibility_score} size="sm" />}
-        {report.rag_citability_score != null && <ScoreCard label="Citability" score={report.rag_citability_score} size="sm" />}
+        {structureScore != null && <ScoreCard label="Structure" score={structureScore} size="sm" />}
+        {factualScore != null && <ScoreCard label="Fact Density" score={factualScore} size="sm" />}
+        {brandScore != null && <ScoreCard label="Brand Focus" score={brandScore} size="sm" />}
+        {ragScore != null && <ScoreCard label="Citability" score={ragScore} size="sm" />}
       </div>
 
       {areas.length > 0 && (
@@ -358,9 +358,10 @@ export default function ReportDetailPage() {
           </div>
           <div className="flex items-center gap-4 text-sm text-muted-foreground mt-1">
             <span className="flex items-center gap-1"><Calendar className="h-3.5 w-3.5" />{formatDate(report.created_at)}</span>
-            {report.url && <span className="truncate max-w-xs">{report.url}</span>}
+            {typeof report.request_payload?.url === 'string' && <span className="truncate max-w-xs">{report.request_payload.url}</span>}
             {report.category && <Badge variant="secondary" className="text-xs">{report.category}</Badge>}
-            {report.mode && <Badge variant="secondary" className="text-xs">{report.mode}</Badge>}
+            {report.scan_mode && <Badge variant="secondary" className="text-xs">{report.scan_mode}</Badge>}
+            {report.grade && <Badge variant="outline" className="text-xs font-bold">Grade: {report.grade}</Badge>}
           </div>
         </div>
       </div>

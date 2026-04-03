@@ -62,8 +62,8 @@ export default function AnalysisPage() {
   const router = useRouter();
 
   // --- Hook state ---
-  const { analysisId, loading, error: hookError, submit, reset } = useFullAnalysis();
-  const { progress, stageLabel } = useSSEProgress(analysisId);
+  const { analysisId, loading, error: hookError, submit, markComplete, markError, reset } = useFullAnalysis();
+  const { progress, stageLabel, error: sseError } = useSSEProgress(analysisId);
 
   // --- Form state ---
   const [url, setUrl] = useState('');
@@ -88,10 +88,21 @@ export default function AnalysisPage() {
   // --- Auto-redirect on completion ---
   useEffect(() => {
     if (progress?.status === 'completed' && analysisId) {
+      markComplete();
       const timer = setTimeout(() => router.push(`/dashboard/reports/${analysisId}`), 1500);
       return () => clearTimeout(timer);
     }
-  }, [progress?.status, analysisId, router]);
+    if (progress?.status === 'failed') {
+      markComplete();
+    }
+  }, [progress?.status, analysisId, router, markComplete]);
+
+  // --- Handle SSE connection errors ---
+  useEffect(() => {
+    if (sseError && analysisId) {
+      markError(sseError);
+    }
+  }, [sseError, analysisId, markError]);
 
   // --- Handlers ---
   const toggleProvider = useCallback((id: ProviderId) => {

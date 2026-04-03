@@ -266,6 +266,17 @@ export function useFullAnalysis() {
     }
   }, []);
 
+  /** Call when SSE reports completion/failure to reset loading state */
+  const markComplete = useCallback(() => {
+    setLoading(false);
+  }, []);
+
+  /** Call when SSE encounters a fatal error */
+  const markError = useCallback((msg: string) => {
+    setError(msg);
+    setLoading(false);
+  }, []);
+
   const reset = useCallback(() => {
     setData(null);
     setAnalysisId(null);
@@ -274,7 +285,7 @@ export function useFullAnalysis() {
     setLoading(false);
   }, []);
 
-  return { data, analysisId, progress, loading, error, submit, pollStatus, fetchResult, reset };
+  return { data, analysisId, progress, loading, error, submit, pollStatus, fetchResult, markComplete, markError, reset };
 }
 
 // ---- useGeoAnalyses (list stored analyses) ----
