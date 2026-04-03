@@ -1,20 +1,17 @@
 'use client';
 
+import { PHASE_DISPLAY, type ProgressPhase, type ProgressStatus } from '@/lib/report-types';
+
 interface AnalysisProgressBarProps {
-  status: 'pending' | 'processing' | 'completed' | 'failed';
+  status: ProgressStatus;
   currentStage: string;
   progressPercent: number;
   stageProgressPercent?: number;
-  estimatedSecondsRemaining?: number;
+  estimatedSecondsRemaining?: number | null;
 }
 
-const STAGES = [
-  { name: 'Crawler', icon: '🕷️', specPhase: 'crawling' },
-  { name: 'Researcher', icon: '🔍', specPhase: 'researching' },
-  { name: 'LLM Tester', icon: '🤖', specPhase: 'testing_llms' },
-  { name: 'Image Analyzer', icon: '🖼️', specPhase: 'analyzing_images' },
-  { name: 'Optimizer', icon: '⚡', specPhase: 'optimizing' },
-  { name: 'Verifier', icon: '✅', specPhase: 'verifying' },
+const ORDERED_PHASES: ProgressPhase[] = [
+  'crawling', 'researching', 'testing_llms', 'analyzing_images', 'optimizing', 'verifying',
 ];
 
 export function AnalysisProgressBar({
@@ -23,23 +20,23 @@ export function AnalysisProgressBar({
   const isRunning = status === 'processing' || status === 'pending';
   const barColor = status === 'completed' ? '#10B981' : status === 'failed' ? '#EF4444' : '#3B82F6';
 
-  // Detect current stage from both legacy (agent name) and spec (phase name) formats
+  // Match the current stage against known phase names
   const stageLower = currentStage.toLowerCase();
-  const currentIdx = STAGES.findIndex(s =>
-    stageLower.includes(s.name.toLowerCase()) || stageLower === s.specPhase
+  const currentIdx = ORDERED_PHASES.findIndex(p =>
+    stageLower === p || stageLower.includes(p.replace(/_/g, ' '))
   );
 
   return (
-    <div className="rounded-2xl border border-white/10 bg-white/5 backdrop-blur-sm p-6 space-y-5">
+    <div className="rounded-2xl border border-border bg-card p-6 space-y-5">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           {isRunning && <div className="w-2 h-2 rounded-full bg-blue-400 animate-pulse" />}
-          <p className="font-bold text-white text-sm">{currentStage || 'Starting...'}</p>
+          <p className="font-bold text-foreground text-sm">{currentStage || 'Starting...'}</p>
         </div>
         <span className="text-2xl font-black" style={{ color: barColor }}>{progressPercent}%</span>
       </div>
 
-      <div className="h-2.5 rounded-full bg-white/10 overflow-hidden">
+      <div className="h-2.5 rounded-full bg-muted overflow-hidden">
         <div
           className="h-full rounded-full transition-all duration-500"
           style={{ width: `${progressPercent}%`, backgroundColor: barColor }}
@@ -48,28 +45,29 @@ export function AnalysisProgressBar({
 
       {isRunning && stageProgressPercent !== undefined && (
         <div className="space-y-1">
-          <p className="text-xs text-slate-500">Stage progress</p>
-          <div className="h-1 rounded-full bg-white/5 overflow-hidden">
+          <p className="text-xs text-muted-foreground">Stage progress</p>
+          <div className="h-1 rounded-full bg-muted overflow-hidden">
             <div className="h-full rounded-full bg-blue-400/50 transition-all duration-300" style={{ width: `${stageProgressPercent}%` }} />
           </div>
         </div>
       )}
 
       <div className="grid grid-cols-6 gap-2">
-        {STAGES.map((stage, idx) => {
+        {ORDERED_PHASES.map((phase, idx) => {
           const done = idx < currentIdx;
           const active = idx === currentIdx;
+          const display = PHASE_DISPLAY[phase];
           return (
-            <div key={stage.name} className="flex flex-col items-center gap-1 text-center">
+            <div key={phase} className="flex flex-col items-center gap-1 text-center">
               <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm ${
                 done ? 'bg-green-500/20 text-green-400' :
                 active ? 'bg-blue-500/20 text-blue-400' :
-                'bg-white/5 text-slate-600'
+                'bg-muted text-muted-foreground'
               }`}>
-                {done ? '✓' : stage.icon}
+                {done ? '✓' : display.icon}
               </div>
-              <span className={`text-[10px] leading-tight ${active ? 'text-blue-400' : done ? 'text-green-400' : 'text-slate-600'}`}>
-                {stage.name}
+              <span className={`text-[10px] leading-tight ${active ? 'text-blue-400' : done ? 'text-green-400' : 'text-muted-foreground'}`}>
+                {display.label}
               </span>
             </div>
           );

@@ -1,251 +1,196 @@
 'use client';
 
 import { useEffect, useState, useMemo } from 'react';
-import { useAnalyses } from '@/hooks/useGeo';
-import type { Analysis } from '@/lib/geo-types';
-import { BarChart3, Search, Filter, ArrowRight, Clock, TrendingUp, AlertCircle, RefreshCw } from 'lucide-react';
+import { useGeoAnalyses } from '@/hooks/useGeo';
+import type { StoredGeoAnalysis } from '@/lib/report-types';
+import { getGrade, getGradeColor } from '@/lib/report-types';
+import { ScoreGauge } from '@/components/geo/ScoreGauge';
+import { BarChart3, Search, Filter, ArrowRight, Clock, TrendingUp, AlertCircle, RefreshCw, Plus } from 'lucide-react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 
-const TYPE_LABELS: Record<string, { label: string; color: string; icon: string }> = {
-  keyword_discovery: { label: 'Discovery', color: 'text-primary bg-primary/10 border-primary/20', icon: '🔍' },
-  keyword_test: { label: 'Testing', color: 'text-purple-600 dark:text-purple-400 bg-purple-500/10 border-purple-500/20', icon: '🧪' },
-  content_validation: { label: 'Validation', color: 'text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 border-emerald-500/20', icon: '📝' },
-  progress_tracking: { label: 'Tracking', color: 'text-amber-600 dark:text-amber-400 bg-amber-500/10 border-amber-500/20', icon: '📈' },
-};
-
-function ScoreBadge({ score }: { score: number | null }) {
-  if (score === null || score === undefined) return <span className="text-slate-400 dark:text-slate-600 text-[10px] font-black uppercase tracking-widest">No Data</span>;
-  const color = score >= 80 ? 'text-emerald-600 dark:text-emerald-400' : score >= 60 ? 'text-amber-600 dark:text-amber-400' : 'text-red-600 dark:text-red-400';
-  return (
-    <div className="text-right">
-      <p className={`font-black text-2xl tracking-tighter ${color}`}>
-        {Math.round(score)}<span className="text-[10px] ml-0.5 opacity-50 uppercase tracking-widest">%</span>
-      </p>
-    </div>
-  );
+function relTime(dateStr: string): string {
+  const diff = Date.now() - new Date(dateStr).getTime();
+  const min = Math.floor(diff / 60000);
+  if (min < 1) return 'Just now';
+  if (min < 60) return `${min}m ago`;
+  const hrs = Math.floor(min / 60);
+  if (hrs < 24) return `${hrs}h ago`;
+  const days = Math.floor(hrs / 24);
+  if (days < 7) return `${days}d ago`;
+  return new Date(dateStr).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 }
 
-function AnalysisRow({ analysis }: { analysis: Analysis }) {
-  const type = TYPE_LABELS[analysis.analysis_type] ?? { label: analysis.analysis_type, color: 'text-slate-500 bg-slate-100 dark:bg-white/5 border-slate-200 dark:border-white/10', icon: '📊' };
-  const date = new Date(analysis.created_at);
-  const relativeTime = useMemo(() => {
-    const now = date.getTime(); // stable: date object doesn't change
-    const diff = new Date().getTime() - now;
-    const min = Math.floor(diff / 60000);
-    if (min < 60) return `${min}m ago`;
-    const hrs = Math.floor(min / 60);
-    if (hrs < 24) return `${hrs}h ago`;
-    return date.toLocaleDateString();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [analysis.created_at]);
+function AnalysisRow({ analysis }: { analysis: StoredGeoAnalysis }) {
+  const score = analysis.overall_score ?? 0;
+  const grade = getGrade(score);
+  const color = getGradeColor(grade);
 
   return (
-    <Link href={`/dashboard/analysis?id=${analysis.id}`} className="block group">
-      <div className="flex flex-col sm:flex-row sm:items-center gap-6 p-6 rounded-[2rem] border border-slate-200 dark:border-white/5 bg-white dark:bg-slate-900/50 hover:bg-slate-50 dark:hover:bg-white/[0.03] hover:border-primary/30 dark:hover:border-primary/20 transition-all shadow-sm">
-        <div className="w-14 h-14 rounded-2xl bg-slate-100 dark:bg-black/20 flex items-center justify-center text-2xl flex-shrink-0 group-hover:scale-110 transition-transform">
-          {type.icon}
-        </div>
-
-        <div className="flex-grow min-w-0 space-y-1">
-          <div className="flex items-center gap-3">
-            <span className={`text-[10px] font-black uppercase tracking-[0.15em] px-2.5 py-1 rounded-lg border ${type.color}`}>
-              {type.label}
-            </span>
-            <span className={`text-[10px] font-black uppercase tracking-widest ${analysis.status === 'completed' ? 'text-emerald-500' : analysis.status === 'failed' ? 'text-red-500' : 'text-amber-500'}`}>
-              • {analysis.status}
-            </span>
-          </div>
-          <h3 className="font-black text-lg text-slate-900 dark:text-white truncate tracking-tight">{analysis.brand_name}</h3>
-          <p className="text-xs text-slate-500 font-medium truncate">{analysis.category}</p>
-        </div>
-
-        <div className="flex items-center gap-8 sm:gap-12 flex-shrink-0">
-          <div className="space-y-1">
-            <p className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest text-right">Visibility</p>
-            <ScoreBadge score={analysis.visibility_score ?? analysis.overall_score} />
-          </div>
-
-          {analysis.mention_rate != null && (
-            <div className="space-y-1 hidden md:block">
-              <p className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest text-right">Mentions</p>
-              <p className="font-black text-2xl text-slate-900 dark:text-white tracking-tighter text-right">
-                {(analysis.mention_rate * 100).toFixed(0)}<span className="text-[10px] ml-0.5 opacity-50 uppercase tracking-widest">%</span>
-              </p>
-            </div>
-          )}
-
-          <div className="text-right flex-shrink-0 space-y-1">
-            <div className="flex items-center justify-end gap-1.5 text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">
-              <Clock className="h-3 w-3" />
-              {relativeTime}
-            </div>
-            <div className="flex items-center justify-end gap-2">
-              {analysis.processing_time_seconds && (
-                <p className="text-[10px] font-bold text-slate-400 dark:text-slate-600">{analysis.processing_time_seconds}s</p>
-              )}
-              <ArrowRight className="h-5 w-5 text-slate-300 dark:text-slate-700 group-hover:text-primary group-hover:translate-x-1 transition-all" />
-            </div>
-          </div>
+    <Link
+      href={`/dashboard/reports/${analysis.analysis_id || analysis.id}`}
+      className="flex items-center gap-4 p-4 rounded-xl border border-border bg-card hover:bg-accent transition-colors group"
+    >
+      <ScoreGauge score={score} size={52} showGrade={false} />
+      <div className="flex-1 min-w-0">
+        <p className="text-sm font-bold text-foreground truncate group-hover:text-primary transition-colors">
+          {analysis.brand_name}
+        </p>
+        <div className="flex items-center gap-2 mt-0.5">
+          <span className="text-[10px] font-bold uppercase tracking-wider" style={{ color }}>
+            Grade {grade}
+          </span>
+          <span className="text-[10px] text-muted-foreground">{analysis.category}</span>
+          <span className={`text-[10px] font-bold uppercase tracking-wider ${
+            analysis.status === 'completed' ? 'text-emerald-500' : analysis.status === 'failed' ? 'text-destructive' : 'text-amber-500'
+          }`}>
+            · {analysis.status}
+          </span>
         </div>
       </div>
+      <div className="text-right shrink-0 space-y-0.5">
+        <p className="text-xl font-black tabular-nums" style={{ color }}>{Math.round(score)}</p>
+        <div className="flex items-center gap-1 text-[10px] text-muted-foreground justify-end">
+          <Clock className="h-3 w-3" />
+          {relTime(analysis.created_at)}
+        </div>
+      </div>
+      <ArrowRight className="h-4 w-4 text-muted-foreground group-hover:text-foreground transition-colors shrink-0" />
     </Link>
   );
 }
 
 export default function ReportsPage() {
-  const { data: analyses, loading, error, fetchAnalyses } = useAnalyses();
+  const { data: analyses, loading, error, fetchAnalyses } = useGeoAnalyses();
   const [searchTerm, setSearchTerm] = useState('');
-  const [filterType, setFilterType] = useState('');
+  const [filterStatus, setFilterStatus] = useState('');
 
   useEffect(() => {
     fetchAnalyses();
   }, [fetchAnalyses]);
 
-  const filtered = analyses.filter(a => {
+  const filtered = useMemo(() => analyses.filter(a => {
     const matchesSearch = !searchTerm ||
       a.brand_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       a.category.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesType = !filterType || a.analysis_type === filterType;
-    return matchesSearch && matchesType;
-  });
+    const matchesStatus = !filterStatus || a.status === filterStatus;
+    return matchesSearch && matchesStatus;
+  }), [analyses, searchTerm, filterStatus]);
 
-  const totalAnalyses = analyses.length;
   const avgScore = analyses.length > 0
-    ? (analyses.reduce((sum, a) => sum + (a.visibility_score ?? a.overall_score ?? 0), 0) / analyses.length).toFixed(1)
-    : '—';
+    ? Math.round(analyses.reduce((sum, a) => sum + (a.overall_score ?? 0), 0) / analyses.length)
+    : 0;
 
   return (
-    <div className="space-y-10">
+    <div className="space-y-8">
       {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
         <div>
-          <h1 className="text-4xl font-black text-slate-900 dark:text-white tracking-tight mb-2">Analysis Reports</h1>
-          <p className="text-slate-500 dark:text-slate-400 font-medium tracking-tight">Access and export your complete GEO analysis history.</p>
+          <h1 className="text-3xl font-black text-foreground tracking-tight mb-1">Reports</h1>
+          <p className="text-sm text-muted-foreground">Your GEO analysis history.</p>
         </div>
         <div className="flex items-center gap-3">
-          <Button onClick={() => fetchAnalyses()} variant="outline" size="icon"
-            className="rounded-2xl border-slate-200 dark:border-white/10 dark:text-white hover:bg-slate-50 dark:hover:bg-white/5 h-12 w-12 transition-all active:rotate-180 duration-500">
-            <RefreshCw className="h-5 w-5" />
+          <Button onClick={() => fetchAnalyses()} variant="outline" size="sm" className="rounded-lg gap-2 font-semibold">
+            <RefreshCw className="h-3.5 w-3.5" /> Refresh
           </Button>
-          <Link href="/dashboard/keywords" className="block">
-            <Button className="rounded-2xl bg-primary hover:bg-blue-600 text-white font-black px-6 h-12 shadow-lg shadow-primary/20 flex items-center gap-2">
-              <span className="text-lg">+</span> New Discovery
+          <Link href="/dashboard/analysis">
+            <Button size="sm" className="rounded-lg gap-2 font-semibold shadow-sm">
+              <Plus className="h-3.5 w-3.5" /> New Analysis
             </Button>
           </Link>
         </div>
       </div>
 
-      {/* Summary stats */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      {/* Stats */}
+      <div className="grid grid-cols-3 gap-4">
         {[
-          { label: 'Total Reports', value: totalAnalyses, icon: <BarChart3 className="h-6 w-6 text-primary" />, bg: 'bg-primary/5' },
-          { label: 'Avg Visibility', value: analyses.length > 0 ? `${avgScore}%` : '—', icon: <TrendingUp className="h-6 w-6 text-emerald-500" />, bg: 'bg-emerald-500/5' },
-          { label: 'Processing', value: analyses.filter(a => a.status !== 'completed' && a.status !== 'failed').length, icon: <Clock className="h-6 w-6 text-purple-500" />, bg: 'bg-purple-500/5' },
-        ].map((stat) => (
-          <div key={stat.label} className="bg-white dark:bg-slate-900/50 border border-slate-200 dark:border-white/5 rounded-[2rem] p-6 flex items-center gap-5 shadow-sm group hover:border-primary/20 transition-all">
-            <div className={`h-14 w-14 rounded-2xl ${stat.bg} flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform`}>
-              {stat.icon}
-            </div>
+          { label: 'Total', value: analyses.length, icon: <BarChart3 className="h-4 w-4 text-primary" /> },
+          { label: 'Avg Score', value: avgScore || '—', icon: <TrendingUp className="h-4 w-4 text-emerald-500" /> },
+          { label: 'Processing', value: analyses.filter(a => a.status !== 'completed' && a.status !== 'failed').length, icon: <Clock className="h-4 w-4 text-amber-500" /> },
+        ].map(s => (
+          <div key={s.label} className="bg-card rounded-xl border border-border p-4 flex items-center gap-3">
+            <div className="p-2 rounded-lg bg-muted">{s.icon}</div>
             <div>
-              <p className="text-3xl font-black text-slate-900 dark:text-white tracking-tighter leading-none mb-1">{stat.value}</p>
-              <p className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">{stat.label}</p>
+              <p className="text-xl font-black text-foreground">{s.value}</p>
+              <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">{s.label}</p>
             </div>
           </div>
         ))}
       </div>
 
       {/* Filters */}
-      <div className="flex flex-col sm:flex-row gap-4 items-center justify-between bg-slate-100/50 dark:bg-black/20 p-2 rounded-[2rem] border border-slate-200 dark:border-white/5">
-        <div className="relative w-full sm:max-w-md">
-          <Search className="absolute left-5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 dark:text-slate-600" />
+      <div className="flex flex-col sm:flex-row gap-3">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <input
             value={searchTerm}
             onChange={e => setSearchTerm(e.target.value)}
-            placeholder="Search brand or category…"
-            className="w-full pl-12 pr-6 py-4 rounded-2xl bg-white dark:bg-slate-900/80 border border-slate-200 dark:border-white/5 text-sm font-medium text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all"
+            placeholder="Search brand or category..."
+            className="w-full pl-9 pr-4 py-2 rounded-lg bg-card border border-border text-sm text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
           />
         </div>
-        <div className="relative w-full sm:w-64">
-          <Filter className="absolute left-5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 dark:text-slate-600 pointer-events-none" />
+        <div className="relative w-full sm:w-48">
+          <Filter className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
           <select
-            aria-label="Filter by type"
-            value={filterType}
-            onChange={e => setFilterType(e.target.value)}
-            className="w-full pl-12 pr-10 py-4 rounded-2xl bg-white dark:bg-slate-900/80 border border-slate-200 dark:border-white/5 text-sm font-black uppercase tracking-widest text-slate-600 dark:text-slate-400 focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all appearance-none cursor-pointer"
+            aria-label="Filter by status"
+            value={filterStatus}
+            onChange={e => setFilterStatus(e.target.value)}
+            className="w-full pl-9 pr-4 py-2 rounded-lg bg-card border border-border text-sm font-semibold text-foreground focus:outline-none focus:ring-2 focus:ring-ring appearance-none cursor-pointer"
           >
-            <option value="">All Types</option>
-            {Object.entries(TYPE_LABELS).map(([value, { label }]) => (
-              <option key={value} value={value}>{label}</option>
-            ))}
+            <option value="">All Status</option>
+            <option value="completed">Completed</option>
+            <option value="processing">Processing</option>
+            <option value="failed">Failed</option>
           </select>
-          <div className="absolute right-5 top-1/2 -translate-y-1/2 pointer-events-none">
-            <ArrowRight className="h-4 w-4 text-slate-400 rotate-90" />
-          </div>
         </div>
       </div>
 
       {/* Content */}
-      <div className="space-y-4">
-        {loading && (
-          <div className="space-y-4">
-            {[1, 2, 3, 4].map(i => (
-              <div key={i} className="h-28 rounded-[2rem] bg-white dark:bg-slate-900/50 border border-slate-200 dark:border-white/5 animate-pulse" />
-            ))}
-          </div>
-        )}
+      {loading && (
+        <div className="space-y-3">
+          {[1, 2, 3, 4].map(i => (
+            <div key={i} className="h-20 rounded-xl bg-muted animate-pulse" />
+          ))}
+        </div>
+      )}
 
-        {error && (
-          <div className="rounded-[2.5rem] bg-red-500/5 border border-red-500/10 dark:bg-red-500/10 dark:border-red-500/20 p-10 flex flex-col items-center text-center gap-4">
-            <div className="w-16 h-16 rounded-full bg-red-500/20 flex items-center justify-center">
-              <AlertCircle className="h-8 w-8 text-red-500" />
-            </div>
-            <div>
-              <p className="font-black text-xl text-red-600 dark:text-red-400 uppercase tracking-tighter">Sync Error</p>
-              <p className="text-sm text-red-600/70 dark:text-red-400/60 font-medium mt-1 max-w-sm mx-auto">{error}</p>
-              <Button onClick={() => fetchAnalyses()} variant="outline" className="mt-6 rounded-xl border-red-500/20 text-red-500 hover:bg-red-500/10 font-black uppercase tracking-widest text-[10px] h-10">
-                Retry Connection
-              </Button>
-            </div>
-          </div>
-        )}
+      {error && (
+        <div className="rounded-xl bg-destructive/10 border border-destructive/20 p-6 text-center space-y-3">
+          <AlertCircle className="h-8 w-8 text-destructive mx-auto" />
+          <p className="text-sm font-semibold text-destructive">{error}</p>
+          <Button onClick={() => fetchAnalyses()} variant="outline" size="sm" className="rounded-lg">Retry</Button>
+        </div>
+      )}
 
-        {!loading && !error && filtered.length === 0 && (
-          <div className="rounded-[2.5rem] border-2 border-dashed border-slate-200 dark:border-white/10 p-20 text-center bg-slate-50/50 dark:bg-transparent">
-            <div className="w-20 h-20 rounded-[2.5rem] bg-slate-100 dark:bg-white/5 flex items-center justify-center mx-auto mb-6">
-              <span className="text-3xl">🔍</span>
-            </div>
-            <h2 className="text-2xl font-black text-slate-900 dark:text-white uppercase tracking-tighter mb-2">No reports matched</h2>
-            <p className="text-slate-500 dark:text-slate-400 font-medium max-w-sm mx-auto leading-relaxed mb-8">
-              {searchTerm || filterType ? "Try adjusting your filters to find the specific report you're looking for." : "You haven't run any analyses yet. Start your first GEO discovery to generate your initial report."}
-            </p>
-            {!(searchTerm || filterType) && (
-              <Link href="/dashboard/keywords">
-                <Button className="rounded-2xl bg-primary hover:bg-blue-600 text-white font-black px-8 h-14 shadow-xl shadow-primary/20 flex items-center gap-3 mx-auto">
-                  Run Initial Discovery <ArrowRight className="h-5 w-5" />
-                </Button>
-              </Link>
-            )}
-          </div>
-        )}
+      {!loading && !error && filtered.length === 0 && (
+        <div className="text-center py-16 rounded-xl border border-dashed border-border">
+          <p className="text-3xl mb-3">📊</p>
+          <p className="font-bold text-foreground mb-1">
+            {searchTerm || filterStatus ? 'No reports matched' : 'No reports yet'}
+          </p>
+          <p className="text-sm text-muted-foreground mb-4 max-w-sm mx-auto">
+            {searchTerm || filterStatus
+              ? 'Try adjusting your filters.'
+              : 'Run your first GEO analysis to generate a report.'}
+          </p>
+          {!(searchTerm || filterStatus) && (
+            <Link href="/dashboard/analysis">
+              <Button size="sm" className="rounded-lg font-semibold">Run Analysis</Button>
+            </Link>
+          )}
+        </div>
+      )}
 
-        {!loading && filtered.length > 0 && (
-          <div className="space-y-4">
-            <div className="flex items-center justify-between px-6 mb-2">
-              <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Showing {filtered.length} Reports</p>
-              <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Latest First</p>
-            </div>
-            <div className="space-y-4 animate-in slide-in-from-bottom-4 duration-500">
-              {filtered.map(analysis => (
-                <AnalysisRow key={analysis.id} analysis={analysis} />
-              ))}
-            </div>
-            <div className="pt-8 pb-4 text-center">
-              <p className="text-[10px] font-black text-slate-400 dark:text-slate-600 uppercase tracking-[0.3em]">End of Archive</p>
-            </div>
-          </div>
-        )}
-      </div>
+      {!loading && filtered.length > 0 && (
+        <div className="space-y-2">
+          <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider px-1">
+            Showing {filtered.length} report{filtered.length !== 1 ? 's' : ''} · Latest first
+          </p>
+          {filtered.map(analysis => (
+            <AnalysisRow key={analysis.id} analysis={analysis} />
+          ))}
+        </div>
+      )}
     </div>
   );
 }

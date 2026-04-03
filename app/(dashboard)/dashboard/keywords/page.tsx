@@ -212,14 +212,14 @@ export default function KeywordsPage() {
       {/* Page header */}
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
         <div>
-          <h1 className="text-3xl font-black text-slate-900 dark:text-white tracking-tight mb-2">Keyword Discovery</h1>
-          <p className="text-slate-500 dark:text-slate-400 font-medium tracking-tight">Identify the keywords AI models use to mention your brand and competitors.</p>
+          <h1 className="text-3xl font-black text-foreground tracking-tight mb-2">Keyword Discovery</h1>
+          <p className="text-muted-foreground font-medium tracking-tight">Identify the keywords AI models use to mention your brand and competitors.</p>
         </div>
       </div>
 
       {/* Form */}
       {!data && (
-        <form onSubmit={handleSubmit} className="rounded-[2.5rem] border border-slate-200 dark:border-white/5 bg-white dark:bg-slate-900/50 p-8 md:p-10 shadow-sm space-y-8">
+        <form onSubmit={handleSubmit} className="rounded-[2.5rem] border border-border bg-card p-8 md:p-10 shadow-sm space-y-8">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="space-y-2">
               <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em] px-1">Brand Name *</label>
@@ -335,7 +335,7 @@ export default function KeywordsPage() {
 
       {/* Loading state */}
       {loading && (
-        <div className="bg-white dark:bg-slate-900/50 rounded-[2.5rem] border border-slate-200 dark:border-white/5 p-12 shadow-sm">
+        <div className="bg-card rounded-[2.5rem] border border-border p-12 shadow-sm">
           <AnalysisProgressBar
             status={progress?.status ?? 'processing'}
             currentStage={progress ? stageLabel : 'Connecting to analysis agents…'}

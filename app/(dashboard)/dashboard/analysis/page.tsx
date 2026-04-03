@@ -2,7 +2,8 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
-import { useKeywordDiscovery, useAnalyses, useFullAnalysis } from '@/hooks/useGeo';
+import { useKeywordDiscovery, useGeoAnalyses, useFullAnalysis } from '@/hooks/useGeo';
+import type { GeoProvider, ScanMode } from '@/lib/report-types';
 import { useSSEProgress } from '@/hooks/useSSEProgress';
 import { AnalysisProgressBar } from '@/components/geo/AnalysisProgressBar';
 import { ApiErrorToast } from '@/components/geo/ApiErrorToast';
@@ -97,7 +98,7 @@ export default function AnalysisPage() {
   const router = useRouter();
   const { discover, loading: discoveryLoading, error: discoveryError } = useKeywordDiscovery();
   const { submit, fetchResult, analysisId: fullAnalysisId, loading: fullLoading, error: fullError, data: fullResult } = useFullAnalysis();
-  const { data: recentAnalyses, fetchAnalyses } = useAnalyses();
+  const { data: recentAnalyses, fetchAnalyses } = useGeoAnalyses();
   const [apiError, setApiError] = useState<unknown>(null);
 
   // Analysis mode toggle
@@ -111,7 +112,7 @@ export default function AnalysisPage() {
   const error = analysisMode === 'discovery' ? discoveryError : fullError;
 
   // Fetch latest analysis on mount
-  useEffect(() => { fetchAnalyses(undefined, undefined, 1); }, [fetchAnalyses]);
+  useEffect(() => { fetchAnalyses(undefined, 1); }, [fetchAnalyses]);
 
   // When SSE reports completion, fetch the full result
   useEffect(() => {
@@ -193,27 +194,18 @@ export default function AnalysisPage() {
     } else {
       // Full Analysis — async pipeline with SSE progress tracking
       try {
-        // Build models override dict (only include non-default selections)
-        const modelsOverride: Record<string, string> = {};
-        for (const provider of selectedLLMs) {
-          const model = selectedModels[provider];
-          if (model && model !== getDefaultModel(provider)) {
-            modelsOverride[provider] = model;
-          }
-        }
+        // Map UI discovery mode → GeoAnalysisRequest scan_mode
+        const scanModeMap: Record<string, ScanMode> = { quick: 'quick', standard: 'full', deep: 'deep' };
 
         const result = await submit({
+          url: url,
           brand_name: brandName,
-          brand_aliases: [],
+          aliases: competitorsList.length > 0 ? [] : undefined,
+          competitors: competitorsList.length > 0 ? competitorsList : undefined,
           category,
-          competitors: competitorsList,
-          target_audience: targetAudience || undefined,
           region: 'global',
-          mode,
-          url: url || undefined,
-          llm_providers: selectedLLMs,
-          runs_per_prompt: 1,
-          ...(Object.keys(modelsOverride).length > 0 ? { models: modelsOverride } : {}),
+          scan_mode: scanModeMap[mode] ?? 'full',
+          providers: selectedLLMs as GeoProvider[],
         });
         // Connect SSE to real job_id from Python engine
         setSseId(result.analysis_id);
@@ -232,8 +224,8 @@ export default function AnalysisPage() {
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 px-4">
         <div className="space-y-2">
-          <h1 className="text-4xl font-black text-slate-900 dark:text-white tracking-tight uppercase italic">GEO Engine</h1>
-          <p className="text-slate-500 dark:text-slate-400 font-bold tracking-tight">Configure your AI visibility analysis parameters.</p>
+          <h1 className="text-4xl font-black text-foreground tracking-tight uppercase italic">GEO Engine</h1>
+          <p className="text-muted-foreground font-bold tracking-tight">Configure your AI visibility analysis parameters.</p>
         </div>
         <div className="flex items-center gap-2 px-4 py-2 rounded-2xl bg-primary/5 border border-primary/10">
           <Clock size={16} className="text-primary" />
@@ -242,7 +234,7 @@ export default function AnalysisPage() {
       </div>
 
       {loading ? (
-        <div className="bg-white dark:bg-slate-900/50 rounded-[2.5rem] border border-slate-200 dark:border-white/5 p-12 shadow-2xl shadow-slate-200 dark:shadow-none min-h-[500px] flex flex-col items-center justify-center space-y-12">
+        <div className="bg-card rounded-[2.5rem] border border-border p-12 shadow-2xl min-h-[500px] flex flex-col items-center justify-center space-y-12">
           <div className="relative">
             <div className="absolute inset-0 bg-primary/20 blur-[100px] rounded-full animate-pulse"></div>
             <div className="relative w-24 h-24 rounded-[2.5rem] bg-slate-900 dark:bg-white flex items-center justify-center text-white dark:text-slate-900 shadow-2xl">
@@ -258,7 +250,7 @@ export default function AnalysisPage() {
               stageProgressPercent={progress?.stage_progress_percent ?? 20}
               estimatedSecondsRemaining={progress?.estimated_seconds_remaining}
             />
-            <p className="text-center text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em] animate-pulse">
+            <p className="text-center text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em] animate-pulse">
               {analysisMode === 'full'
                 ? 'System: Crawling, researching, testing LLMs, analyzing images, optimizing...'
                 : 'System: Processing deep-reach optimization vectors...'}
@@ -270,10 +262,10 @@ export default function AnalysisPage() {
           <div className="lg:col-span-2 space-y-10">
 
             {/* Analysis Mode Toggle */}
-            <section className="bg-white dark:bg-slate-900/50 rounded-[2.5rem] border border-slate-200 dark:border-white/5 p-8 md:p-10 shadow-sm space-y-6 animate-in slide-in-from-left-4 duration-500">
+            <section className="bg-card rounded-[2.5rem] border border-border p-8 md:p-10 shadow-sm space-y-6 animate-in slide-in-from-left-4 duration-500">
               <div className="flex items-center gap-4">
                 <div className="h-10 w-10 rounded-2xl bg-violet-500 text-white flex items-center justify-center font-black italic shadow-lg shadow-violet-500/20">00</div>
-                <h3 className="text-xl font-black text-slate-900 dark:text-white tracking-tighter uppercase italic">Analysis Type</h3>
+                <h3 className="text-xl font-black text-foreground tracking-tighter uppercase italic">Analysis Type</h3>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <button type="button" onClick={() => setAnalysisMode('discovery')}
@@ -315,10 +307,10 @@ export default function AnalysisPage() {
             </section>
 
             {/* Step 1: Identity */}
-            <section className="bg-white dark:bg-slate-900/50 rounded-[2.5rem] border border-slate-200 dark:border-white/5 p-8 md:p-10 shadow-sm space-y-8 animate-in slide-in-from-left-4 duration-500">
+            <section className="bg-card rounded-[2.5rem] border border-border p-8 md:p-10 shadow-sm space-y-8 animate-in slide-in-from-left-4 duration-500">
               <div className="flex items-center gap-4">
                 <div className="h-10 w-10 rounded-2xl bg-primary text-white flex items-center justify-center font-black italic shadow-lg shadow-primary/20">01</div>
-                <h3 className="text-xl font-black text-slate-900 dark:text-white tracking-tighter uppercase italic">Brand Intelligence</h3>
+                <h3 className="text-xl font-black text-foreground tracking-tighter uppercase italic">Brand Intelligence</h3>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
@@ -371,10 +363,10 @@ export default function AnalysisPage() {
 
             {/* Step 2: Protocol — only for Discovery mode */}
             {analysisMode === 'discovery' && (
-              <section className="bg-white dark:bg-slate-900/50 rounded-[2.5rem] border border-slate-200 dark:border-white/5 p-8 md:p-10 shadow-sm space-y-8 animate-in slide-in-from-left-4 duration-500 delay-100">
+              <section className="bg-card rounded-[2.5rem] border border-border p-8 md:p-10 shadow-sm space-y-8 animate-in slide-in-from-left-4 duration-500 delay-100">
                  <div className="flex items-center gap-4">
                   <div className="h-10 w-10 rounded-2xl bg-amber-500 text-white flex items-center justify-center font-black italic shadow-lg shadow-amber-500/20">02</div>
-                  <h3 className="text-xl font-black text-slate-900 dark:text-white tracking-tighter uppercase italic">Discovery Protocol</h3>
+                  <h3 className="text-xl font-black text-foreground tracking-tighter uppercase italic">Discovery Protocol</h3>
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -406,10 +398,10 @@ export default function AnalysisPage() {
             )}
 
             {/* Step 3: LLM Synthesis */}
-            <section className="bg-white dark:bg-slate-900/50 rounded-[2.5rem] border border-slate-200 dark:border-white/5 p-8 md:p-10 shadow-sm space-y-8 animate-in slide-in-from-left-4 duration-500 delay-200">
+            <section className="bg-card rounded-[2.5rem] border border-border p-8 md:p-10 shadow-sm space-y-8 animate-in slide-in-from-left-4 duration-500 delay-200">
                <div className="flex items-center gap-4">
                 <div className="h-10 w-10 rounded-2xl bg-emerald-500 text-white flex items-center justify-center font-black italic shadow-lg shadow-emerald-500/20">{analysisMode === 'discovery' ? '03' : '02'}</div>
-                <h3 className="text-xl font-black text-slate-900 dark:text-white tracking-tighter uppercase italic">LLM Synthesis</h3>
+                <h3 className="text-xl font-black text-foreground tracking-tighter uppercase italic">LLM Synthesis</h3>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

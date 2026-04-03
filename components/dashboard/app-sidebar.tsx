@@ -28,6 +28,7 @@ import {
   SidebarSeparator,
 } from '@/components/ui/sidebar';
 import { Button } from '@/components/ui/button';
+import { signOut } from '@/app/(auth)/actions';
 
 // ── Navigation items ──
 
@@ -169,10 +170,7 @@ export function AppSidebar({ userRole, userName, userEmail }: AppSidebarProps) {
             </p>
           </div>
         </div>
-        <form
-          action="/auth/sign-out"
-          method="POST"
-        >
+        <form action={signOut}>
           <Button
             type="submit"
             variant="ghost"

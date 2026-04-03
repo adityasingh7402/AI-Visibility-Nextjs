@@ -24,8 +24,8 @@ export default function BillingPage() {
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
         <div>
-          <h1 className="text-4xl font-black text-slate-900 dark:text-white tracking-tight mb-2">Billing & Subscriptions</h1>
-          <p className="text-slate-500 dark:text-slate-400 font-medium tracking-tight">Manage your agency plan, credits, and view payment history.</p>
+          <h1 className="text-4xl font-black text-foreground tracking-tight mb-2">Billing & Subscriptions</h1>
+          <p className="text-muted-foreground font-medium tracking-tight">Manage your agency plan, credits, and view payment history.</p>
         </div>
         <div className="flex items-center gap-3">
            <Button variant="outline" className="rounded-2xl border-slate-200 dark:border-white/10 dark:text-white hover:bg-slate-50 dark:hover:bg-white/5 h-12 flex items-center gap-2 font-black uppercase tracking-widest text-[10px]">
@@ -38,7 +38,7 @@ export default function BillingPage() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
         <div className="lg:col-span-2 space-y-10">
           {/* Main Plan Card */}
-          <div className="rounded-[2.5rem] border border-slate-200 dark:border-white/5 bg-white dark:bg-slate-900/50 p-8 md:p-10 shadow-sm relative overflow-hidden">
+          <div className="rounded-[2.5rem] border border-border bg-card p-8 md:p-10 shadow-sm relative overflow-hidden">
              <div className="absolute top-0 right-0 w-80 h-80 bg-primary/10 rounded-full -mr-40 -mt-40 blur-[100px]"></div>
              
              <div className="relative z-10">
@@ -105,7 +105,7 @@ export default function BillingPage() {
                 <h3 className="text-2xl font-black text-slate-900 dark:text-white tracking-tighter">Payment Records</h3>
              </div>
              
-             <div className="rounded-[2.5rem] border border-slate-200 dark:border-white/5 bg-white dark:bg-slate-900/50 shadow-sm overflow-hidden">
+             <div className="rounded-[2.5rem] border border-border bg-card shadow-sm overflow-hidden">
                 <div className="overflow-x-auto">
                    <table className="w-full text-left border-collapse">
                       <thead>

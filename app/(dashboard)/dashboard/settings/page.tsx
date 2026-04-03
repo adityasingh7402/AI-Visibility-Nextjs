@@ -32,8 +32,8 @@ export default function SettingsPage() {
     <div className="space-y-10">
       {/* Header */}
       <div>
-        <h1 className="text-4xl font-black text-slate-900 dark:text-white tracking-tight mb-2">Account Settings</h1>
-        <p className="text-slate-500 dark:text-slate-400 font-medium tracking-tight">Manage your identity, team access, and security preferences.</p>
+        <h1 className="text-4xl font-black text-foreground tracking-tight mb-2">Account Settings</h1>
+        <p className="text-muted-foreground font-medium tracking-tight">Manage your identity, team access, and security preferences.</p>
       </div>
 
       <div className="flex flex-col lg:flex-row gap-12">
@@ -106,16 +106,16 @@ export default function SettingsPage() {
                   <Button className="bg-primary hover:bg-blue-600 text-white font-black uppercase tracking-widest text-[10px] shadow-xl shadow-primary/20 rounded-xl h-10 px-6 active:scale-95 transition-all">Save Profile</Button>
                </div>
                
-               <div className="bg-white dark:bg-slate-900/50 p-8 md:p-10 rounded-[2.5rem] border border-slate-200 dark:border-white/5 space-y-10 shadow-sm">
+               <div className="bg-card p-8 md:p-10 rounded-[2.5rem] border border-border space-y-10 shadow-sm">
                   <div className="flex flex-col md:flex-row items-center gap-10">
                      <div className="relative group">
                         <div className="p-1 rounded-[2.5rem] bg-gradient-to-tr from-primary to-blue-400 shadow-xl shadow-primary/10 group-hover:rotate-6 transition-transform">
-                          <Avatar className="h-32 w-32 rounded-[2.2rem] border-4 border-white dark:border-slate-900">
+                          <Avatar className="h-32 w-32 rounded-[2.2rem] border-4 border-background">
                              <AvatarImage src="" />
                              <AvatarFallback className="bg-slate-50 dark:bg-black text-3xl font-black text-primary uppercase italic">AR</AvatarFallback>
                           </Avatar>
                         </div>
-                        <button aria-label="Upload profile photo" className="absolute -bottom-2 -right-2 h-10 w-10 bg-primary rounded-2xl flex items-center justify-center text-white border-4 border-white dark:border-slate-900 shadow-xl group-hover:scale-110 transition-all active:scale-90">
+                        <button aria-label="Upload profile photo" className="absolute -bottom-2 -right-2 h-10 w-10 bg-primary rounded-2xl flex items-center justify-center text-white border-4 border-background shadow-xl group-hover:scale-110 transition-all active:scale-90">
                            <Camera size={18} />
                         </button>
                      </div>
@@ -161,7 +161,7 @@ export default function SettingsPage() {
                   </div>
                </div>
                
-               <div className="bg-white dark:bg-slate-900/50 p-8 md:p-10 rounded-[2.5rem] border border-slate-200 dark:border-white/5 space-y-10 shadow-sm relative overflow-hidden">
+               <div className="bg-card p-8 md:p-10 rounded-[2.5rem] border border-border space-y-10 shadow-sm relative overflow-hidden">
                   <div className="absolute top-0 right-0 p-12 opacity-5 pointer-events-none">
                     <Lock size={120} />
                   </div>

@@ -1,14 +1,14 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useVisibilityTrend, useAnalyses } from '@/hooks/useGeo';
+import { useVisibilityTrend, useGeoAnalyses } from '@/hooks/useGeo';
 import { Button } from '@/components/ui/button';
 import { TrendChart } from '@/components/geo/TrendChart';
 import { ScoreCard } from '@/components/geo/ScoreCard';
 
 export default function ProgressPage() {
   const { data: trendData, loading: trendLoading, error: trendError, fetchTrend } = useVisibilityTrend();
-  const { data: analyses, fetchAnalyses } = useAnalyses();
+  const { data: analyses, fetchAnalyses } = useGeoAnalyses();
 
   const [brandName, setBrandName] = useState('');
   const [category, setCategory] = useState('');
@@ -30,12 +30,12 @@ export default function ProgressPage() {
     <div className="space-y-10">
       {/* Page header */}
       <div>
-        <h1 className="text-4xl font-black text-slate-900 dark:text-white tracking-tight mb-2">Visibility Progress</h1>
-        <p className="text-slate-500 dark:text-slate-400 font-medium tracking-tight">Track how your AI visibility and brand presence changes over time.</p>
+        <h1 className="text-4xl font-black text-foreground tracking-tight mb-2">Visibility Progress</h1>
+        <p className="text-muted-foreground font-medium tracking-tight">Track how your AI visibility and brand presence changes over time.</p>
       </div>
 
       {/* Brand selector form */}
-      <div className="rounded-[2.5rem] border border-slate-200 dark:border-white/5 bg-white dark:bg-slate-900/50 p-8 md:p-10 shadow-sm">
+      <div className="rounded-[2.5rem] border border-border bg-card p-8 md:p-10 shadow-sm">
         <form onSubmit={handleSubmit} className="flex flex-col md:flex-row gap-6 items-end">
           <div className="flex-1 w-full space-y-2">
             <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em] px-1">Brand Name</label>
@@ -83,7 +83,7 @@ export default function ProgressPage() {
           )}
 
           {/* Chart */}
-          <div className="rounded-[2.5rem] border border-slate-200 dark:border-white/5 bg-white dark:bg-slate-900/50 p-8 md:p-10 shadow-sm space-y-8">
+          <div className="rounded-[2.5rem] border border-border bg-card p-8 md:p-10 shadow-sm space-y-8">
             <div className="flex items-center justify-between">
               <div>
                 <h2 className="text-xl font-black text-slate-900 dark:text-white tracking-tight">Visibility History</h2>
@@ -141,25 +141,25 @@ export default function ProgressPage() {
 
       {/* Recent analyses history */}
       {analyses.length > 0 && (
-        <div className="rounded-[2.5rem] border border-slate-200 dark:border-white/5 bg-white dark:bg-slate-900/50 p-8 md:p-10 shadow-sm space-y-8">
+        <div className="rounded-[2.5rem] border border-border bg-card p-8 md:p-10 shadow-sm space-y-8">
           <div className="flex items-center justify-between">
-            <h2 className="text-xs font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em]">Full History</h2>
+            <h2 className="text-xs font-black text-muted-foreground uppercase tracking-[0.2em]">Full History</h2>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {analyses.slice(0, 10).map(a => (
-              <div key={a.id} className="group flex items-center justify-between p-5 rounded-3xl bg-slate-50 dark:bg-black/20 border border-slate-100 dark:border-white/5 hover:border-primary/30 transition-all cursor-pointer">
+              <div key={a.id} className="group flex items-center justify-between p-5 rounded-3xl bg-muted border border-border hover:border-primary/30 transition-all cursor-pointer">
                 <div className="flex gap-4 items-center">
-                  <div className="w-10 h-10 rounded-2xl bg-white dark:bg-slate-800 flex items-center justify-center shadow-sm font-black text-primary group-hover:bg-primary group-hover:text-white transition-colors uppercase tracking-widest text-[10px]">
+                  <div className="w-10 h-10 rounded-2xl bg-card flex items-center justify-center shadow-sm font-black text-primary group-hover:bg-primary group-hover:text-white transition-colors uppercase tracking-widest text-[10px]">
                     {a.brand_name.substring(0, 2)}
                   </div>
                   <div>
-                    <p className="text-sm font-black text-slate-900 dark:text-white tracking-tight">{a.brand_name}</p>
-                    <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">{a.analysis_type.replace(/_/g, ' ')} · {new Date(a.created_at).toLocaleDateString()}</p>
+                    <p className="text-sm font-black text-foreground tracking-tight">{a.brand_name}</p>
+                    <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-wider">{a.category} · {new Date(a.created_at).toLocaleDateString()}</p>
                   </div>
                 </div>
                 <div className="text-right">
-                  {a.visibility_score != null && (
-                    <p className="text-sm font-black text-primary">{Math.round(a.visibility_score)}%</p>
+                  {a.overall_score != null && (
+                    <p className="text-sm font-black text-primary">{Math.round(a.overall_score)}%</p>
                   )}
                   <span className={`text-[10px] font-black uppercase tracking-widest ${a.status === 'completed' ? 'text-emerald-500' : 'text-amber-500'}`}>
                     {a.status}

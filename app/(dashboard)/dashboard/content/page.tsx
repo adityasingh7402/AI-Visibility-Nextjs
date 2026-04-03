@@ -34,8 +34,8 @@ export default function ContentPage() {
     <div className="space-y-10">
       {/* Page header */}
       <div>
-        <h1 className="text-4xl font-black text-slate-900 dark:text-white tracking-tight mb-2">Content Validator</h1>
-        <p className="text-slate-500 dark:text-slate-400 font-medium tracking-tight max-w-2xl">
+        <h1 className="text-4xl font-black text-foreground tracking-tight mb-2">Content Validator</h1>
+        <p className="text-muted-foreground font-medium tracking-tight max-w-2xl">
           Check if your content will be cited by AI models before you publish. 
           Optimize for RAG (Retrieval-Augmented Generation) visibility.
         </p>
@@ -44,7 +44,7 @@ export default function ContentPage() {
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 items-start">
         {/* Left: Input panel */}
         <form onSubmit={handleSubmit} className="lg:col-span-7 space-y-8 h-full">
-          <div className="rounded-[2.5rem] border border-slate-200 dark:border-white/5 bg-white dark:bg-slate-900/50 p-8 md:p-10 shadow-sm space-y-8">
+          <div className="rounded-[2.5rem] border border-border bg-card p-8 md:p-10 shadow-sm space-y-8">
             {/* Mode toggle */}
             <div className="space-y-4">
               <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em] px-1">Validation Mode</label>
@@ -146,7 +146,7 @@ export default function ContentPage() {
           )}
 
           {loading && (
-            <div className="flex-1 rounded-[2.5rem] border border-slate-200 dark:border-white/5 bg-white dark:bg-slate-900/50 p-12 flex flex-col items-center justify-center gap-8 shadow-sm">
+            <div className="flex-1 rounded-[2.5rem] border border-border bg-card p-12 flex flex-col items-center justify-center gap-8 shadow-sm">
               <div className="relative">
                 <div className="w-20 h-20 rounded-full border-4 border-primary/10 border-t-primary animate-spin" />
                 <div className="absolute inset-0 flex items-center justify-center">
@@ -191,7 +191,7 @@ export default function ContentPage() {
 
               {/* Improvements */}
               {data.improvement_areas?.length > 0 && (
-                <div className="rounded-[2.5rem] border border-slate-200 dark:border-white/5 bg-white dark:bg-slate-900/50 p-8 space-y-6 shadow-sm">
+                <div className="rounded-[2.5rem] border border-border bg-card p-8 space-y-6 shadow-sm">
                   <h3 className="text-xs font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em] px-1">Action Items</h3>
                   <div className="space-y-3">
                     {data.improvement_areas.map((area, i) => (

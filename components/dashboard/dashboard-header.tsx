@@ -68,12 +68,13 @@ export function DashboardHeader() {
           <Bell className="h-4 w-4 text-muted-foreground" />
           <span className="absolute top-1.5 right-1.5 h-2 w-2 bg-destructive rounded-full" />
         </Button>
-        <Button asChild size="sm" className="rounded-lg font-semibold shadow-sm h-9 px-4">
-          <Link href="/dashboard/analysis">
-            <Bolt className="h-3.5 w-3.5 mr-1.5" />
-            New Analysis
-          </Link>
-        </Button>
+        <Link
+          href="/dashboard/analysis"
+          className="inline-flex items-center justify-center rounded-lg font-semibold shadow-sm h-9 px-4 text-sm bg-primary text-primary-foreground hover:bg-primary/90"
+        >
+          <Bolt className="h-3.5 w-3.5 mr-1.5" />
+          New Analysis
+        </Link>
       </div>
     </header>
   );
