@@ -19,6 +19,13 @@ import type {
   AnalyzeAsyncResponse,
   AnalyzeResultResponse,
 } from './geo-types';
+import type {
+  GeoAnalysisRequest,
+  GeoAnalysisAsyncResponse,
+  GeoAnalysisResponse,
+  StoredGeoAnalysis,
+  AnalysisProgress,
+} from './report-types';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
 
@@ -210,16 +217,30 @@ class GEOApi {
   // ---- Full Analyze (async pipeline) ----
 
   /** Submit a full GEO analysis — returns immediately with {analysis_id, status: "processing"} */
-  async runAnalyzeAsync(request: Record<string, unknown>): Promise<AnalyzeAsyncResponse> {
+  async runAnalyzeAsync(request: GeoAnalysisRequest): Promise<GeoAnalysisAsyncResponse> {
     const { data } = await this.client.post('/api/v1/analyze', request);
     return data;
   }
 
   /** Fetch completed analysis result by job ID */
-  async getAnalyzeResult(analysisId: string): Promise<AnalyzeResultResponse> {
+  async getAnalyzeResult(analysisId: string): Promise<GeoAnalysisResponse> {
     // Full pipeline can take up to 420s — use extended timeout
     const { data } = await this.client.get(`/api/v1/analyze/${analysisId}/result`, { timeout: 480000 });
     return data;
+  }
+
+  /** Poll analysis progress */
+  async pollProgress(analysisId: string): Promise<AnalysisProgress> {
+    const { data } = await this.client.get(`/api/v1/progress/poll/${analysisId}`, { timeout: 10000 });
+    return data;
+  }
+
+  /** Get SSE stream URL with auth token */
+  async getSSEStreamUrl(analysisId: string): Promise<string> {
+    const supabase = createClient();
+    const { data: { session } } = await supabase.auth.getSession();
+    const token = session?.access_token || '';
+    return `${API_BASE_URL}/api/v1/progress/stream/${analysisId}?token=${encodeURIComponent(token)}`;
   }
 
   // ---- Progress ----
@@ -237,6 +258,21 @@ class GEOApi {
     if (type) params.set('type', type);
     if (limit) params.set('limit', String(limit));
     const { data } = await this.client.get(`/api/v1/progress/analyses?${params.toString()}`);
+    return data;
+  }
+
+  /** Get all GEO analyses for the user */
+  async getGeoAnalyses(brand?: string, limit?: number): Promise<StoredGeoAnalysis[]> {
+    const params = new URLSearchParams();
+    if (brand) params.set('brand', brand);
+    if (limit) params.set('limit', String(limit));
+    const { data } = await this.client.get(`/api/v1/progress/geo-analyses?${params.toString()}`);
+    return data;
+  }
+
+  /** Get a single GEO analysis by ID (includes full response_payload) */
+  async getGeoAnalysis(id: string): Promise<StoredGeoAnalysis> {
+    const { data } = await this.client.get(`/api/v1/progress/geo-analyses/${id}`);
     return data;
   }
 
