@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { geoApi } from '@/lib/geo-api';
 import { ScoreGauge } from '@/components/geo/ScoreGauge';
@@ -294,21 +294,26 @@ export default function ReportDetailPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  const fetchReport = useCallback(async (id: string) => {
+    try {
+      const data = await geoApi.getReport(id);
+      setReport(data as unknown as RawReport);
+      setError(null);
+    } catch (err: unknown) {
+      const axiosErr = err as { response?: { status?: number; data?: { error?: string } } };
+      const msg = axiosErr.response?.status === 404
+        ? 'Report not found'
+        : axiosErr.response?.data?.error || 'Failed to load report';
+      setError(msg);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
   useEffect(() => {
     if (!reportId) return;
-    setLoading(true);
-    setError(null);
-
-    geoApi.getReport(reportId)
-      .then(data => setReport(data as unknown as RawReport))
-      .catch(err => {
-        const msg = err.response?.status === 404
-          ? 'Report not found'
-          : err.response?.data?.error || 'Failed to load report';
-        setError(msg);
-      })
-      .finally(() => setLoading(false));
-  }, [reportId]);
+    fetchReport(reportId);
+  }, [reportId, fetchReport]);
 
   if (loading) {
     return (
