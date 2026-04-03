@@ -29,6 +29,26 @@ import type {
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
 
+// ---- Unified Reports types ----
+
+export interface UnifiedReport {
+  id: string;
+  type: 'geo' | 'keywords' | 'content';
+  brand_name: string;
+  score: number | null;
+  grade: string;
+  status: string;
+  created_at: string;
+  summary: string;
+}
+
+export interface ReportsListResponse {
+  reports: UnifiedReport[];
+  total: number;
+  limit: number;
+  offset: number;
+}
+
 // ---- Error types per BACKEND_HANDOFF_v2.0 §8 ----
 
 export interface GEOApiError {
@@ -149,16 +169,33 @@ class GEOApi {
       timeout: 120000, // 2 min — keyword discovery can take up to 90s
     });
 
-    // Attach Supabase auth token on every request
+    // Attach Supabase auth token on every request, refreshing if expired
     this.client.interceptors.request.use(async (config) => {
       try {
         const supabase = createClient();
         const { data: { session } } = await supabase.auth.getSession();
-        if (session?.access_token) {
-          config.headers.Authorization = `Bearer ${session.access_token}`;
+
+        if (session) {
+          const isExpired = session.expires_at
+            ? session.expires_at * 1000 <= Date.now()
+            : false;
+
+          if (isExpired) {
+            const { data: refreshed, error: refreshError } =
+              await supabase.auth.refreshSession();
+            if (refreshError || !refreshed.session) {
+              if (typeof window !== 'undefined') {
+                window.location.href = '/login';
+              }
+              return config;
+            }
+            config.headers.Authorization = `Bearer ${refreshed.session.access_token}`;
+          } else {
+            config.headers.Authorization = `Bearer ${session.access_token}`;
+          }
         }
       } catch {
-        // no-op if supabase not available
+        // no-op if supabase not available (e.g. SSR)
       }
       return config;
     });
@@ -235,12 +272,18 @@ class GEOApi {
     return data;
   }
 
-  /** Get SSE stream URL with auth token */
+  /**
+   * Get SSE stream URL with auth token embedded as a query param.
+   * The token is passed in the URL because the EventSource API does not
+   * support custom Authorization headers.
+   */
   async getSSEStreamUrl(analysisId: string): Promise<string> {
     const supabase = createClient();
     const { data: { session } } = await supabase.auth.getSession();
-    const token = session?.access_token || '';
-    return `${API_BASE_URL}/api/v1/progress/stream/${analysisId}?token=${encodeURIComponent(token)}`;
+    if (!session?.access_token) {
+      throw new Error('No active session. Please log in to stream analysis progress.');
+    }
+    return `${API_BASE_URL}/api/v1/progress/stream/${analysisId}?token=${encodeURIComponent(session.access_token)}`;
   }
 
   // ---- Progress ----
@@ -315,6 +358,19 @@ class GEOApi {
 
   async getBrandAnalyses(id: string, limit = 20) {
     const { data } = await this.client.get(`/api/brands/${id}/analyses?limit=${limit}`);
+    return data;
+  }
+
+  // ---- Unified Reports ----
+
+  async getReports(params?: {
+    type?: string;
+    brand?: string;
+    sort?: string;
+    limit?: number;
+    offset?: number;
+  }): Promise<ReportsListResponse> {
+    const { data } = await this.client.get('/api/v1/reports', { params });
     return data;
   }
 }
