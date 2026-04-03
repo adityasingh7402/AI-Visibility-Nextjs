@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { geoApi } from '@/lib/geo-api';
 import { getScoreGrade } from '@/lib/geo-types';
-import type { GeoAnalysisResponse } from '@/lib/report-types';
+import type { GeoAnalysisResponse, Recommendation, CompetitorComparison, ImprovementAction } from '@/lib/report-types';
 import { ScoreCard } from '@/components/geo/ScoreCard';
 import { Button } from '@/components/ui/button';
 import {
@@ -181,21 +181,21 @@ export default function ReportDetailPage() {
             <h2 className="text-lg font-black text-slate-900 dark:text-white uppercase tracking-tighter">Recommendations</h2>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {data.recommendations.map((rec: Record<string, unknown>, i: number) => (
+            {data.recommendations.map((rec: Recommendation, i: number) => (
               <div key={i} className="rounded-2xl border border-white/10 bg-white/5 p-5 space-y-2">
                 <div className="flex items-center gap-2">
                   <span className="w-6 h-6 rounded-lg bg-primary/10 text-primary flex items-center justify-center text-xs font-black">{i + 1}</span>
-                  <p className="text-sm font-black text-slate-900 dark:text-white">{String(rec.title || rec.recommendation || `Recommendation ${i + 1}`)}</p>
+                  <p className="text-sm font-black text-slate-900 dark:text-white">{rec.title || `Recommendation ${i + 1}`}</p>
                 </div>
-                {Boolean(rec.description || rec.detail) && (
-                  <p className="text-xs text-slate-400 leading-relaxed">{String(rec.description || rec.detail)}</p>
+                {rec.description && (
+                  <p className="text-xs text-slate-400 leading-relaxed">{rec.description}</p>
                 )}
-                {Boolean(rec.priority) && (
+                {rec.priority && (
                   <span className={`inline-block text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full ${
-                    (rec.priority as string) === 'high' ? 'bg-red-500/10 text-red-400' :
-                    (rec.priority as string) === 'medium' ? 'bg-amber-500/10 text-amber-400' :
+                    rec.priority === 'high' ? 'bg-red-500/10 text-red-400' :
+                    rec.priority === 'medium' ? 'bg-amber-500/10 text-amber-400' :
                     'bg-green-500/10 text-green-400'
-                  }`}>{rec.priority as string}</span>
+                  }`}>{rec.priority}</span>
                 )}
               </div>
             ))}
@@ -238,19 +238,19 @@ export default function ReportDetailPage() {
         <div className="bg-white dark:bg-slate-900/50 rounded-[2.5rem] border border-slate-200 dark:border-white/5 p-8 shadow-sm space-y-6">
           <h2 className="text-lg font-black text-slate-900 dark:text-white uppercase tracking-tighter">Competitor Comparison</h2>
           <div className="space-y-3">
-            {data.competitor_comparison.map((comp: Record<string, unknown>, i: number) => (
+            {data.competitor_comparison.map((comp: CompetitorComparison, i: number) => (
               <div key={i} className="flex items-center gap-4 p-4 rounded-2xl border border-white/10 bg-white/5">
                 <div className="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center text-sm font-black text-white">
-                  {((comp.name || comp.competitor || `C${i + 1}`) as string).charAt(0)}
+                  {(comp.competitor_name || `C${i + 1}`).charAt(0)}
                 </div>
                 <div className="flex-1">
-                  <p className="text-sm font-black text-white">{String(comp.name || comp.competitor)}</p>
-                  {comp.visibility_score !== undefined && (
-                    <p className="text-xs text-slate-400">Visibility: {Math.round(comp.visibility_score as number)}</p>
+                  <p className="text-sm font-black text-white">{comp.competitor_name}</p>
+                  {comp.authority_score !== undefined && (
+                    <p className="text-xs text-slate-400">Authority: {Math.round(comp.authority_score)}</p>
                   )}
                 </div>
-                {comp.mention_rate !== undefined && (
-                  <p className="text-xs font-bold text-slate-300">{((comp.mention_rate as number) * 100).toFixed(0)}% mentions</p>
+                {comp.llm_mention_rate !== undefined && (
+                  <p className="text-xs font-bold text-slate-300">{(comp.llm_mention_rate * 100).toFixed(0)}% mentions</p>
                 )}
               </div>
             ))}
@@ -263,14 +263,19 @@ export default function ReportDetailPage() {
         <div className="bg-white dark:bg-slate-900/50 rounded-[2.5rem] border border-primary/20 p-8 shadow-sm space-y-6">
           <h2 className="text-lg font-black text-primary uppercase tracking-tighter">Improvement Roadmap</h2>
           <div className="space-y-4">
-            {data.improvement_roadmap.map((step: Record<string, unknown>, i: number) => (
+            {data.improvement_roadmap.map((step: ImprovementAction, i: number) => (
               <div key={i} className="flex gap-4 bg-white/50 dark:bg-black/20 p-5 rounded-3xl border border-primary/10">
                 <span className="shrink-0 w-8 h-8 rounded-xl bg-primary/10 text-primary flex items-center justify-center font-black text-sm">{i + 1}</span>
                 <div>
-                  <p className="text-sm font-black text-slate-900 dark:text-white">{String(step.title || step.action || `Step ${i + 1}`)}</p>
-                  {Boolean(step.description || step.detail) && (
-                    <p className="text-xs text-slate-400 mt-1 leading-relaxed">{String(step.description || step.detail)}</p>
-                  )}
+                  <p className="text-sm font-black text-slate-900 dark:text-white">{step.action || `Step ${i + 1}`}</p>
+                  <div className="flex gap-2 mt-1">
+                    <span className={`text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full ${
+                      step.impact === 'high' ? 'bg-red-500/10 text-red-400' :
+                      step.impact === 'medium' ? 'bg-amber-500/10 text-amber-400' :
+                      'bg-green-500/10 text-green-400'
+                    }`}>{step.impact} impact</span>
+                    <span className="text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full bg-slate-500/10 text-slate-400">{step.timeframe}</span>
+                  </div>
                 </div>
               </div>
             ))}
