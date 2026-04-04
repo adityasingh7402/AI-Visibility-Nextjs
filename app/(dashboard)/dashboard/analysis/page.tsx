@@ -89,13 +89,15 @@ export default function AnalysisPage() {
   useEffect(() => {
     if (progress?.status === 'completed' && analysisId) {
       markComplete();
-      const timer = setTimeout(() => router.push(`/dashboard/reports/${analysisId}`), 1500);
+      // Use report_id from SSE complete event if available, else fall back to analysisId
+      const targetId = progress.report_id || analysisId;
+      const timer = setTimeout(() => router.push(`/dashboard/reports/${targetId}`), 2000);
       return () => clearTimeout(timer);
     }
     if (progress?.status === 'failed') {
       markComplete();
     }
-  }, [progress?.status, analysisId, router, markComplete]);
+  }, [progress?.status, progress?.report_id, analysisId, router, markComplete]);
 
   // --- Handle SSE connection errors ---
   useEffect(() => {

@@ -294,6 +294,7 @@ export interface AnalysisProgress {
   has_result: boolean;
   estimated_seconds_remaining: number | null;
   timestamp: string;
+  report_id?: string | null;
 }
 
 // ── Phase display metadata ──

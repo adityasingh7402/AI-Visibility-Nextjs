@@ -306,7 +306,7 @@ export default function ReportDetailPage() {
         const status = axiosErr.response?.status;
         // Retry on 404/500 — report may not be saved yet (race condition with auto-save)
         if (remaining > 0 && (status === 404 || status === 500)) {
-          await new Promise(r => setTimeout(r, 2000));
+          await new Promise(r => setTimeout(r, 3000));
           return attempt(remaining - 1);
         }
         const msg = status === 404
@@ -316,7 +316,7 @@ export default function ReportDetailPage() {
         setLoading(false);
       }
     };
-    await attempt(3);
+    await attempt(8);
   }, []);
 
   useEffect(() => {

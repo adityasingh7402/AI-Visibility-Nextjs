@@ -125,6 +125,7 @@ export function useSSEProgress(analysisId: string | null) {
             status: data.status,
             progress_percent: 100,
             current_stage: 'completed',
+            report_id: data.report_id || null,
           } : null);
         } catch { /* ignore */ }
         es.close();

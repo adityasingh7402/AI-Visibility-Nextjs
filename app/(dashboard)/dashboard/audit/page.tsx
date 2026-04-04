@@ -68,15 +68,16 @@ export default function FullSiteAuditPage() {
     if (stage === 'completed' && analysisId && !redirectedRef.current) {
       redirectedRef.current = true;
       markComplete();
+      const targetId = sseProgress?.report_id || analysisId;
       const timer = setTimeout(() => {
-        router.push(`/dashboard/reports/${analysisId}`);
-      }, 1500);
+        router.push(`/dashboard/reports/${targetId}`);
+      }, 2000);
       return () => clearTimeout(timer);
     }
     if (stage === 'failed') {
       markError('Analysis failed');
     }
-  }, [stage, analysisId, router, markComplete, markError]);
+  }, [stage, analysisId, sseProgress?.report_id, router, markComplete, markError]);
 
   const canSubmit = url.trim() && brandName.trim() && Object.keys(selectedProviders).length > 0 && !submitting && !analysisId;
 
