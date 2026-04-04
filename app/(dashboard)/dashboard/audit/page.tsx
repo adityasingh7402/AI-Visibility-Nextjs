@@ -55,9 +55,9 @@ export default function FullSiteAuditPage() {
   const [region, setRegion] = useState('global');
 
   // SSE progress
-  const { progress: sseProgress, error: sseError, stageLabel } = useSSEProgress(analysisId ?? undefined);
-  const stage = sseProgress?.stage ?? null;
-  const percent = sseProgress?.percent ?? 0;
+  const { progress: sseProgress, error: sseError, stageLabel } = useSSEProgress(analysisId ?? null);
+  const stage = sseProgress?.current_stage ?? sseProgress?.status ?? null;
+  const percent = sseProgress?.progress_percent ?? 0;
 
   // Track if we already redirected
   const redirectedRef = useRef(false);
@@ -96,7 +96,7 @@ export default function FullSiteAuditPage() {
       models,
       category: category.trim() || undefined,
       competitors: competitors.trim() ? competitors.split(',').map((c) => c.trim()).filter(Boolean) : undefined,
-      brand_aliases: aliases.trim() ? aliases.split(',').map((a) => a.trim()).filter(Boolean) : undefined,
+      aliases: aliases.trim() ? aliases.split(',').map((a) => a.trim()).filter(Boolean) : undefined,
       brand_description: description.trim() || undefined,
       region: region !== 'global' ? region : undefined,
     };
