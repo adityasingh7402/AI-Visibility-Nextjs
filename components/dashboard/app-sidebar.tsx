@@ -13,6 +13,9 @@ import {
   Users,
   TrendingUp,
   LogOut,
+  Search,
+  MessageSquare,
+  ClipboardList,
   type LucideIcon,
 } from 'lucide-react';
 import {
@@ -40,13 +43,18 @@ interface NavItem {
   roles: string[];
 }
 
-const NAV_MAIN: NavItem[] = [
-  { label: 'Dashboard',    icon: LayoutDashboard, href: '/dashboard',          roles: ['CUSTOMER', 'SUPERADMIN'] },
-  { label: 'GEO Analysis', icon: Globe,           href: '/dashboard/analysis', roles: ['CUSTOMER', 'SUPERADMIN'] },
-  { label: 'Keywords',     icon: Key,             href: '/dashboard/keywords', roles: ['CUSTOMER', 'SUPERADMIN'] },
-  { label: 'Content',      icon: FileText,        href: '/dashboard/content',  roles: ['CUSTOMER', 'SUPERADMIN'] },
-  { label: 'Reports',      icon: BarChart3,       href: '/dashboard/reports',  roles: ['CUSTOMER', 'SUPERADMIN'] },
-  { label: 'Trends',       icon: TrendingUp,      href: '/dashboard/progress', roles: ['CUSTOMER', 'SUPERADMIN'] },
+const NAV_ENGINE: NavItem[] = [
+  { label: 'AI Visibility Scan', icon: Search,        href: '/dashboard/scan',     roles: ['CUSTOMER', 'SUPERADMIN'] },
+  { label: 'Keyword Test',       icon: Key,           href: '/dashboard/keywords', roles: ['CUSTOMER', 'SUPERADMIN'] },
+  { label: 'Prompt Check',       icon: MessageSquare, href: '/dashboard/prompt',   roles: ['CUSTOMER', 'SUPERADMIN'] },
+  { label: 'Content Lab',        icon: FileText,      href: '/dashboard/content',  roles: ['CUSTOMER', 'SUPERADMIN'] },
+  { label: 'Full Site Audit',    icon: Globe,         href: '/dashboard/audit',    roles: ['CUSTOMER', 'SUPERADMIN'] },
+];
+
+const NAV_ANALYTICS: NavItem[] = [
+  { label: 'Dashboard', icon: LayoutDashboard, href: '/dashboard',          roles: ['CUSTOMER', 'SUPERADMIN'] },
+  { label: 'Reports',   icon: ClipboardList,   href: '/dashboard/reports',  roles: ['CUSTOMER', 'SUPERADMIN'] },
+  { label: 'Trends',    icon: TrendingUp,      href: '/dashboard/trends',   roles: ['CUSTOMER', 'SUPERADMIN'] },
 ];
 
 const NAV_ADMIN: NavItem[] = [
@@ -77,7 +85,8 @@ export function AppSidebar({ userRole, userName, userEmail }: AppSidebarProps) {
   const filterByRole = (items: NavItem[]) =>
     items.filter((item) => item.roles.includes(userRole));
 
-  const mainItems = filterByRole(NAV_MAIN);
+  const mainItems = filterByRole(NAV_ENGINE);
+  const analyticsItems = filterByRole(NAV_ANALYTICS);
   const adminItems = filterByRole(NAV_ADMIN);
   const bottomItems = filterByRole(NAV_BOTTOM);
 
@@ -101,12 +110,36 @@ export function AppSidebar({ userRole, userName, userEmail }: AppSidebarProps) {
       <SidebarSeparator />
 
       <SidebarContent>
-        {/* Main nav */}
+        {/* AEO/GEO Engine section */}
         <SidebarGroup>
-          <SidebarGroupLabel>Navigation</SidebarGroupLabel>
+          <SidebarGroupLabel>AEO/GEO Engine</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
               {mainItems.map((item) => (
+                <SidebarMenuItem key={item.href}>
+                  <SidebarMenuButton
+                    asChild
+                    isActive={isActive(item.href)}
+                    tooltip={item.label}
+                    className={activeClass}
+                  >
+                    <Link href={item.href}>
+                      <item.icon />
+                      <span>{item.label}</span>
+                    </Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              ))}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+
+        {/* Analytics section */}
+        <SidebarGroup>
+          <SidebarGroupLabel>Analytics</SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              {analyticsItems.map((item) => (
                 <SidebarMenuItem key={item.href}>
                   <SidebarMenuButton
                     asChild

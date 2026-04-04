@@ -35,9 +35,9 @@ const STAT_META = [
 
 // ── Quick actions ────────────────────────────────────────────────────────────
 const QUICK_ACTIONS = [
-  { label: 'Run GEO Analysis', desc: 'Full visibility scan', href: '/dashboard/analysis', icon: BarChart3, color: 'text-primary bg-primary/10' },
-  { label: 'Discover Keywords', desc: 'Find AI visibility gaps', href: '/dashboard/keywords', icon: Search, color: 'text-blue-500 bg-blue-500/10' },
-  { label: 'Validate Content', desc: 'Check citability score', href: '/dashboard/content', icon: FileText, color: 'text-emerald-500 bg-emerald-500/10' },
+  { label: 'AI Visibility Scan', desc: 'Discover & test keywords', href: '/dashboard/scan', icon: Search, color: 'text-primary bg-primary/10' },
+  { label: 'Full Site Audit', desc: 'Comprehensive 25-query audit', href: '/dashboard/audit', icon: BarChart3, color: 'text-blue-500 bg-blue-500/10' },
+  { label: 'Content Lab', desc: 'Validate & enhance content', href: '/dashboard/content', icon: FileText, color: 'text-emerald-500 bg-emerald-500/10' },
 ];
 
 // ── Analysis row ─────────────────────────────────────────────────────────────

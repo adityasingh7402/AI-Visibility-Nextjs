@@ -119,7 +119,7 @@ export function ProviderSelector({ selected, onChange, compact }: ProviderSelect
       )}>
         {providerList.map((provider) => {
           const isSelected = !!selected[provider.id];
-          const selectedModel = selected[provider.id];
+          const selectedModel = selected[provider.id] ?? '';
           const icon = PROVIDER_ICONS[provider.id] || '🔮';
 
           return (
@@ -159,7 +159,7 @@ export function ProviderSelector({ selected, onChange, compact }: ProviderSelect
               {isSelected && provider.models.length > 1 && (
                 <Select
                   value={selectedModel}
-                  onValueChange={(v) => selectModel(provider.id, v)}
+                  onValueChange={(v: string | null) => v && selectModel(provider.id, v)}
                 >
                   <SelectTrigger className="h-7 text-xs">
                     <SelectValue />
