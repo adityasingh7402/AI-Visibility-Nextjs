@@ -163,7 +163,7 @@ export default function ReportsPage() {
           <Button onClick={() => fetchReports(offset)} variant="outline" size="sm" className="rounded-lg gap-2 font-semibold">
             <RefreshCw className="h-3.5 w-3.5" /> Refresh
           </Button>
-          <Link href="/dashboard/analysis">
+          <Link href="/dashboard/audit">
             <Button size="sm" className="rounded-lg gap-2 font-semibold shadow-sm">
               <Plus className="h-3.5 w-3.5" /> New Analysis
             </Button>
@@ -242,7 +242,7 @@ export default function ReportsPage() {
               : 'Run your first analysis to get started.'}
           </p>
           {!hasFilters && (
-            <Link href="/dashboard/analysis">
+            <Link href="/dashboard/audit">
               <Button size="sm" className="rounded-lg font-semibold">Run Analysis</Button>
             </Link>
           )}

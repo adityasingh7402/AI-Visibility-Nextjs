@@ -119,7 +119,7 @@ export default function DashboardPage() {
             Your AI visibility performance at a glance.
           </p>
         </div>
-        <Link href="/dashboard/analysis">
+        <Link href="/dashboard/audit">
           <Button size="sm" className="rounded-lg font-semibold gap-2 shadow-sm">
             <Plus className="h-3.5 w-3.5" /> New Analysis
           </Button>
@@ -187,7 +187,7 @@ export default function DashboardPage() {
               <p className="text-sm text-muted-foreground mb-4">
                 Run your first GEO analysis to see results here.
               </p>
-              <Link href="/dashboard/analysis">
+              <Link href="/dashboard/audit">
                 <Button size="sm" className="rounded-lg font-semibold">Start Analysis</Button>
               </Link>
             </div>
