@@ -24,6 +24,7 @@ import type {
   StoredGeoAnalysis,
   AnalysisProgress,
 } from './report-types';
+import type { ProviderRegistry } from './types/providers';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
 
@@ -375,6 +376,60 @@ class GEOApi {
   async getReport(id: string): Promise<Record<string, unknown>> {
     const { data } = await this.client.get(`/api/v1/reports/${id}`);
     return data as Record<string, unknown>;
+  }
+
+  // ---- Provider Registry ----
+
+  async getProviders(): Promise<ProviderRegistry> {
+    const { data } = await this.client.get('/api/v1/providers');
+    return data as ProviderRegistry;
+  }
+
+  // ---- Keyword Generation (Phase 2) ----
+
+  async generateKeywords(request: {
+    brand_name: string;
+    category: string;
+    competitors?: string[];
+    target_audience?: string;
+    url?: string;
+    discovery_results?: Record<string, unknown>;
+    llm_providers?: string[];
+    keyword_style?: string;
+  }): Promise<Record<string, unknown>> {
+    const { data } = await this.client.post('/api/v1/keywords/generate', request);
+    return data as Record<string, unknown>;
+  }
+
+  // ---- Content Enhancement (Phase 2) ----
+
+  async enhanceContent(request: {
+    content: string;
+    brand_name: string;
+    target_queries?: string[];
+    competitors?: string[];
+    content_type?: string;
+    validation_results?: Record<string, unknown>;
+    enhancement_mode?: string;
+    llm_provider?: string;
+  }): Promise<Record<string, unknown>> {
+    const { data } = await this.client.post('/api/v1/content/enhance', request);
+    return data as Record<string, unknown>;
+  }
+
+  // ---- Prompt Check (wraps existing validate) ----
+
+  async checkPrompt(request: {
+    brand_name: string;
+    query: string;
+    llm_providers?: string[];
+  }): Promise<KeywordValidateResponse> {
+    const { data } = await this.client.post('/api/v1/keywords/validate', {
+      brand_name: request.brand_name,
+      query: request.query,
+      llm_providers: request.llm_providers,
+    });
+    return data as KeywordValidateResponse;
   }
 }
 

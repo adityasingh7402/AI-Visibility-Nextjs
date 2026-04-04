@@ -7,6 +7,7 @@ import type {
   KeywordDiscoveryResponse,
   KeywordTestRequest,
   KeywordTestResponse,
+  KeywordValidateResponse,
   ContentValidationRequest,
   ContentValidationResponse,
   ContentLiveTestRequest,
@@ -22,6 +23,7 @@ import type {
   StoredGeoAnalysis,
   AnalysisProgress,
 } from '@/lib/report-types';
+import type { ProviderRegistry } from '@/lib/types/providers';
 
 // Helper: extract error message from unknown catch value
 type ApiErr = { response?: { data?: { error?: string } }; message?: string };
@@ -334,4 +336,125 @@ export function useGeoAnalysis() {
   }, []);
 
   return { data, loading, error, fetchAnalysis };
+}
+
+// ---- useProviders (provider registry) ----
+export function useProviders() {
+  const [providers, setProviders] = useState<ProviderRegistry | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const fetchProviders = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const result = await geoApi.getProviders();
+      setProviders(result);
+      return result;
+    } catch (e: unknown) {
+      setError(apiMsg(e, 'Failed to load providers'));
+      throw e;
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  return { providers, loading, error, fetchProviders };
+}
+
+// ---- usePromptCheck ----
+export function usePromptCheck() {
+  const [data, setData] = useState<KeywordValidateResponse | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const check = useCallback(async (request: {
+    brand_name: string;
+    query: string;
+    llm_providers?: string[];
+  }) => {
+    setLoading(true);
+    setError(null);
+    try {
+      const result = await geoApi.checkPrompt(request);
+      setData(result);
+      return result;
+    } catch (e: unknown) {
+      setError(apiMsg(e, 'Prompt check failed'));
+      throw e;
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  const reset = useCallback(() => { setData(null); setError(null); }, []);
+  return { data, loading, error, check, reset };
+}
+
+// ---- useKeywordGeneration ----
+export function useKeywordGeneration() {
+  const [data, setData] = useState<Record<string, unknown> | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const generate = useCallback(async (request: {
+    brand_name: string;
+    category: string;
+    competitors?: string[];
+    target_audience?: string;
+    url?: string;
+    discovery_results?: Record<string, unknown>;
+    llm_providers?: string[];
+    keyword_style?: string;
+  }) => {
+    setLoading(true);
+    setError(null);
+    try {
+      const result = await geoApi.generateKeywords(request);
+      setData(result);
+      return result;
+    } catch (e: unknown) {
+      setError(apiMsg(e, 'Keyword generation failed'));
+      throw e;
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  const reset = useCallback(() => { setData(null); setError(null); }, []);
+  return { data, loading, error, generate, reset };
+}
+
+// ---- useContentEnhancement ----
+export function useContentEnhancement() {
+  const [data, setData] = useState<Record<string, unknown> | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const enhance = useCallback(async (request: {
+    content: string;
+    brand_name: string;
+    target_queries?: string[];
+    competitors?: string[];
+    content_type?: string;
+    validation_results?: Record<string, unknown>;
+    enhancement_mode?: string;
+    llm_provider?: string;
+  }) => {
+    setLoading(true);
+    setError(null);
+    try {
+      const result = await geoApi.enhanceContent(request);
+      setData(result);
+      return result;
+    } catch (e: unknown) {
+      setError(apiMsg(e, 'Content enhancement failed'));
+      throw e;
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  const reset = useCallback(() => { setData(null); setError(null); }, []);
+  return { data, loading, error, enhance, reset };
 }
