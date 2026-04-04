@@ -4,7 +4,7 @@ import { useState, useCallback, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useFullAnalysis } from '@/hooks/useGeo';
 import { useSSEProgress } from '@/hooks/useSSEProgress';
-import type { GeoAnalysisRequest, ScanMode } from '@/lib/report-types';
+import type { GeoAnalysisRequest, GeoProvider, ScanMode } from '@/lib/report-types';
 import type { ProviderSelection } from '@/lib/types/providers';
 import { ProviderSelector } from '@/components/geo/ProviderSelector';
 import { ApiErrorToast } from '@/components/geo/ApiErrorToast';
@@ -55,7 +55,9 @@ export default function FullSiteAuditPage() {
   const [region, setRegion] = useState('global');
 
   // SSE progress
-  const { stage, percent, error: sseError } = useSSEProgress(analysisId ?? undefined);
+  const { progress: sseProgress, error: sseError, stageLabel } = useSSEProgress(analysisId ?? undefined);
+  const stage = sseProgress?.stage ?? null;
+  const percent = sseProgress?.percent ?? 0;
 
   // Track if we already redirected
   const redirectedRef = useRef(false);
@@ -90,7 +92,7 @@ export default function FullSiteAuditPage() {
       url: url.trim(),
       brand_name: brandName.trim(),
       scan_mode: scanMode,
-      providers: providerIds,
+      providers: providerIds as GeoProvider[],
       models,
       category: category.trim() || undefined,
       competitors: competitors.trim() ? competitors.split(',').map((c) => c.trim()).filter(Boolean) : undefined,

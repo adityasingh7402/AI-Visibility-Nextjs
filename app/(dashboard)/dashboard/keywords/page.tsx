@@ -13,7 +13,7 @@ import { cn } from '@/lib/utils';
 import { Key, Loader2, Plus, X, ClipboardPaste, RotateCcw } from 'lucide-react';
 
 export default function KeywordTestPage() {
-  const { data, loading, error, test, reset: resetHook } = useKeywordTest();
+  const { data, loading, error, test } = useKeywordTest();
 
   const [brandName, setBrandName] = useState('');
   const [keywords, setKeywords] = useState<string[]>([]);
@@ -52,7 +52,6 @@ export default function KeywordTestPage() {
   }, [canSubmit, brandName, keywords, selectedProviders, test]);
 
   const handleReset = () => {
-    resetHook();
     setKeywords([]);
     setKeywordInput('');
   };
