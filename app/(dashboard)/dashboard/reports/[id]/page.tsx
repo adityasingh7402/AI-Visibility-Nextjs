@@ -295,19 +295,28 @@ export default function ReportDetailPage() {
   const [error, setError] = useState<string | null>(null);
 
   const fetchReport = useCallback(async (id: string) => {
-    try {
-      const data = await geoApi.getReport(id);
-      setReport(data as unknown as RawReport);
-      setError(null);
-    } catch (err: unknown) {
-      const axiosErr = err as { response?: { status?: number; data?: { error?: string } } };
-      const msg = axiosErr.response?.status === 404
-        ? 'Report not found'
-        : axiosErr.response?.data?.error || 'Failed to load report';
-      setError(msg);
-    } finally {
-      setLoading(false);
-    }
+    const attempt = async (remaining: number): Promise<void> => {
+      try {
+        const data = await geoApi.getReport(id);
+        setReport(data as unknown as RawReport);
+        setError(null);
+        setLoading(false);
+      } catch (err: unknown) {
+        const axiosErr = err as { response?: { status?: number; data?: { error?: string } } };
+        const status = axiosErr.response?.status;
+        // Retry on 404/500 — report may not be saved yet (race condition with auto-save)
+        if (remaining > 0 && (status === 404 || status === 500)) {
+          await new Promise(r => setTimeout(r, 2000));
+          return attempt(remaining - 1);
+        }
+        const msg = status === 404
+          ? 'Report not found'
+          : axiosErr.response?.data?.error || 'Failed to load report';
+        setError(msg);
+        setLoading(false);
+      }
+    };
+    await attempt(3);
   }, []);
 
   useEffect(() => {
