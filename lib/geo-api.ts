@@ -378,6 +378,13 @@ class GEOApi {
     return data as Record<string, unknown>;
   }
 
+  // ---- Active Pipelines (running analyses) ----
+
+  async getActivePipelines(): Promise<ActivePipeline[]> {
+    const { data } = await this.client.get('/api/v1/progress/active');
+    return data as ActivePipeline[];
+  }
+
   // ---- Provider Registry ----
 
   async getProviders(): Promise<ProviderRegistry> {
