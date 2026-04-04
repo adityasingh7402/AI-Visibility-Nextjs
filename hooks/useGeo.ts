@@ -22,6 +22,7 @@ import type {
   GeoAnalysisResponse,
   StoredGeoAnalysis,
   AnalysisProgress,
+  ActivePipeline,
 } from '@/lib/report-types';
 import type { ProviderRegistry } from '@/lib/types/providers';
 
@@ -457,4 +458,25 @@ export function useContentEnhancement() {
 
   const reset = useCallback(() => { setData(null); setError(null); }, []);
   return { data, loading, error, enhance, reset };
+}
+
+// ---- Active Pipelines (running analyses) ----
+
+export function useActivePipelines() {
+  const [pipelines, setPipelines] = useState<ActivePipeline[]>([]);
+  const [loading, setLoading] = useState(false);
+
+  const refresh = useCallback(async () => {
+    setLoading(true);
+    try {
+      const result = await geoApi.getActivePipelines();
+      setPipelines(result);
+    } catch {
+      setPipelines([]);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  return { pipelines, loading, refresh };
 }
