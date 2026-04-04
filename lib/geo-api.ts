@@ -23,6 +23,7 @@ import type {
   GeoAnalysisResponse,
   StoredGeoAnalysis,
   AnalysisProgress,
+  ActivePipeline,
 } from './report-types';
 import type { ProviderRegistry } from './types/providers';
 

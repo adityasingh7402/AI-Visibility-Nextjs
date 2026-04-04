@@ -310,6 +310,17 @@ export const PHASE_DISPLAY: Record<ProgressPhase, { label: string; icon: string;
   failed:           { label: 'Failed',           icon: '❌', description: 'Analysis failed' },
 };
 
+// ── Active Pipeline (running analysis) ──
+
+export interface ActivePipeline {
+  id: string;
+  analysis_id: string;
+  brand_name: string;
+  status: string;
+  started_at: string;
+  progress: AnalysisProgress | null;
+}
+
 // ============================================================
 // Stored Analysis (from Supabase analyses table)
 // ============================================================
