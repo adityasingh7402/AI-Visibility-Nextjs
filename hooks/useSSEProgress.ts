@@ -105,7 +105,13 @@ export function useSSEProgress(analysisId: string | null) {
       es.addEventListener('progress', (event: MessageEvent) => {
         try {
           const data = JSON.parse(event.data) as AnalysisProgress;
-          setProgress(data);
+          // Only update if progress moves forward (guard against server-side regression)
+          setProgress(prev => {
+            if (!prev) return data;
+            if (data.progress_percent >= prev.progress_percent) return data;
+            // Keep higher progress but update other fields (stage label, message)
+            return { ...data, progress_percent: prev.progress_percent };
+          });
         } catch {
           console.error('[SSE] Failed to parse progress event');
         }
@@ -114,7 +120,12 @@ export function useSSEProgress(analysisId: string | null) {
       es.addEventListener('complete', (event: MessageEvent) => {
         try {
           const data = JSON.parse(event.data);
-          setProgress(prev => prev ? { ...prev, status: data.status } : null);
+          setProgress(prev => prev ? {
+            ...prev,
+            status: data.status,
+            progress_percent: 100,
+            current_stage: 'completed',
+          } : null);
         } catch { /* ignore */ }
         es.close();
         setConnected(false);
