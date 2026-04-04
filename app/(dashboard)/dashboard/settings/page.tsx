@@ -5,7 +5,6 @@ import { useRouter } from 'next/navigation';
 import {
   User,
   Mail,
-  Building2,
   CalendarDays,
   LogOut,
   Loader2,
@@ -31,7 +30,7 @@ const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
 interface UserProfile {
   id: string;
   display_name: string | null;
-  company_name: string | null;
+  email: string | null;
   plan: string;
   api_calls_used: number;
   api_calls_limit: number;
@@ -65,7 +64,6 @@ export default function SettingsPage() {
   const [email, setEmail] = useState('');
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [displayName, setDisplayName] = useState('');
-  const [companyName, setCompanyName] = useState('');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [signingOut, setSigningOut] = useState(false);
@@ -87,7 +85,6 @@ export default function SettingsPage() {
       const data: UserProfile = await res.json();
       setProfile(data);
       setDisplayName(data.display_name ?? '');
-      setCompanyName(data.company_name ?? '');
     } catch {
       toast.error('Could not load profile. Please try again.');
     } finally {
@@ -108,7 +105,6 @@ export default function SettingsPage() {
         headers,
         body: JSON.stringify({
           display_name: displayName,
-          company_name: companyName,
         }),
       });
       if (!res.ok) throw new Error('Failed to update profile');
@@ -135,7 +131,7 @@ export default function SettingsPage() {
     }
   };
 
-  const usagePercent = profile
+  const usagePercent = profile && profile.api_calls_limit > 0
     ? Math.min(
         Math.round((profile.api_calls_used / profile.api_calls_limit) * 100),
         100
@@ -209,23 +205,6 @@ export default function SettingsPage() {
               value={displayName}
               onChange={(e) => setDisplayName(e.target.value)}
               placeholder="Your name"
-            />
-          </div>
-
-          {/* Company */}
-          <div className="space-y-2">
-            <Label
-              htmlFor="settings-company"
-              className="flex items-center gap-1.5"
-            >
-              <Building2 className="h-3.5 w-3.5 text-muted-foreground" />
-              Company / Organization
-            </Label>
-            <Input
-              id="settings-company"
-              value={companyName}
-              onChange={(e) => setCompanyName(e.target.value)}
-              placeholder="Acme Inc."
             />
           </div>
 
