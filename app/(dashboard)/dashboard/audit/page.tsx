@@ -106,7 +106,7 @@ export default function FullSiteAuditPage() {
   }, [canSubmit, url, brandName, scanMode, selectedProviders, category, competitors, aliases, description, region, submit]);
 
   const isRunning = !!analysisId && stage !== 'completed' && stage !== 'failed';
-  const friendlyMessage = stage ? FRIENDLY_STAGES[stage] ?? `Processing: ${stage}…` : 'Submitting analysis…';
+  const friendlyMessage = stageLabel || (stage ? FRIENDLY_STAGES[stage] ?? `Processing: ${stage}…` : 'Submitting analysis…');
 
   return (
     <div className="max-w-3xl mx-auto space-y-6 pb-12">
