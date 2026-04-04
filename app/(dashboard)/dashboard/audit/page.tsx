@@ -8,6 +8,7 @@ import type { GeoAnalysisRequest, GeoProvider, ScanMode } from '@/lib/report-typ
 import type { ProviderSelection } from '@/lib/types/providers';
 import { ProviderSelector } from '@/components/geo/ProviderSelector';
 import { ApiErrorToast } from '@/components/geo/ApiErrorToast';
+import { setActiveAnalysis } from '@/components/dashboard/ActiveAnalysisBanner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -102,7 +103,10 @@ export default function FullSiteAuditPage() {
     };
 
     redirectedRef.current = false;
-    await submit(request);
+    const result = await submit(request);
+    if (result?.analysis_id) {
+      setActiveAnalysis(result.analysis_id, brandName.trim());
+    }
   }, [canSubmit, url, brandName, scanMode, selectedProviders, category, competitors, aliases, description, region, submit]);
 
   const isRunning = !!analysisId && stage !== 'completed' && stage !== 'failed';
