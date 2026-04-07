@@ -10,7 +10,8 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { ArrowLeft, Calendar, Globe, Key, FileText } from 'lucide-react';
+import { ArrowLeft, Calendar, Globe, Key, FileText, FileDown } from 'lucide-react';
+import { MarkdownReportViewer } from '@/components/dashboard/MarkdownReportViewer';
 
 // --- Types for the raw report from GET /reports/:id ---
 interface RawReport {
@@ -24,6 +25,7 @@ interface RawReport {
   overall_score?: number;
   grade?: string;
   scan_mode?: string;
+  markdown_report?: string | null;
   // Full payloads from unified reports table
   response_payload?: Record<string, unknown>;
   request_payload?: Record<string, unknown>;
@@ -349,6 +351,9 @@ export default function ReportDetailPage() {
 
   const meta = TYPE_META[report._type] || TYPE_META.geo;
   const score = getMainScore(report);
+  const markdownContent = report.markdown_report
+    || (report.response_payload?.markdown_report as string | undefined)
+    || null;
 
   return (
     <div className="space-y-6">
@@ -395,11 +400,23 @@ export default function ReportDetailPage() {
 
         {/* Main content */}
         <div className="lg:col-span-3">
-          <Tabs defaultValue="details">
+          <Tabs defaultValue={markdownContent ? 'report' : 'details'}>
             <TabsList>
+              {markdownContent && <TabsTrigger value="report">📄 Report</TabsTrigger>}
               <TabsTrigger value="details">Details</TabsTrigger>
               <TabsTrigger value="raw">Raw Data</TabsTrigger>
             </TabsList>
+
+            {markdownContent && (
+              <TabsContent value="report" className="mt-4">
+                <MarkdownReportViewer
+                  markdown={markdownContent}
+                  brandName={report.brand_name}
+                  reportDate={report.created_at}
+                  reportId={report.id}
+                />
+              </TabsContent>
+            )}
 
             <TabsContent value="details" className="mt-4">
               {report._type === 'geo' && <GeoDetails report={report} />}

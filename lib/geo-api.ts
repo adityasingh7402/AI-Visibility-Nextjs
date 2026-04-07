@@ -379,6 +379,22 @@ class GEOApi {
     return data as Record<string, unknown>;
   }
 
+  async getReportFull(id: string): Promise<Record<string, unknown>> {
+    const { data } = await this.client.get(`/api/v1/reports/${id}/full`);
+    return data as Record<string, unknown>;
+  }
+
+  async getReportMarkdownUrl(id: string): string {
+    return `${this.client.defaults.baseURL || ''}/api/v1/reports/${id}/markdown`;
+  }
+
+  async downloadReportMarkdown(id: string): Promise<string> {
+    const { data } = await this.client.get(`/api/v1/reports/${id}/markdown`, {
+      responseType: 'text',
+    });
+    return data as string;
+  }
+
   // ---- Active Pipelines (running analyses) ----
 
   async getActivePipelines(): Promise<ActivePipeline[]> {
