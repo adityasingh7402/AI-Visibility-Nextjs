@@ -10,7 +10,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { ArrowLeft, Calendar, Globe, Key, FileText, FileDown } from 'lucide-react';
+import { ArrowLeft, Calendar, Globe, Key, FileText } from 'lucide-react';
 import { MarkdownReportViewer } from '@/components/dashboard/MarkdownReportViewer';
 
 // --- Types for the raw report from GET /reports/:id ---
