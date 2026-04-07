@@ -384,7 +384,7 @@ class GEOApi {
     return data as Record<string, unknown>;
   }
 
-  async getReportMarkdownUrl(id: string): string {
+  getReportMarkdownUrl(id: string): string {
     return `${this.client.defaults.baseURL || ''}/api/v1/reports/${id}/markdown`;
   }
 
