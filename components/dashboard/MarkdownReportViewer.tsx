@@ -43,36 +43,40 @@ export function MarkdownReportViewer({
 
   const handleDownloadPdf = useCallback(async () => {
     if (!markdown) return;
-    // Dynamic import to avoid SSR issues
-    const html2pdf = (await import('html2pdf.js')).default;
-    const container = document.createElement('div');
-    container.className = 'prose prose-sm max-w-none';
-    container.style.padding = '32px';
-    container.style.fontFamily = 'system-ui, sans-serif';
+    try {
+      // Dynamic import to avoid SSR issues
+      const html2pdf = (await import('html2pdf.js')).default;
+      const container = document.createElement('div');
+      container.className = 'prose prose-sm max-w-none';
+      container.style.padding = '32px';
+      container.style.fontFamily = 'system-ui, sans-serif';
 
-    // Render markdown to HTML using a temporary ReactDOM render
-    // Simpler approach: convert markdown to HTML via the existing rendered element
-    const rendered = document.querySelector('[data-report-markdown]');
-    if (rendered) {
-      container.innerHTML = rendered.innerHTML;
-    } else {
-      container.innerText = markdown;
+      // Render markdown to HTML using a temporary ReactDOM render
+      // Simpler approach: convert markdown to HTML via the existing rendered element
+      const rendered = document.querySelector('[data-report-markdown]');
+      if (rendered) {
+        container.innerHTML = rendered.innerHTML;
+      } else {
+        container.innerText = markdown;
+      }
+
+      const safeBrand = (brandName || 'report').replace(/[^a-zA-Z0-9_-]/g, '_');
+      const dateStr = reportDate
+        ? new Date(reportDate).toISOString().slice(0, 10)
+        : new Date().toISOString().slice(0, 10);
+
+      html2pdf()
+        .set({
+          margin: [10, 10, 10, 10],
+          filename: `ai-visibility-${safeBrand}-${dateStr}.pdf`,
+          html2canvas: { scale: 2, useCORS: true },
+          jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
+        })
+        .from(container)
+        .save();
+    } catch (err) {
+      console.error('[PDF] Export failed:', err);
     }
-
-    const safeBrand = (brandName || 'report').replace(/[^a-zA-Z0-9_-]/g, '_');
-    const dateStr = reportDate
-      ? new Date(reportDate).toISOString().slice(0, 10)
-      : new Date().toISOString().slice(0, 10);
-
-    html2pdf()
-      .set({
-        margin: [10, 10, 10, 10],
-        filename: `ai-visibility-${safeBrand}-${dateStr}.pdf`,
-        html2canvas: { scale: 2, useCORS: true },
-        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
-      })
-      .from(container)
-      .save();
   }, [markdown, brandName, reportDate]);
 
   const handleCopyMarkdown = useCallback(async () => {

@@ -234,7 +234,9 @@ export function useFullAnalysis() {
     setProgress(null);
     try {
       const result = await geoApi.runAnalyzeAsync(request);
-      setAnalysisId(result.analysis_id);
+      if (result?.analysis_id) {
+        setAnalysisId(result.analysis_id);
+      }
       return result;
     } catch (e: unknown) {
       setError(apiMsg(e, 'Analysis failed'));

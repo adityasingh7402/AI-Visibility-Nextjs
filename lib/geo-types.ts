@@ -399,13 +399,14 @@ export interface VisibilityTrend {
 }
 
 export interface ProgressTrendResponse {
-  brand_name: string;
-  category: string;
-  source: 'local' | 'python';
-  trend: VisibilityTrend;
-  latest_snapshot?: Record<string, unknown>;
-  recommendation?: string;
-  timestamp: string;
+  data_points: {
+    timestamp: string;
+    overall_visibility: number;
+    report_type: string;
+    report_id: string;
+  }[];
+  trend_direction: 'up' | 'down' | 'stable';
+  total_analyses: number;
 }
 
 // ---- Supabase Table Types ----

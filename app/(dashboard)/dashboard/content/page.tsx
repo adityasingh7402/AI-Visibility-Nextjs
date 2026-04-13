@@ -197,7 +197,19 @@ export default function ContentLabPage() {
   };
 
   const handleCopy = async (text: string) => {
-    await navigator.clipboard.writeText(text);
+    try {
+      await navigator.clipboard.writeText(text);
+    } catch {
+      // Fallback for non-HTTPS or restricted contexts
+      const ta = document.createElement('textarea');
+      ta.value = text;
+      ta.style.position = 'fixed';
+      ta.style.opacity = '0';
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand('copy');
+      document.body.removeChild(ta);
+    }
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
@@ -243,7 +255,7 @@ export default function ContentLabPage() {
             </div>
             <div className="space-y-2">
               <Label>Content Type</Label>
-              <Select value={contentType} onValueChange={v => v && setContentType(v as ContentType)}>
+              <Select value={contentType} onValueChange={v => setContentType(v as ContentType)}>
                 <SelectTrigger className="w-full">
                   <SelectValue />
                 </SelectTrigger>

@@ -41,7 +41,7 @@ export interface QuotaInfo {
  */
 export async function getBrands(): Promise<Brand[]> {
   const data = await geoApi.getBrands();
-  return data.brands;
+  return data?.brands ?? [];
 }
 
 /**
@@ -80,7 +80,7 @@ export async function deleteBrand(id: string): Promise<void> {
  */
 export async function getBrandAnalyses(id: string, limit = 20) {
   const data = await geoApi.getBrandAnalyses(id, limit);
-  return data.analyses;
+  return data?.analyses ?? [];
 }
 
 /**

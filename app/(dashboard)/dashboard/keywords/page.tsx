@@ -36,6 +36,8 @@ export default function KeywordTestPage() {
     navigator.clipboard.readText().then((text) => {
       const newKws = text.split(/[,\n]+/).map((k) => k.trim()).filter(Boolean);
       setKeywords((prev) => [...new Set([...prev, ...newKws])]);
+    }).catch(() => {
+      // Clipboard access denied or unavailable — silently ignore
     });
   };
 
