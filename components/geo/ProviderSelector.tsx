@@ -125,6 +125,16 @@ export function ProviderSelector({ selected, onChange, compact }: ProviderSelect
           return (
             <div
               key={provider.id}
+              role="button"
+              tabIndex={0}
+              aria-pressed={isSelected}
+              onClick={() => toggleProvider(provider)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  toggleProvider(provider);
+                }
+              }}
               className={cn(
                 'relative rounded-lg border p-3 cursor-pointer transition-all',
                 isSelected
@@ -133,10 +143,7 @@ export function ProviderSelector({ selected, onChange, compact }: ProviderSelect
               )}
             >
               {/* Toggle area */}
-              <div
-                className="flex items-center gap-2 mb-2"
-                onClick={() => toggleProvider(provider)}
-              >
+              <div className="flex items-center gap-2 mb-2">
                 <span className="text-lg">{icon}</span>
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium truncate">{provider.display_name}</p>
@@ -157,24 +164,28 @@ export function ProviderSelector({ selected, onChange, compact }: ProviderSelect
 
               {/* Model selector (only when selected) */}
               {isSelected && provider.models.length > 1 && (
-                <Select
-                  value={selectedModel}
-                  onValueChange={(v: string | null) => v && selectModel(provider.id, v)}
-                >
-                  <SelectTrigger className="h-7 text-xs">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {provider.models.map((model) => (
-                      <SelectItem key={model.id} value={model.id} className="text-xs">
-                        {model.name}
-                        {model.is_default && (
-                          <span className="text-muted-foreground ml-1">(default)</span>
-                        )}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <div onClick={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()}>
+                  <Select
+                    value={selectedModel}
+                    onValueChange={(v: string | null) => {
+                      if (v != null) selectModel(provider.id, v);
+                    }}
+                  >
+                    <SelectTrigger className="h-7 text-xs">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {provider.models.map((model) => (
+                        <SelectItem key={model.id} value={model.id} className="text-xs">
+                          {model.name}
+                          {model.is_default && (
+                            <span className="text-muted-foreground ml-1">(default)</span>
+                          )}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
               )}
 
               {/* Single model display */}

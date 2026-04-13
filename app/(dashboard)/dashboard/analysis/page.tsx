@@ -63,7 +63,10 @@ export default function AnalysisPage() {
   // --- Derived ---
   const isRunning = !!analysisId && loading;
   const selectedProviderIds = Object.keys(providerSelection);
-  const isValid = url.trim().length > 0 && brandName.trim().length > 0 && selectedProviderIds.length > 0;
+  const isValid = url.trim().length > 0
+    && brandName.trim().length > 0
+    && category.trim().length > 0
+    && selectedProviderIds.length > 0;
 
   // Lookup display name for a provider ID
   const providerDisplayName = useCallback((id: string): string => {
@@ -110,9 +113,9 @@ export default function AnalysisPage() {
     const request: GeoAnalysisRequest = {
       url: url.trim(),
       brand_name: brandName.trim(),
+      category: category.trim(),
       providers: selectedProviderIds as GeoProvider[],
       scan_mode: scanMode,
-      ...(category && { category }),
       ...(aliases && { aliases: csvToArray(aliases) }),
       ...(competitors && { competitors: csvToArray(competitors) }),
       ...(brandDescription && { brand_description: brandDescription }),
@@ -222,7 +225,7 @@ export default function AnalysisPage() {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="category">Category</Label>
+              <Label htmlFor="category">Category *</Label>
               <Input
                 id="category"
                 placeholder="e.g. Project Management"
@@ -392,6 +395,8 @@ export default function AnalysisPage() {
                   ? 'URL is required'
                   : !brandName.trim()
                     ? 'Brand name is required'
+                    : !category.trim()
+                      ? 'Category is required'
                     : 'Select at least 1 provider'}
               </p>
             )}
