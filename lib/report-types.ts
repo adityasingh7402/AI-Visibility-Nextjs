@@ -5,7 +5,7 @@
 
 // ── Scan mode / analysis type enums ──
 export type ScanMode = 'quick' | 'full' | 'deep';
-export type GeoAnalysisType = 'full' | 'geo_only' | 'seo_only' | 'marketing_only';
+export type GeoAnalysisType = 'full' | 'aeo_scan' | 'combined' | 'geo_only' | 'seo_only' | 'marketing_only';
 export type IndustryProfile = 'saas' | 'local_business' | 'ecommerce' | 'media_publisher';
 export type GeoProvider = 'chatgpt' | 'gemini' | 'perplexity' | 'claude' | 'grok' | 'nvidia' | 'digitalocean';
 
@@ -248,6 +248,11 @@ export interface GeoAnalysisRequest {
   category?: string;
   brand_description?: string;
   region?: string;
+  target_audiences?: string[];
+  key_products?: string[];
+  unique_selling_points?: string[];
+  brand_tone?: string;
+  primary_language?: string;
   analysis_type?: GeoAnalysisType;
   scan_mode?: ScanMode;
   industry_profile?: IndustryProfile;

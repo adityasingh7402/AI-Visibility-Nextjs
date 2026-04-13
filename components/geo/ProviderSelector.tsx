@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useProviders } from '@/hooks/useGeo';
 import type { Provider, ProviderSelection } from '@/lib/types/providers';
 import { getDefaultModel } from '@/lib/types/providers';
@@ -13,7 +13,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Loader2, Globe, Check } from 'lucide-react';
+import { Loader2, Globe, Check, Search } from 'lucide-react';
 
 interface ProviderSelectorProps {
   /** Map of providerId → selected modelId */
@@ -36,12 +36,26 @@ const PROVIDER_ICONS: Record<string, string> = {
 
 export function ProviderSelector({ selected, onChange, compact }: ProviderSelectorProps) {
   const { providers: registry, loading, error, fetchProviders } = useProviders();
+  const [query, setQuery] = useState('');
 
   useEffect(() => {
     fetchProviders();
   }, [fetchProviders]);
 
   const providerList = useMemo(() => registry?.providers ?? [], [registry]);
+  const visibleProviders = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return providerList;
+    return providerList.filter((p) =>
+      p.display_name.toLowerCase().includes(q)
+      || p.company.toLowerCase().includes(q)
+      || p.id.toLowerCase().includes(q)
+    );
+  }, [providerList, query]);
+  const selectedProviders = useMemo(
+    () => providerList.filter((p) => Boolean(selected[p.id])),
+    [providerList, selected]
+  );
 
   const toggleProvider = (provider: Provider) => {
     const next = { ...selected };
@@ -66,6 +80,21 @@ export function ProviderSelector({ selected, onChange, compact }: ProviderSelect
   };
 
   const deselectAll = () => onChange({});
+  const selectRecommended = () => {
+    const priority = ['chatgpt', 'gemini', 'perplexity', 'claude', 'digitalocean'];
+    const ranked = [...providerList].sort((a, b) => {
+      const ai = priority.indexOf(a.id);
+      const bi = priority.indexOf(b.id);
+      const av = ai === -1 ? 999 : ai;
+      const bv = bi === -1 ? 999 : bi;
+      return av - bv;
+    });
+    const next: ProviderSelection = {};
+    ranked.slice(0, Math.min(3, ranked.length)).forEach((p) => {
+      next[p.id] = selected[p.id] || getDefaultModel(p);
+    });
+    onChange(next);
+  };
 
   const selectedCount = Object.keys(selected).length;
 
@@ -94,30 +123,64 @@ export function ProviderSelector({ selected, onChange, compact }: ProviderSelect
         <p className="text-sm font-medium">
           AI Providers ({selectedCount}/{providerList.length})
         </p>
-        <div className="flex gap-2">
+        <div className="flex gap-3 text-xs">
+          <button
+            type="button"
+            onClick={selectRecommended}
+            className="text-primary hover:underline"
+          >
+            Recommended
+          </button>
           <button
             type="button"
             onClick={selectAll}
-            className="text-xs text-primary hover:underline"
+            className="text-primary hover:underline"
           >
             Select All
           </button>
-          <span className="text-xs text-muted-foreground">|</span>
           <button
             type="button"
             onClick={deselectAll}
-            className="text-xs text-muted-foreground hover:underline"
+            className="text-muted-foreground hover:underline"
           >
             Clear
           </button>
         </div>
       </div>
 
+      <div className="relative">
+        <Search className="h-3.5 w-3.5 text-muted-foreground absolute left-3 top-1/2 -translate-y-1/2" />
+        <input
+          type="text"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder="Search provider..."
+          className="w-full rounded-md border bg-background py-2 pl-8 pr-3 text-sm"
+        />
+      </div>
+
+      {selectedProviders.length > 0 && (
+        <div className="rounded-md border bg-muted/30 p-2">
+          <p className="text-xs text-muted-foreground mb-1">Selected models</p>
+          <div className="flex flex-wrap gap-1">
+            {selectedProviders.map((provider) => {
+              const selectedModel = selected[provider.id];
+              const modelName = provider.models.find((m) => m.id === selectedModel)?.name || selectedModel;
+              return (
+                <Badge key={provider.id} variant="secondary" className="text-[11px]">
+                  {provider.display_name}: {modelName}
+                </Badge>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
       <div className={cn(
         'grid gap-2',
         compact ? 'grid-cols-2 sm:grid-cols-3' : 'grid-cols-2 sm:grid-cols-3 lg:grid-cols-4'
       )}>
-        {providerList.map((provider) => {
+        {visibleProviders.map((provider) => {
           const isSelected = !!selected[provider.id];
           const selectedModel = selected[provider.id] ?? '';
           const icon = PROVIDER_ICONS[provider.id] || '🔮';
@@ -198,6 +261,10 @@ export function ProviderSelector({ selected, onChange, compact }: ProviderSelect
           );
         })}
       </div>
+
+      {visibleProviders.length === 0 && (
+        <p className="text-xs text-muted-foreground">No providers match your search.</p>
+      )}
 
       {selectedCount === 0 && (
         <p className="text-xs text-amber-500">

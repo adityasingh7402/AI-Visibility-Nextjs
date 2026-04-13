@@ -4,7 +4,7 @@ import { useState, useCallback, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { useFullAnalysis, useProviders } from '@/hooks/useGeo';
 import { useSSEProgress } from '@/hooks/useSSEProgress';
-import type { GeoAnalysisRequest, GeoProvider, ScanMode, IndustryProfile } from '@/lib/report-types';
+import type { GeoAnalysisRequest, GeoAnalysisType, GeoProvider, ScanMode, IndustryProfile } from '@/lib/report-types';
 import type { ProviderSelection } from '@/lib/types/providers';
 import { ProviderSelector } from '@/components/geo/ProviderSelector';
 import { AnalysisStageList } from '@/components/geo/AnalysisStageList';
@@ -34,6 +34,29 @@ const INDUSTRY_OPTIONS: { value: IndustryProfile; label: string }[] = [
   { value: 'media_publisher', label: 'Media / Publisher' },
 ];
 
+const ANALYSIS_TYPES: { value: GeoAnalysisType; label: string; desc: string }[] = [
+  { value: 'full', label: 'GEO Analysis', desc: 'Full 17-dimension analysis' },
+  { value: 'aeo_scan', label: 'AEO Scan', desc: 'Fast answer-engine visibility check' },
+  { value: 'combined', label: 'Combined', desc: 'Run AEO and GEO together' },
+];
+
+const REGION_OPTIONS = [
+  { value: 'global', label: 'Global' },
+  { value: 'US', label: 'United States' },
+  { value: 'IN', label: 'India' },
+  { value: 'UK', label: 'United Kingdom' },
+  { value: 'EU', label: 'Europe' },
+  { value: 'APAC', label: 'APAC' },
+];
+
+const LANGUAGE_OPTIONS = [
+  { value: 'en', label: 'English' },
+  { value: 'hi', label: 'Hindi' },
+  { value: 'es', label: 'Spanish' },
+  { value: 'fr', label: 'French' },
+  { value: 'de', label: 'German' },
+];
+
 // ---------------------------------------------------------------------------
 // Page component
 // ---------------------------------------------------------------------------
@@ -54,8 +77,14 @@ export default function AnalysisPage() {
   const [aliases, setAliases] = useState('');
   const [competitors, setCompetitors] = useState('');
   const [brandDescription, setBrandDescription] = useState('');
-  const [region, setRegion] = useState('');
+  const [region, setRegion] = useState('global');
+  const [analysisType, setAnalysisType] = useState<GeoAnalysisType>('full');
   const [industryProfile, setIndustryProfile] = useState<IndustryProfile | ''>('');
+  const [targetAudiences, setTargetAudiences] = useState('');
+  const [keyProducts, setKeyProducts] = useState('');
+  const [uniqueSellingPoints, setUniqueSellingPoints] = useState('');
+  const [brandTone, setBrandTone] = useState('');
+  const [primaryLanguage, setPrimaryLanguage] = useState('en');
   const [scanMode, setScanMode] = useState<ScanMode>('full');
   const [providerSelection, setProviderSelection] = useState<ProviderSelection>({});
   const [apiError, setApiError] = useState<unknown>(null);
@@ -66,6 +95,7 @@ export default function AnalysisPage() {
   const isValid = url.trim().length > 0
     && brandName.trim().length > 0
     && category.trim().length > 0
+    && region.trim().length > 0
     && selectedProviderIds.length > 0;
 
   // Lookup display name for a provider ID
@@ -73,6 +103,14 @@ export default function AnalysisPage() {
     const p = registry?.providers.find((x) => x.id === id);
     return p?.display_name ?? id;
   }, [registry]);
+  const analysisTypeLabel = useMemo(
+    () => ANALYSIS_TYPES.find((t) => t.value === analysisType)?.label ?? analysisType,
+    [analysisType]
+  );
+  const primaryLanguageLabel = useMemo(
+    () => LANGUAGE_OPTIONS.find((l) => l.value === primaryLanguage)?.label ?? primaryLanguage,
+    [primaryLanguage]
+  );
 
   // --- Auto-redirect on completion ---
   useEffect(() => {
@@ -114,12 +152,18 @@ export default function AnalysisPage() {
       url: url.trim(),
       brand_name: brandName.trim(),
       category: category.trim(),
+      region: region.trim(),
+      analysis_type: analysisType,
       providers: selectedProviderIds as GeoProvider[],
       scan_mode: scanMode,
       ...(aliases && { aliases: csvToArray(aliases) }),
       ...(competitors && { competitors: csvToArray(competitors) }),
       ...(brandDescription && { brand_description: brandDescription }),
-      ...(region && { region }),
+      ...(targetAudiences && { target_audiences: csvToArray(targetAudiences) }),
+      ...(keyProducts && { key_products: csvToArray(keyProducts) }),
+      ...(uniqueSellingPoints && { unique_selling_points: csvToArray(uniqueSellingPoints) }),
+      ...(brandTone && { brand_tone: brandTone.trim() }),
+      ...(primaryLanguage && { primary_language: primaryLanguage.trim() }),
       ...(industryProfile && { industry_profile: industryProfile }),
       ...(Object.keys(models).length > 0 && { models }),
     };
@@ -130,8 +174,9 @@ export default function AnalysisPage() {
       setApiError(err);
     }
   }, [
-    isValid, url, brandName, selectedProviderIds, scanMode, category,
-    aliases, competitors, brandDescription, region, industryProfile,
+    isValid, url, brandName, selectedProviderIds, scanMode, category, region, analysisType,
+    aliases, competitors, brandDescription, targetAudiences, keyProducts,
+    uniqueSellingPoints, brandTone, primaryLanguage, industryProfile,
     providerSelection, submit,
   ]);
 
@@ -213,8 +258,8 @@ export default function AnalysisPage() {
             />
           </div>
 
-          {/* Brand + Category row */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          {/* Core required fields */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div className="space-y-2">
               <Label htmlFor="brand">Brand Name *</Label>
               <Input
@@ -233,13 +278,48 @@ export default function AnalysisPage() {
                 onChange={(e) => setCategory(e.target.value)}
               />
             </div>
+            <div className="space-y-2">
+              <Label>Region *</Label>
+              <Select value={region} onValueChange={(v) => { if (v != null) setRegion(v); }}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select region" />
+                </SelectTrigger>
+                <SelectContent>
+                  {REGION_OPTIONS.map((o) => (
+                    <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
           </div>
 
-          {/* Optional details (collapsed) */}
+          {/* Analysis type */}
+          <div className="space-y-3">
+            <Label className="text-base font-semibold">Analysis Type *</Label>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              {ANALYSIS_TYPES.map((t) => (
+                <button
+                  key={t.value}
+                  type="button"
+                  onClick={() => setAnalysisType(t.value)}
+                  className={`rounded-lg border-2 p-3 text-left transition-all ${
+                    analysisType === t.value
+                      ? 'border-primary bg-primary/5 ring-1 ring-primary/20'
+                      : 'border-border hover:border-muted-foreground/30'
+                  }`}
+                >
+                  <div className="font-medium">{t.label}</div>
+                  <p className="text-xs text-muted-foreground mt-1">{t.desc}</p>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Advanced options (collapsed) */}
           <Collapsible>
             <CollapsibleTrigger className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors">
               <ChevronDown className="h-4 w-4" />
-              Optional Details
+              Advanced Options
             </CollapsibleTrigger>
             <CollapsibleContent className="mt-3 space-y-4">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -271,15 +351,55 @@ export default function AnalysisPage() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="region">Region</Label>
+                  <Label htmlFor="targetAudiences">Target Audiences</Label>
                   <Input
-                    id="region"
-                    placeholder="e.g. North America"
-                    value={region}
-                    onChange={(e) => setRegion(e.target.value)}
+                    id="targetAudiences"
+                    placeholder="Comma-separated (e.g. SMB owners, CTOs)"
+                    value={targetAudiences}
+                    onChange={(e) => setTargetAudiences(e.target.value)}
                   />
                 </div>
                 <div className="space-y-2">
+                  <Label htmlFor="keyProducts">Key Products / Services</Label>
+                  <Input
+                    id="keyProducts"
+                    placeholder="Comma-separated"
+                    value={keyProducts}
+                    onChange={(e) => setKeyProducts(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-2 sm:col-span-2">
+                  <Label htmlFor="usps">Unique Selling Points</Label>
+                  <Input
+                    id="usps"
+                    placeholder="Comma-separated differentiators"
+                    value={uniqueSellingPoints}
+                    onChange={(e) => setUniqueSellingPoints(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="brandTone">Brand Tone</Label>
+                  <Input
+                    id="brandTone"
+                    placeholder="e.g. professional, technical, playful"
+                    value={brandTone}
+                    onChange={(e) => setBrandTone(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Primary Language</Label>
+                  <Select value={primaryLanguage} onValueChange={(v) => { if (v != null) setPrimaryLanguage(v); }}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select language" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {LANGUAGE_OPTIONS.map((o) => (
+                        <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2 sm:col-span-2">
                   <Label>Industry Profile</Label>
                   <Select
                     value={industryProfile}
@@ -294,6 +414,11 @@ export default function AnalysisPage() {
                       ))}
                     </SelectContent>
                   </Select>
+                </div>
+                <div className="sm:col-span-2">
+                  <p className="text-xs text-muted-foreground">
+                    Advanced options improve scoring quality, prompt relevance, and regional targeting.
+                  </p>
                 </div>
               </div>
             </CollapsibleContent>
@@ -329,6 +454,9 @@ export default function AnalysisPage() {
             <Label className="text-base font-semibold">
               AI Providers *
             </Label>
+            <p className="text-xs text-muted-foreground">
+              Pick providers and models to test. You can search, bulk-select, or choose recommended defaults.
+            </p>
             <ProviderSelector
               selected={providerSelection}
               onChange={setProviderSelection}
@@ -359,10 +487,13 @@ export default function AnalysisPage() {
               <SummaryRow label="URL" value={url || '—'} />
               <SummaryRow label="Brand" value={brandName || '—'} />
               {category && <SummaryRow label="Category" value={category} />}
+              <SummaryRow label="Region" value={region || '—'} />
+              <SummaryRow label="Analysis Type" value={analysisTypeLabel} />
               <SummaryRow
                 label="Scan Mode"
                 value={scanMode.charAt(0).toUpperCase() + scanMode.slice(1)}
               />
+              <SummaryRow label="Language" value={primaryLanguageLabel} />
               <div>
                 <dt className="text-muted-foreground">Providers</dt>
                 <dd className="flex flex-wrap gap-1 mt-1">
@@ -397,7 +528,9 @@ export default function AnalysisPage() {
                     ? 'Brand name is required'
                     : !category.trim()
                       ? 'Category is required'
-                    : 'Select at least 1 provider'}
+                      : !region.trim()
+                        ? 'Region is required'
+                        : 'Select at least 1 provider'}
               </p>
             )}
           </div>
