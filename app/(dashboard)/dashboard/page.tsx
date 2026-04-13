@@ -51,7 +51,7 @@ function AnalysisRow({ analysis }: { analysis: StoredGeoAnalysis }) {
       href={`/dashboard/reports/${analysis.analysis_id || analysis.id}`}
       className="flex items-center gap-4 p-3 rounded-lg border border-border hover:bg-accent transition-colors group"
     >
-      <ScoreGauge score={score} size={48} showGrade={false} />
+      <ScoreGauge score={score} size={48} showMaturity={false} />
       <div className="min-w-0 flex-1">
         <p className="text-sm font-bold text-foreground truncate group-hover:text-primary transition-colors">
           {analysis.brand_name}

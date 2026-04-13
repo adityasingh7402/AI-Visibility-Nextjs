@@ -1,21 +1,21 @@
 'use client';
 
-import { getGrade, getGradeColor } from '@/lib/report-types';
+import { getMaturityLevel, type MaturityLevel } from '@/lib/report-v2-types';
 
 interface ScoreGaugeProps {
   score: number;
   size?: number;
   label?: string;
-  showGrade?: boolean;
+  showMaturity?: boolean;
 }
 
 /**
  * Circular SVG score gauge — renders a ring that fills based on score 0-100.
- * Used on dashboard home, report header, and score summary cards.
+ * Uses V1.9 maturity level system (INVISIBLE→DOMINANT).
  */
-export function ScoreGauge({ score, size = 120, label, showGrade = true }: ScoreGaugeProps) {
-  const grade = getGrade(score);
-  const color = getGradeColor(grade);
+export function ScoreGauge({ score, size = 120, label, showMaturity = true }: ScoreGaugeProps) {
+  const maturity = getMaturityLevel(score);
+  const color = maturity.color;
   const radius = (size - 12) / 2;
   const circumference = 2 * Math.PI * radius;
   const progress = Math.min(Math.max(score, 0), 100);
@@ -25,7 +25,7 @@ export function ScoreGauge({ score, size = 120, label, showGrade = true }: Score
   return (
     <div className="flex flex-col items-center gap-2">
       <div className="relative" style={{ width: size, height: size }}>
-        <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} className="-rotate-90">
+        <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} className="-rotate-90" aria-label={`Score: ${Math.round(score)} out of 100, ${maturity.label}`}>
           {/* Background ring */}
           <circle
             cx={center}
@@ -55,9 +55,9 @@ export function ScoreGauge({ score, size = 120, label, showGrade = true }: Score
           <span className="text-2xl font-black" style={{ color, fontSize: size * 0.22 }}>
             {Math.round(score)}
           </span>
-          {showGrade && (
-            <span className="text-xs font-bold text-muted-foreground" style={{ fontSize: size * 0.1 }}>
-              Grade {grade}
+          {showMaturity && (
+            <span className="text-xs font-bold text-muted-foreground" style={{ fontSize: size * 0.09 }}>
+              {maturity.icon} {maturity.label}
             </span>
           )}
         </div>

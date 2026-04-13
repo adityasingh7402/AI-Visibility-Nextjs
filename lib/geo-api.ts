@@ -25,6 +25,7 @@ import type {
   AnalysisProgress,
   ActivePipeline,
 } from './report-types';
+import type { StructuredReport } from './report-v2-types';
 import type { ProviderRegistry } from './types/providers';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
@@ -379,9 +380,9 @@ class GEOApi {
     return data as Record<string, unknown>;
   }
 
-  async getReportFull(id: string): Promise<Record<string, unknown>> {
+  async getReportFull(id: string): Promise<StructuredReport> {
     const { data } = await this.client.get(`/api/v1/reports/${id}/full`);
-    return data as Record<string, unknown>;
+    return data as StructuredReport;
   }
 
   getReportMarkdownUrl(id: string): string {

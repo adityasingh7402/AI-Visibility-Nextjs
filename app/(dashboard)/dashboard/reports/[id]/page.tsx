@@ -1,19 +1,24 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { geoApi } from '@/lib/geo-api';
 import { ScoreGauge } from '@/components/geo/ScoreGauge';
 import { ScoreCard } from '@/components/geo/ScoreCard';
+import { ReportHero } from '@/components/geo/ReportHero';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { ArrowLeft, Calendar, Globe, Key, FileText } from 'lucide-react';
+import { ArrowLeft, Calendar, Download } from 'lucide-react';
 import { MarkdownReportViewer } from '@/components/dashboard/MarkdownReportViewer';
+import type { StructuredReport, StructuredScore, ReportTab } from '@/lib/report-v2-types';
+import { REPORT_TABS, getMaturityLevel } from '@/lib/report-v2-types';
+import { normalizeCompetitors } from '@/lib/report-adapters';
+import { V19_DIMENSIONS } from '@/lib/report-types';
 
-// --- Types for the raw report from GET /reports/:id ---
+// --- Fallback raw report type (for keywords/content or when /full fails) ---
 interface RawReport {
   _type: 'geo' | 'keywords' | 'content';
   id: string;
@@ -26,84 +31,72 @@ interface RawReport {
   grade?: string;
   scan_mode?: string;
   markdown_report?: string | null;
-  // Full payloads from unified reports table
   response_payload?: Record<string, unknown>;
   request_payload?: Record<string, unknown>;
 }
 
-const TYPE_META: Record<string, { label: string; color: string; icon: React.ReactNode }> = {
-  geo: { label: 'GEO Analysis', color: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300', icon: <Globe className="h-4 w-4" /> },
-  keywords: { label: 'Keyword Discovery', color: 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300', icon: <Key className="h-4 w-4" /> },
-  content: { label: 'Content Validation', color: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300', icon: <FileText className="h-4 w-4" /> },
-};
-
-function getMainScore(report: RawReport): number | null {
-  // The unified reports table extracts overall_score at save time
-  if (report.overall_score != null) return report.overall_score;
-
-  // Fallback: dig into response_payload for specific report types
-  const payload = report.response_payload || {};
-  if (report._type === 'geo') {
-    const vs = payload.visibility_score;
-    if (typeof vs === 'object' && vs !== null && 'overall' in (vs as Record<string, unknown>)) {
-      return (vs as Record<string, number>).overall;
-    }
-    return typeof vs === 'number' ? vs : null;
-  }
-  if (report._type === 'keywords') {
-    const summary = payload.your_visibility_summary as Record<string, unknown> | undefined;
-    return (summary?.overall_visibility_score as number) ?? null;
-  }
-  if (report._type === 'content') {
-    return (payload.rag_citability_score as number) ?? null;
-  }
-  return null;
-}
-
-function formatDate(dateStr?: string): string {
-  if (!dateStr) return 'Unknown';
-  return new Date(dateStr).toLocaleDateString('en-US', {
-    year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit',
-  });
-}
-
-// --- GEO Report Details ---
-function GeoDetails({ report }: { report: RawReport }) {
-  const payload = (report.response_payload || {}) as Record<string, unknown>;
-  const vs = payload.visibility_score as Record<string, unknown> | undefined;
-  const subScores = (vs?.sub_scores || {}) as Record<string, number>;
-  const recs = (payload.recommendations || []) as Array<{ title?: string; description?: string; priority?: string } | string>;
-  const dims = (payload.dimension_scores || payload.dimensions || {}) as Record<string, number>;
-
-  const clusters: Record<string, string[]> = {
+// ── GEO V2 Tab: Overview ──
+function OverviewTab({ report }: { report: StructuredReport }) {
+  const scores = report.scores ?? [];
+  const V19_CLUSTERS: Record<string, string[]> = {
     'AI Visibility': ['llm_mention', 'llm_consistency', 'llm_position'],
     'Authority': ['authority', 'web_presence', 'citation_strength'],
     'Content': ['content_fit', 'citability', 'page_quality', 'freshness'],
     'Technical': ['technical_seo', 'ai_readiness'],
     'Competitive': ['competitor_gap', 'pattern_match'],
+    'Signals': ['sentiment', 'consistency'],
+    'AEO': ['aeo_readiness'],
   };
+
+  const scoreMap: Record<string, StructuredScore> = {};
+  for (const s of scores) scoreMap[s.dimension] = s;
+
+  // Executive summary
+  const summary = report.executive_summary;
 
   return (
     <div className="space-y-6">
-      {/* Dimension Scores */}
-      {Object.keys(subScores).length > 0 && (
+      {/* Executive Summary */}
+      {summary && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Executive Summary</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-sm leading-relaxed text-muted-foreground">{summary}</p>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Score Breakdown by Cluster */}
+      {scores.length > 0 && (
         <Card>
           <CardHeader>
             <CardTitle>Score Breakdown</CardTitle>
-            <CardDescription>Individual dimension scores from the analysis</CardDescription>
+            <CardDescription>17-dimension V1.9 scoring across 7 clusters</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="space-y-6">
-              {Object.entries(clusters).map(([cluster, keys]) => {
-                const activeKeys = keys.filter(k => subScores[k] != null);
-                if (activeKeys.length === 0) return null;
+              {Object.entries(V19_CLUSTERS).map(([cluster, keys]) => {
+                const activeScores = keys
+                  .filter(k => scoreMap[k])
+                  .map(k => scoreMap[k]);
+                if (activeScores.length === 0) return null;
                 return (
                   <div key={cluster}>
                     <h4 className="text-sm font-semibold mb-3">{cluster}</h4>
                     <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                      {activeKeys.map(k => (
-                        <ScoreCard key={k} label={k.replace(/_/g, ' ')} score={subScores[k]} size="sm" />
-                      ))}
+                      {activeScores.map(s => {
+                        const dimMeta = V19_DIMENSIONS.find(d => d.key === s.dimension);
+                        return (
+                          <ScoreCard
+                            key={s.dimension}
+                            label={dimMeta?.label ?? s.dimension.replace(/_/g, ' ')}
+                            score={s.score}
+                            size="sm"
+                          />
+                        );
+                      })}
                     </div>
                   </div>
                 );
@@ -113,43 +106,32 @@ function GeoDetails({ report }: { report: RawReport }) {
         </Card>
       )}
 
-      {/* Fallback: flat dimension scores */}
-      {Object.keys(subScores).length === 0 && Object.keys(dims).length > 0 && (
+      {/* Quick Stats */}
+      {report.providers && report.providers.length > 0 && (
         <Card>
-          <CardHeader><CardTitle>Dimension Scores</CardTitle></CardHeader>
+          <CardHeader>
+            <CardTitle>AI Provider Summary</CardTitle>
+          </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-              {Object.entries(dims).map(([k, v]) => (
-                <ScoreCard key={k} label={k.replace(/_/g, ' ')} score={v} size="sm" />
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Recommendations */}
-      {recs.length > 0 && (
-        <Card>
-          <CardHeader><CardTitle>Recommendations</CardTitle></CardHeader>
-          <CardContent>
-            <ul className="space-y-3">
-              {recs.map((rec, i) => (
-                <li key={i} className="flex gap-3 items-start">
-                  <span className="flex-shrink-0 w-6 h-6 rounded-full bg-primary/10 text-primary text-xs flex items-center justify-center font-semibold">{i + 1}</span>
-                  <div>
-                    {typeof rec === 'string' ? (
-                      <p className="text-sm">{rec}</p>
-                    ) : (
-                      <>
-                        <p className="text-sm font-medium">{rec.title || rec.description}</p>
-                        {rec.title && rec.description && <p className="text-xs text-muted-foreground mt-0.5">{rec.description}</p>}
-                        {rec.priority && <Badge variant="outline" className="mt-1 text-xs">{rec.priority}</Badge>}
-                      </>
-                    )}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+              {report.providers.map(p => {
+                const maturity = getMaturityLevel((p.mention_rate ?? 0) * 100);
+                return (
+                  <div key={p.provider} className="flex items-center justify-between rounded-lg border p-3">
+                    <div>
+                      <p className="text-sm font-semibold">{p.provider_display || p.provider}</p>
+                      <p className="text-xs text-muted-foreground">{p.model_name || p.model_id || 'default'}</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-lg font-bold" style={{ color: maturity.color }}>
+                        {Math.round((p.mention_rate ?? 0) * 100)}%
+                      </p>
+                      <p className="text-xs text-muted-foreground">Mention Rate</p>
+                    </div>
                   </div>
-                </li>
-              ))}
-            </ul>
+                );
+              })}
+            </div>
           </CardContent>
         </Card>
       )}
@@ -157,9 +139,284 @@ function GeoDetails({ report }: { report: RawReport }) {
   );
 }
 
-// --- Keywords Report Details ---
-function KeywordsDetails({ report }: { report: RawReport }) {
-  const payload = (report.response_payload || {}) as Record<string, unknown>;
+// ── GEO V2 Tab: Providers ──
+function ProvidersTab({ report }: { report: StructuredReport }) {
+  const providers = report.providers ?? [];
+
+  if (providers.length === 0) {
+    return (
+      <Card>
+        <CardContent className="py-12 text-center text-muted-foreground">
+          No provider results available for this report.
+        </CardContent>
+      </Card>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      {providers.map(p => {
+        const mentionPct = Math.round((p.mention_rate ?? 0) * 100);
+        const maturity = getMaturityLevel(mentionPct);
+        return (
+          <Card key={p.provider}>
+            <CardContent className="py-5">
+              <div className="flex items-center justify-between mb-4">
+                <div>
+                  <h3 className="text-lg font-bold">{p.provider_display || p.provider}</h3>
+                  <p className="text-sm text-muted-foreground">{p.model_name || p.model_id}</p>
+                </div>
+                <span className={`inline-flex items-center rounded-full px-3 py-1 text-sm font-semibold ${maturity.badgeClass}`}>
+                  {maturity.icon} {mentionPct}% — {maturity.label}
+                </span>
+              </div>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                <div>
+                  <p className="text-xs text-muted-foreground">Mention Rate</p>
+                  <p className="text-xl font-bold">{mentionPct}%</p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">Avg Position</p>
+                  <p className="text-xl font-bold">{p.average_position?.toFixed(1) ?? '—'}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">Sentiment</p>
+                  <p className="text-xl font-bold capitalize">{p.sentiment_label || '—'}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">Queries</p>
+                  <p className="text-xl font-bold">{p.mentioned_count ?? 0}/{p.total_queries ?? 0}</p>
+                </div>
+              </div>
+              {/* Mention rate bar */}
+              <div className="mt-4">
+                <div className="h-2 w-full rounded-full bg-muted">
+                  <div
+                    className="h-2 rounded-full transition-all duration-700"
+                    style={{ width: `${mentionPct}%`, backgroundColor: maturity.color }}
+                  />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        );
+      })}
+    </div>
+  );
+}
+
+// ── GEO V2 Tab: Competitors ──
+function CompetitorsTab({ report }: { report: StructuredReport }) {
+  const competitors = normalizeCompetitors(report.competitors);
+
+  if (competitors.length === 0) {
+    return (
+      <Card>
+        <CardContent className="py-12 text-center text-muted-foreground">
+          No competitor data available for this report.
+        </CardContent>
+      </Card>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      {competitors.map(c => (
+        <Card key={c.competitor_name}>
+          <CardContent className="py-5">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-bold">{c.competitor_name}</h3>
+              <div className="flex items-center gap-3 text-sm">
+                {c.authority_score > 0 && (
+                  <Badge variant="outline">Authority: {Math.round(c.authority_score)}</Badge>
+                )}
+                {c.llm_mention_rate > 0 && (
+                  <Badge variant="outline">LLM Mentions: {Math.round(c.llm_mention_rate * 100)}%</Badge>
+                )}
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {c.strengths.length > 0 && (
+                <div>
+                  <h4 className="text-xs font-semibold text-muted-foreground mb-2 uppercase tracking-wider">Strengths</h4>
+                  <ul className="space-y-1">
+                    {c.strengths.map((s, i) => (
+                      <li key={i} className="text-sm flex items-start gap-1.5">
+                        <span className="text-emerald-500 mt-0.5 flex-shrink-0">●</span>
+                        {s}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+              {c.weaknesses.length > 0 && (
+                <div>
+                  <h4 className="text-xs font-semibold text-muted-foreground mb-2 uppercase tracking-wider">Weaknesses</h4>
+                  <ul className="space-y-1">
+                    {c.weaknesses.map((w, i) => (
+                      <li key={i} className="text-sm flex items-start gap-1.5">
+                        <span className="text-red-500 mt-0.5 flex-shrink-0">●</span>
+                        {w}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+              {c.your_advantages.length > 0 && (
+                <div>
+                  <h4 className="text-xs font-semibold text-muted-foreground mb-2 uppercase tracking-wider">Your Advantages</h4>
+                  <ul className="space-y-1">
+                    {c.your_advantages.map((a, i) => (
+                      <li key={i} className="text-sm flex items-start gap-1.5">
+                        <span className="text-blue-500 mt-0.5 flex-shrink-0">★</span>
+                        {a}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      ))}
+    </div>
+  );
+}
+
+// ── GEO V2 Tab: Recommendations ──
+function RecommendationsTab({ report }: { report: StructuredReport }) {
+  const recs = report.recommendations ?? [];
+
+  if (recs.length === 0) {
+    return (
+      <Card>
+        <CardContent className="py-12 text-center text-muted-foreground">
+          No recommendations available for this report.
+        </CardContent>
+      </Card>
+    );
+  }
+
+  const priorityOrder = { high: 0, medium: 1, low: 2 };
+  const sorted = [...recs].sort(
+    (a, b) => (priorityOrder[a.priority] ?? 1) - (priorityOrder[b.priority] ?? 1)
+  );
+
+  const PRIORITY_STYLE: Record<string, string> = {
+    high: 'border-red-500/30 bg-red-500/5',
+    medium: 'border-amber-500/30 bg-amber-500/5',
+    low: 'border-blue-500/30 bg-blue-500/5',
+  };
+  const PRIORITY_BADGE: Record<string, string> = {
+    high: 'bg-red-500/10 text-red-600 dark:text-red-400 border-red-500/20',
+    medium: 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20',
+    low: 'bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20',
+  };
+
+  return (
+    <div className="space-y-3">
+      {sorted.map((rec, i) => (
+        <div
+          key={i}
+          className={`rounded-lg border p-4 ${PRIORITY_STYLE[rec.priority] ?? 'border-border'}`}
+        >
+          <div className="flex items-start justify-between gap-3">
+            <div className="flex-1">
+              <div className="flex items-center gap-2 mb-1">
+                <span className="text-sm font-bold">{rec.title}</span>
+                <span className={`inline-flex rounded-full border px-2 py-0.5 text-xs font-semibold ${PRIORITY_BADGE[rec.priority] ?? ''}`}>
+                  {rec.priority}
+                </span>
+              </div>
+              <p className="text-sm text-muted-foreground">{rec.description}</p>
+              <div className="flex items-center gap-3 mt-2 text-xs text-muted-foreground">
+                {rec.category && <span>📂 {rec.category}</span>}
+                {rec.impact_area && <span>🎯 {rec.impact_area}</span>}
+              </div>
+            </div>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// ── GEO V2 Tab: Evidence (placeholder — Wave 2 will add LLM transcripts) ──
+function EvidenceTab({ report }: { report: StructuredReport }) {
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Evidence & Verification</CardTitle>
+        <CardDescription>
+          LLM response transcripts and reproducibility prompts
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        <div className="py-8 text-center text-muted-foreground space-y-3">
+          <p className="text-4xl">🔬</p>
+          <p className="text-sm">
+            Evidence view shows actual AI model responses and verification prompts.
+          </p>
+          <p className="text-xs">
+            {report.tested_providers?.length
+              ? `Tested on: ${report.tested_providers.join(', ')}`
+              : 'No provider evidence available'}
+          </p>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+// ── GEO V2 Tab: Full Report (markdown) ──
+function FullReportTab({ report }: { report: StructuredReport }) {
+  const markdown = report.markdown_report;
+
+  if (!markdown) {
+    return (
+      <Card>
+        <CardContent className="py-12 text-center text-muted-foreground">
+          <p className="text-4xl mb-3">📄</p>
+          <p>No markdown report available for this analysis.</p>
+          <p className="text-xs mt-1">The report may have been generated before markdown export was enabled.</p>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  return (
+    <div className="space-y-3">
+      <div className="flex justify-end">
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => {
+            const blob = new Blob([markdown], { type: 'text/markdown;charset=utf-8' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `${report.brand_name || 'report'}-visibility-report.md`;
+            a.click();
+            URL.revokeObjectURL(url);
+          }}
+        >
+          <Download className="h-4 w-4 mr-2" /> Download .md
+        </Button>
+      </div>
+      <MarkdownReportViewer
+        markdown={markdown}
+        brandName={report.brand_name}
+        reportDate={report.created_at}
+        reportId={report.id}
+      />
+    </div>
+  );
+}
+
+// ── Legacy detail components (Keywords / Content reports) ──
+
+function KeywordsDetails({ payload }: { payload: Record<string, unknown> }) {
   const keywords = (payload.keywords || payload.working_keywords || []) as Array<{ keyword: string; score?: number; status?: string }>;
   const opportunities = (payload.opportunities || []) as Array<{ keyword: string; potential?: number; description?: string }>;
   const gaps = (payload.content_gaps || payload.gaps || []) as Array<{ gap: string; description?: string }>;
@@ -168,9 +425,7 @@ function KeywordsDetails({ report }: { report: RawReport }) {
     <div className="space-y-6">
       {keywords.length > 0 && (
         <Card>
-          <CardHeader>
-            <CardTitle>Keywords ({keywords.length})</CardTitle>
-          </CardHeader>
+          <CardHeader><CardTitle>Keywords ({keywords.length})</CardTitle></CardHeader>
           <CardContent>
             <div className="space-y-2">
               {keywords.slice(0, 30).map((kw, i) => (
@@ -226,9 +481,7 @@ function KeywordsDetails({ report }: { report: RawReport }) {
   );
 }
 
-// --- Content Report Details ---
-function ContentDetails({ report }: { report: RawReport }) {
-  const payload = (report.response_payload || {}) as Record<string, unknown>;
+function ContentDetails({ payload }: { payload: Record<string, unknown> }) {
   const areas = (payload.improvement_areas || payload.issues || []) as Array<{ area: string; severity: string; suggestion: string }>;
   const recs = (payload.recommendations || []) as string[];
   const structureScore = payload.structure_score as number | undefined;
@@ -238,7 +491,6 @@ function ContentDetails({ report }: { report: RawReport }) {
 
   return (
     <div className="space-y-6">
-      {/* Score Cards */}
       <div className="grid grid-cols-2 gap-3">
         {structureScore != null && <ScoreCard label="Structure" score={structureScore} size="sm" />}
         {factualScore != null && <ScoreCard label="Fact Density" score={factualScore} size="sm" />}
@@ -286,36 +538,56 @@ function ContentDetails({ report }: { report: RawReport }) {
   );
 }
 
-// --- Main Page ---
+// ── Main Page ──
 export default function ReportDetailPage() {
   const params = useParams();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const reportId = params.id as string;
 
-  const [report, setReport] = useState<RawReport | null>(null);
+  // URL-synced tab state
+  const currentTab = (searchParams.get('tab') as ReportTab) || 'overview';
+  const setTab = useCallback((tab: string) => {
+    const url = new URL(window.location.href);
+    url.searchParams.set('tab', tab);
+    window.history.replaceState({}, '', url.toString());
+  }, []);
+
+  // State: structured report from /full endpoint
+  const [structuredReport, setStructuredReport] = useState<StructuredReport | null>(null);
+  // Fallback: raw report for non-GEO types or when /full fails
+  const [rawReport, setRawReport] = useState<RawReport | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   const fetchReport = useCallback(async (id: string) => {
     const attempt = async (remaining: number): Promise<void> => {
       try {
-        const data = await geoApi.getReport(id);
-        setReport(data as unknown as RawReport);
+        // Try /full endpoint first (returns structured data for GEO reports)
+        const fullData = await geoApi.getReportFull(id);
+        setStructuredReport(fullData);
         setError(null);
         setLoading(false);
-      } catch (err: unknown) {
-        const axiosErr = err as { response?: { status?: number; data?: { error?: string } } };
-        const status = axiosErr.response?.status;
-        // Retry on 404/500 — report may not be saved yet (race condition with auto-save)
-        if (remaining > 0 && (status === 404 || status === 500)) {
-          await new Promise(r => setTimeout(r, 3000));
-          return attempt(remaining - 1);
+      } catch (fullErr: unknown) {
+        // Fallback to basic /reports/:id
+        try {
+          const data = await geoApi.getReport(id);
+          setRawReport(data as unknown as RawReport);
+          setError(null);
+          setLoading(false);
+        } catch (err: unknown) {
+          const axiosErr = err as { response?: { status?: number; data?: { error?: string } } };
+          const status = axiosErr.response?.status;
+          if (remaining > 0 && (status === 404 || status === 500)) {
+            await new Promise(r => setTimeout(r, 3000));
+            return attempt(remaining - 1);
+          }
+          const msg = status === 404
+            ? 'Report not found'
+            : axiosErr.response?.data?.error || 'Failed to load report';
+          setError(msg);
+          setLoading(false);
         }
-        const msg = status === 404
-          ? 'Report not found'
-          : axiosErr.response?.data?.error || 'Failed to load report';
-        setError(msg);
-        setLoading(false);
       }
     };
     await attempt(8);
@@ -326,19 +598,26 @@ export default function ReportDetailPage() {
     fetchReport(reportId);
   }, [reportId, fetchReport]);
 
+  // ── Loading state ──
   if (loading) {
     return (
       <div className="space-y-6">
-        <Skeleton className="h-8 w-48" />
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <Skeleton className="h-64 lg:col-span-2" />
+        <div className="flex items-center gap-3">
+          <Skeleton className="h-10 w-10 rounded" />
+          <Skeleton className="h-8 w-64" />
+        </div>
+        <Skeleton className="h-48 rounded-xl" />
+        <Skeleton className="h-10 w-96" />
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <Skeleton className="h-64" />
           <Skeleton className="h-64" />
         </div>
       </div>
     );
   }
 
-  if (error || !report) {
+  // ── Error state ──
+  if (error || (!structuredReport && !rawReport)) {
     return (
       <div className="flex flex-col items-center justify-center py-20 space-y-4">
         <p className="text-lg font-semibold text-destructive">{error || 'Report not found'}</p>
@@ -349,15 +628,118 @@ export default function ReportDetailPage() {
     );
   }
 
+  // ════════════════════════════════════════════════════
+  // PATH A: Structured report from /full (GEO reports)
+  // ════════════════════════════════════════════════════
+  if (structuredReport && structuredReport.type === 'geo') {
+    return (
+      <div className="space-y-6">
+        {/* Back button */}
+        <div className="flex items-center gap-3">
+          <Button variant="ghost" size="icon" onClick={() => router.push('/dashboard/reports')}>
+            <ArrowLeft className="h-4 w-4" />
+          </Button>
+          <span className="text-sm text-muted-foreground">Back to Reports</span>
+        </div>
+
+        {/* Hero section */}
+        <ReportHero report={structuredReport} />
+
+        {/* 6-Tab Layout */}
+        <Tabs value={currentTab} onValueChange={setTab}>
+          <TabsList className="flex-wrap">
+            {REPORT_TABS.map(tab => (
+              <TabsTrigger key={tab.id} value={tab.id} className="gap-1.5">
+                <span>{tab.icon}</span>
+                <span className="hidden sm:inline">{tab.label}</span>
+              </TabsTrigger>
+            ))}
+          </TabsList>
+
+          <TabsContent value="overview" className="mt-4">
+            <OverviewTab report={structuredReport} />
+          </TabsContent>
+
+          <TabsContent value="providers" className="mt-4">
+            <ProvidersTab report={structuredReport} />
+          </TabsContent>
+
+          <TabsContent value="competitors" className="mt-4">
+            <CompetitorsTab report={structuredReport} />
+          </TabsContent>
+
+          <TabsContent value="recommendations" className="mt-4">
+            <RecommendationsTab report={structuredReport} />
+          </TabsContent>
+
+          <TabsContent value="evidence" className="mt-4">
+            <EvidenceTab report={structuredReport} />
+          </TabsContent>
+
+          <TabsContent value="report" className="mt-4">
+            <FullReportTab report={structuredReport} />
+          </TabsContent>
+        </Tabs>
+      </div>
+    );
+  }
+
+  // ════════════════════════════════════════════════════
+  // PATH B: Non-GEO structured report (keywords/content via /full)
+  // ════════════════════════════════════════════════════
+  if (structuredReport) {
+    const payload = (structuredReport as unknown as { response_payload?: Record<string, unknown> }).response_payload ?? {};
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center gap-3">
+          <Button variant="ghost" size="icon" onClick={() => router.push('/dashboard/reports')}>
+            <ArrowLeft className="h-4 w-4" />
+          </Button>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 flex-wrap">
+              <h1 className="text-2xl font-bold truncate">{structuredReport.brand_name || 'Untitled Report'}</h1>
+              <Badge className="bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300">
+                {structuredReport.type === 'keywords' ? '🔑 Keyword Discovery' : '📝 Content Validation'}
+              </Badge>
+            </div>
+          </div>
+        </div>
+        {structuredReport.type === 'keywords'
+          ? <KeywordsDetails payload={payload} />
+          : <ContentDetails payload={payload} />
+        }
+      </div>
+    );
+  }
+
+  // ════════════════════════════════════════════════════
+  // PATH C: Raw fallback (when /full endpoint fails)
+  // ════════════════════════════════════════════════════
+  const report = rawReport!;
+  const TYPE_META: Record<string, { label: string; color: string; emoji: string }> = {
+    geo: { label: 'GEO Analysis', color: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300', emoji: '🌐' },
+    keywords: { label: 'Keyword Discovery', color: 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300', emoji: '🔑' },
+    content: { label: 'Content Validation', color: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300', emoji: '📝' },
+  };
   const meta = TYPE_META[report._type] || TYPE_META.geo;
-  const score = getMainScore(report);
+  const payload = report.response_payload ?? {};
   const markdownContent = report.markdown_report
-    || (report.response_payload?.markdown_report as string | undefined)
+    || (payload.markdown_report as string | undefined)
     || null;
+
+  const score = report.overall_score ?? (() => {
+    if (report._type === 'geo') {
+      const vs = payload.visibility_score;
+      if (typeof vs === 'object' && vs !== null && 'overall' in (vs as Record<string, unknown>)) {
+        return (vs as Record<string, number>).overall;
+      }
+      return typeof vs === 'number' ? vs : null;
+    }
+    return null;
+  })();
 
   return (
     <div className="space-y-6">
-      {/* Header */}
       <div className="flex items-center gap-3">
         <Button variant="ghost" size="icon" onClick={() => router.push('/dashboard/reports')}>
           <ArrowLeft className="h-4 w-4" />
@@ -365,29 +747,26 @@ export default function ReportDetailPage() {
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
             <h1 className="text-2xl font-bold truncate">{report.brand_name || 'Untitled Report'}</h1>
-            <Badge className={meta.color}>{meta.icon}<span className="ml-1">{meta.label}</span></Badge>
-            {report.status && report.status !== 'completed' && (
-              <Badge variant="outline">{report.status}</Badge>
-            )}
+            <Badge className={meta.color}>{meta.emoji} {meta.label}</Badge>
           </div>
           <div className="flex items-center gap-4 text-sm text-muted-foreground mt-1">
-            <span className="flex items-center gap-1"><Calendar className="h-3.5 w-3.5" />{formatDate(report.created_at)}</span>
-            {typeof report.request_payload?.url === 'string' && <span className="truncate max-w-xs">{report.request_payload.url}</span>}
-            {report.category && <Badge variant="secondary" className="text-xs">{report.category}</Badge>}
+            <span className="flex items-center gap-1">
+              <Calendar className="h-3.5 w-3.5" />
+              {report.created_at ? new Date(report.created_at).toLocaleDateString('en-US', {
+                year: 'numeric', month: 'long', day: 'numeric',
+              }) : 'Unknown'}
+            </span>
             {report.scan_mode && <Badge variant="secondary" className="text-xs">{report.scan_mode}</Badge>}
-            {report.grade && <Badge variant="outline" className="text-xs font-bold">Grade: {report.grade}</Badge>}
           </div>
         </div>
       </div>
 
-      {/* Score + Tabs */}
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-        {/* Score sidebar */}
         <div className="lg:col-span-1">
           <Card className="sticky top-6">
             <CardContent className="flex flex-col items-center py-8">
               {score != null ? (
-                <ScoreGauge score={Math.round(score)} size={140} label="Overall Score" />
+                <ScoreGauge score={Math.round(score as number)} size={140} label="Overall Score" />
               ) : (
                 <div className="text-center py-8">
                   <p className="text-3xl font-bold text-muted-foreground">—</p>
@@ -398,7 +777,6 @@ export default function ReportDetailPage() {
           </Card>
         </div>
 
-        {/* Main content */}
         <div className="lg:col-span-3">
           <Tabs defaultValue={markdownContent ? 'report' : 'details'}>
             <TabsList>
@@ -419,9 +797,15 @@ export default function ReportDetailPage() {
             )}
 
             <TabsContent value="details" className="mt-4">
-              {report._type === 'geo' && <GeoDetails report={report} />}
-              {report._type === 'keywords' && <KeywordsDetails report={report} />}
-              {report._type === 'content' && <ContentDetails report={report} />}
+              {report._type === 'keywords' && <KeywordsDetails payload={payload} />}
+              {report._type === 'content' && <ContentDetails payload={payload} />}
+              {report._type === 'geo' && (
+                <Card>
+                  <CardContent className="py-8 text-center text-muted-foreground">
+                    <p>Report loaded in fallback mode. Structured data may be limited.</p>
+                  </CardContent>
+                </Card>
+              )}
             </TabsContent>
 
             <TabsContent value="raw" className="mt-4">
