@@ -3,14 +3,18 @@
 import { useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import { useGeoAnalyses } from '@/hooks/useGeo';
+import { useBrands } from '@/hooks/useBrands';
 import { ScoreGauge } from '@/components/geo/ScoreGauge';
-import { getMaturityLevel, getMaturityColor } from '@/lib/report-v2-types';
+import { TrendChart } from '@/components/geo/TrendChart';
+import { getMaturityLevel } from '@/lib/report-v2-types';
 import type { StoredGeoAnalysis } from '@/lib/report-types';
+import type { Brand } from '@/lib/brands-api';
+import type { VisibilityTrend } from '@/lib/geo-types';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import {
   TrendingUp, BarChart3, Search, FileText,
-  Plus, RefreshCw, ArrowRight, AlertCircle, ChevronRight,
+  Plus, RefreshCw, ArrowRight, AlertCircle, ChevronRight, Building2,
 } from 'lucide-react';
 
 function relTime(dateStr: string): string {
@@ -76,11 +80,93 @@ function SkeletonRow() {
   return <div className="h-16 rounded-lg bg-muted animate-pulse" />;
 }
 
+// ── Brand card ───────────────────────────────────────────────────────────────
+function BrandCard({ brand, latestScore }: { brand: Brand; latestScore: number | null }) {
+  const score = latestScore ?? 0;
+  const maturity = getMaturityLevel(score);
+
+  return (
+    <Link
+      href={`/dashboard/reports?brand=${encodeURIComponent(brand.brand_name)}`}
+      className="rounded-xl border border-border bg-card p-4 hover:bg-accent/50 transition-colors group"
+    >
+      <div className="flex items-start gap-3">
+        <ScoreGauge score={score} size={52} showMaturity={false} />
+        <div className="min-w-0 flex-1">
+          <p className="text-sm font-bold text-foreground truncate group-hover:text-primary transition-colors">
+            {brand.brand_name}
+          </p>
+          <p className="text-xs text-muted-foreground truncate">{brand.category || 'Uncategorized'}</p>
+          <div className="flex items-center gap-2 mt-2">
+            <Badge variant="outline" className="text-[10px] px-1.5 py-0 font-bold" style={{ color: maturity.color, borderColor: maturity.color }}>
+              {maturity.icon} {maturity.label}
+            </Badge>
+            {brand.region && (
+              <span className="text-[10px] text-muted-foreground">{brand.region}</span>
+            )}
+          </div>
+        </div>
+        <ChevronRight className="h-4 w-4 text-muted-foreground group-hover:text-foreground transition-colors shrink-0 mt-1" />
+      </div>
+    </Link>
+  );
+}
+
+// ── Trend section (shows when analyses have trend data) ─────────────────────
+function TrendSection({ analyses }: { analyses: StoredGeoAnalysis[] }) {
+  // Build a minimal VisibilityTrend from analyses for the overview chart
+  const trend = useMemo<VisibilityTrend | null>(() => {
+    const scored = analyses
+      .filter(a => a.overall_score != null && a.created_at)
+      .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+
+    if (scored.length < 2) return null;
+
+    const data_points = scored.map(a => ({
+      timestamp: a.created_at,
+      overall_visibility: a.overall_score ?? 0,
+      base_model_visibility: 0,
+      rag_model_visibility: 0,
+    }));
+
+    const first = data_points[0].overall_visibility;
+    const last = data_points[data_points.length - 1].overall_visibility;
+    const change = last - first;
+
+    return {
+      brand_name: 'All Brands',
+      category: '',
+      data_points,
+      total_snapshots: data_points.length,
+      overall_change: change,
+      trend_direction: change > 2 ? 'improving' : change < -2 ? 'declining' : 'stable',
+    };
+  }, [analyses]);
+
+  if (!trend) return null;
+
+  return (
+    <div className="bg-card rounded-xl border border-border p-6 space-y-4">
+      <div className="flex items-center justify-between">
+        <h3 className="text-lg font-bold text-foreground flex items-center gap-2">
+          <TrendingUp className="h-5 w-5 text-primary" />
+          Visibility Trend
+        </h3>
+        <Badge variant="outline" className="text-xs">
+          {trend.total_snapshots} data points
+        </Badge>
+      </div>
+      <TrendChart trend={trend} />
+    </div>
+  );
+}
+
 // ── Main page ────────────────────────────────────────────────────────────────
 export default function DashboardPage() {
   const { data: analyses, loading, error, fetchAnalyses } = useGeoAnalyses();
+  const { brands, loading: brandsLoading, error: brandsError, fetchBrands } = useBrands();
 
-  useEffect(() => { fetchAnalyses(); }, [fetchAnalyses]);
+  useEffect(() => { fetchAnalyses(); fetchBrands(); }, [fetchAnalyses, fetchBrands]);
 
   const stats = useMemo(() => {
     if (!analyses.length) return null;
@@ -92,6 +178,18 @@ export default function DashboardPage() {
       best: scores.length ? Math.max(...scores) : null,
     };
   }, [analyses]);
+
+  // Build latest score per brand (from analyses)
+  const brandScoreMap = useMemo(() => {
+    const map: Record<string, number | null> = {};
+    for (const brand of brands) {
+      const match = analyses.find(a =>
+        a.brand_name?.toLowerCase() === brand.brand_name.toLowerCase()
+      );
+      map[brand.id] = match?.overall_score ?? null;
+    }
+    return map;
+  }, [brands, analyses]);
 
   const recentAnalyses = analyses.slice(0, 5);
 
@@ -161,6 +259,52 @@ export default function DashboardPage() {
         ))}
       </div>
 
+      {/* ── Brand Tracking Cards ─────────────────────────────────────── */}
+      {!brandsLoading && brands.length > 0 && (
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <h3 className="text-lg font-bold text-foreground flex items-center gap-2">
+              <Building2 className="h-5 w-5 text-primary" />
+              Tracked Brands
+            </h3>
+            <Link href="/dashboard/brands" className="text-sm font-semibold text-primary hover:underline">
+              Manage
+            </Link>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {brands.slice(0, 6).map(brand => (
+              <BrandCard
+                key={brand.id}
+                brand={brand}
+                latestScore={brandScoreMap[brand.id]}
+              />
+            ))}
+          </div>
+        </div>
+      )}
+
+      {!brandsLoading && brands.length === 0 && !loading && analyses.length > 0 && (
+        <div className="rounded-xl border border-dashed border-border bg-card p-6 flex items-center gap-4">
+          <div className="h-12 w-12 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+            <Building2 className="h-6 w-6 text-primary" />
+          </div>
+          <div className="flex-1">
+            <p className="font-bold text-foreground">Track your brands</p>
+            <p className="text-sm text-muted-foreground">
+              Add brands to monitor their AI visibility over time with trend tracking.
+            </p>
+          </div>
+          <Link href="/dashboard/brands">
+            <Button size="sm" variant="outline" className="shrink-0 gap-1.5">
+              <Plus className="h-3.5 w-3.5" /> Add Brand
+            </Button>
+          </Link>
+        </div>
+      )}
+
+      {/* ── Visibility Trend ──────────────────────────────────────────── */}
+      <TrendSection analyses={analyses} />
+
       {/* ── Two-column body ──────────────────────────────────────────── */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         {/* Recent analyses (8/12) */}
@@ -226,7 +370,7 @@ export default function DashboardPage() {
             variant="outline"
             size="sm"
             className="w-full rounded-lg font-semibold gap-2 mt-2"
-            onClick={() => fetchAnalyses()}
+            onClick={() => { fetchAnalyses(); fetchBrands(); }}
           >
             <RefreshCw className="h-3.5 w-3.5" /> Refresh Data
           </Button>

@@ -1,10 +1,12 @@
 'use client';
 
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
-import { useFullAnalysis } from '@/hooks/useGeo';
+import { useFullAnalysis, useProviders } from '@/hooks/useGeo';
 import { useSSEProgress } from '@/hooks/useSSEProgress';
 import type { GeoAnalysisRequest, GeoProvider, ScanMode, IndustryProfile } from '@/lib/report-types';
+import type { ProviderSelection } from '@/lib/types/providers';
+import { ProviderSelector } from '@/components/geo/ProviderSelector';
 import { AnalysisStageList } from '@/components/geo/AnalysisStageList';
 import { ApiErrorToast } from '@/components/geo/ApiErrorToast';
 import { Button } from '@/components/ui/button';
@@ -16,18 +18,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { ChevronDown, Rocket, Zap, Search as SearchIcon, Play } from 'lucide-react';
 
 // ---------------------------------------------------------------------------
-// Provider + model registry (local until backend provides it)
+// Constants
 // ---------------------------------------------------------------------------
-const PROVIDERS = [
-  { id: 'chatgpt', name: 'ChatGPT', icon: '🤖', models: ['gpt-4o-mini', 'gpt-4o', 'gpt-4.1'] },
-  { id: 'gemini', name: 'Gemini', icon: '✨', models: ['gemini-2.5-flash', 'gemini-2.0-flash'] },
-  { id: 'perplexity', name: 'Perplexity', icon: '🔍', models: ['sonar-pro', 'sonar-reasoning'] },
-  { id: 'claude', name: 'Claude', icon: '🧠', models: ['claude-sonnet-4-20250514', 'claude-haiku-4-20250514'] },
-  { id: 'grok', name: 'Grok', icon: '⚡', models: ['grok-3-fast'] },
-  { id: 'digitalocean', name: 'DigitalOcean', icon: '🌊', models: ['llama-3.3-70b'] },
-] as const;
-
-type ProviderId = (typeof PROVIDERS)[number]['id'];
 
 const SCAN_MODES: { value: ScanMode; label: string; desc: string; icon: React.ReactNode }[] = [
   { value: 'quick', label: 'Quick', desc: '~2 min · core checks', icon: <Zap className="h-5 w-5" /> },
@@ -52,6 +44,9 @@ export default function AnalysisPage() {
   const { analysisId, loading, error: hookError, submit, markComplete, markError, reset } = useFullAnalysis();
   const { progress, error: sseError } = useSSEProgress(analysisId);
 
+  // --- Provider registry (dynamic from backend) ---
+  const { providers: registry } = useProviders();
+
   // --- Form state ---
   const [url, setUrl] = useState('');
   const [brandName, setBrandName] = useState('');
@@ -62,15 +57,19 @@ export default function AnalysisPage() {
   const [region, setRegion] = useState('');
   const [industryProfile, setIndustryProfile] = useState<IndustryProfile | ''>('');
   const [scanMode, setScanMode] = useState<ScanMode>('full');
-  const [selectedProviders, setSelectedProviders] = useState<Set<ProviderId>>(
-    new Set(['chatgpt', 'gemini', 'perplexity']),
-  );
-  const [selectedModels, setSelectedModels] = useState<Record<string, string>>({});
+  const [providerSelection, setProviderSelection] = useState<ProviderSelection>({});
   const [apiError, setApiError] = useState<unknown>(null);
 
   // --- Derived ---
   const isRunning = !!analysisId && loading;
-  const isValid = url.trim().length > 0 && brandName.trim().length > 0 && selectedProviders.size > 0;
+  const selectedProviderIds = Object.keys(providerSelection);
+  const isValid = url.trim().length > 0 && brandName.trim().length > 0 && selectedProviderIds.length > 0;
+
+  // Lookup display name for a provider ID
+  const providerDisplayName = useCallback((id: string): string => {
+    const p = registry?.providers.find((x) => x.id === id);
+    return p?.display_name ?? id;
+  }, [registry]);
 
   // --- Auto-redirect on completion ---
   useEffect(() => {
@@ -94,14 +93,6 @@ export default function AnalysisPage() {
   }, [sseError, analysisId, markError]);
 
   // --- Handlers ---
-  const toggleProvider = useCallback((id: ProviderId) => {
-    setSelectedProviders((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
-  }, []);
 
   const handleSubmit = useCallback(async () => {
     if (!isValid) return;
@@ -110,10 +101,16 @@ export default function AnalysisPage() {
     const csvToArray = (s: string) =>
       s.split(',').map((v) => v.trim()).filter(Boolean);
 
+    // Build models map: only include non-default selections
+    const models: Record<string, string> = {};
+    for (const [pid, mid] of Object.entries(providerSelection)) {
+      if (mid) models[pid] = mid;
+    }
+
     const request: GeoAnalysisRequest = {
       url: url.trim(),
       brand_name: brandName.trim(),
-      providers: [...selectedProviders] as GeoProvider[],
+      providers: selectedProviderIds as GeoProvider[],
       scan_mode: scanMode,
       ...(category && { category }),
       ...(aliases && { aliases: csvToArray(aliases) }),
@@ -121,7 +118,7 @@ export default function AnalysisPage() {
       ...(brandDescription && { brand_description: brandDescription }),
       ...(region && { region }),
       ...(industryProfile && { industry_profile: industryProfile }),
-      ...(Object.keys(selectedModels).length > 0 && { models: selectedModels }),
+      ...(Object.keys(models).length > 0 && { models }),
     };
 
     try {
@@ -130,20 +127,17 @@ export default function AnalysisPage() {
       setApiError(err);
     }
   }, [
-    isValid, url, brandName, selectedProviders, scanMode, category,
+    isValid, url, brandName, selectedProviderIds, scanMode, category,
     aliases, competitors, brandDescription, region, industryProfile,
-    selectedModels, submit,
+    providerSelection, submit,
   ]);
 
   // =========================================================================
   // Progress view (replaces form when running)
   // =========================================================================
   if (isRunning || progress) {
-    const providerNames = [...selectedProviders].map((id) => {
-      const p = PROVIDERS.find((x) => x.id === id);
-      return p?.name ?? id;
-    });
-    const timeConfig = { scanMode, providerCount: selectedProviders.size };
+    const providerNames = selectedProviderIds.map(providerDisplayName);
+    const timeConfig = { scanMode, providerCount: selectedProviderIds.length };
     const isComplete = progress?.status === 'completed';
     const hasFailed = progress?.status === 'failed';
 
@@ -331,50 +325,11 @@ export default function AnalysisPage() {
           <div className="space-y-3">
             <Label className="text-base font-semibold">
               AI Providers *
-              <span className="text-xs font-normal text-muted-foreground ml-2">
-                Select at least 1
-              </span>
             </Label>
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-              {PROVIDERS.map((p) => {
-                const selected = selectedProviders.has(p.id);
-                return (
-                  <div key={p.id} className="space-y-1.5">
-                    <button
-                      type="button"
-                      onClick={() => toggleProvider(p.id)}
-                      className={`w-full rounded-lg border-2 p-3 text-left transition-all ${
-                        selected
-                          ? 'border-primary bg-primary/5 ring-1 ring-primary/20'
-                          : 'border-border hover:border-muted-foreground/30'
-                      }`}
-                    >
-                      <span className="text-lg mr-2">{p.icon}</span>
-                      <span className="font-medium text-sm">{p.name}</span>
-                    </button>
-                    {selected && p.models.length > 1 && (
-                      <Select
-                        value={selectedModels[p.id] ?? ''}
-                        onValueChange={(v) => {
-                          if (v != null) setSelectedModels((prev) => ({ ...prev, [p.id]: v as string }));
-                        }}
-                      >
-                        <SelectTrigger className="h-8 text-xs">
-                          <SelectValue placeholder="Default model" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {p.models.map((m) => (
-                            <SelectItem key={m} value={m} className="text-xs">
-                              {m}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
+            <ProviderSelector
+              selected={providerSelection}
+              onChange={setProviderSelection}
+            />
           </div>
 
           {/* Submit (mobile — sidebar has it on desktop) */}
@@ -408,17 +363,14 @@ export default function AnalysisPage() {
               <div>
                 <dt className="text-muted-foreground">Providers</dt>
                 <dd className="flex flex-wrap gap-1 mt-1">
-                  {selectedProviders.size === 0 ? (
+                  {selectedProviderIds.length === 0 ? (
                     <span className="text-muted-foreground italic">None selected</span>
                   ) : (
-                    [...selectedProviders].map((id) => {
-                      const p = PROVIDERS.find((x) => x.id === id);
-                      return p ? (
-                        <Badge key={id} variant="secondary" className="text-xs">
-                          {p.icon} {p.name}
-                        </Badge>
-                      ) : null;
-                    })
+                    selectedProviderIds.map((id) => (
+                      <Badge key={id} variant="secondary" className="text-xs">
+                        {providerDisplayName(id)}
+                      </Badge>
+                    ))
                   )}
                 </dd>
               </div>

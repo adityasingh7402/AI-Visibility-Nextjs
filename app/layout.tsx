@@ -12,6 +12,18 @@ const poppins = Poppins({
 export const metadata: Metadata = {
   title: "AI Visibility Platform — Brand Dashboard",
   description: "Measure and optimize your brand's visibility across AI assistants like ChatGPT, Gemini, and Perplexity.",
+  openGraph: {
+    title: "AI Visibility Platform",
+    description: "Measure and optimize your brand's visibility across AI assistants.",
+    siteName: "AI Visibility Platform",
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "AI Visibility Platform",
+    description: "Measure and optimize your brand's visibility across AI assistants.",
+  },
+  robots: { index: true, follow: true },
 };
 
 export default function RootLayout({
