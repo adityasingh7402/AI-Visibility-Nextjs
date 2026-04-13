@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useFullAnalysis } from '@/hooks/useGeo';
 import { useSSEProgress } from '@/hooks/useSSEProgress';
 import type { GeoAnalysisRequest, GeoProvider, ScanMode, IndustryProfile } from '@/lib/report-types';
-import { AnalysisProgressBar } from '@/components/geo/AnalysisProgressBar';
+import { AnalysisStageList } from '@/components/geo/AnalysisStageList';
 import { ApiErrorToast } from '@/components/geo/ApiErrorToast';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -13,7 +13,7 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Globe, ChevronDown, Rocket, Zap, Search as SearchIcon, Play } from 'lucide-react';
+import { ChevronDown, Rocket, Zap, Search as SearchIcon, Play } from 'lucide-react';
 
 // ---------------------------------------------------------------------------
 // Provider + model registry (local until backend provides it)
@@ -35,19 +35,6 @@ const SCAN_MODES: { value: ScanMode; label: string; desc: string; icon: React.Re
   { value: 'deep', label: 'Deep', desc: '~10 min · comprehensive', icon: <Rocket className="h-5 w-5" /> },
 ];
 
-const FRIENDLY_STAGES: Record<string, string> = {
-  queued: 'Preparing your analysis…',
-  crawling: 'Reading your website…',
-  researching: 'Researching your market…',
-  testing_llms: 'Testing AI visibility…',
-  analyzing_images: 'Analyzing visuals…',
-  analyzing: 'Analyzing patterns…',
-  optimizing: 'Generating recommendations…',
-  verifying: 'Running quality checks…',
-  completed: 'Analysis complete! Redirecting…',
-  failed: 'Analysis encountered an error',
-};
-
 const INDUSTRY_OPTIONS: { value: IndustryProfile; label: string }[] = [
   { value: 'saas', label: 'SaaS' },
   { value: 'local_business', label: 'Local Business' },
@@ -63,7 +50,7 @@ export default function AnalysisPage() {
 
   // --- Hook state ---
   const { analysisId, loading, error: hookError, submit, markComplete, markError, reset } = useFullAnalysis();
-  const { progress, stageLabel, error: sseError } = useSSEProgress(analysisId);
+  const { progress, error: sseError } = useSSEProgress(analysisId);
 
   // --- Form state ---
   const [url, setUrl] = useState('');
@@ -148,33 +135,51 @@ export default function AnalysisPage() {
     selectedModels, submit,
   ]);
 
-  const friendlyStage = progress?.current_stage
-    ? (FRIENDLY_STAGES[progress.current_stage] ?? stageLabel)
-    : 'Starting up…';
-
   // =========================================================================
   // Progress view (replaces form when running)
   // =========================================================================
   if (isRunning || progress) {
-    return (
-      <div className="mx-auto max-w-2xl py-16 px-4 text-center space-y-8">
-        <Globe className="mx-auto h-12 w-12 text-primary animate-pulse" />
-        <h1 className="text-2xl font-bold">{friendlyStage}</h1>
+    const providerNames = [...selectedProviders].map((id) => {
+      const p = PROVIDERS.find((x) => x.id === id);
+      return p?.name ?? id;
+    });
+    const timeConfig = { scanMode, providerCount: selectedProviders.size };
+    const isComplete = progress?.status === 'completed';
+    const hasFailed = progress?.status === 'failed';
 
-        {progress && (
-          <AnalysisProgressBar
-            status={progress.status}
-            currentStage={stageLabel}
-            progressPercent={progress.progress_percent}
-            stageProgressPercent={progress.stage_progress_percent}
-            estimatedSecondsRemaining={progress.estimated_seconds_remaining}
-          />
+    return (
+      <div className="mx-auto max-w-2xl py-12 px-4 space-y-8">
+        {/* Stage list with per-provider sub-progress */}
+        <AnalysisStageList
+          progress={progress}
+          brandName={brandName || undefined}
+          providerNames={providerNames}
+          timeConfig={timeConfig}
+        />
+
+        {/* Navigate-away safe messaging */}
+        {!isComplete && !hasFailed && (
+          <div className="text-center space-y-3 rounded-xl border border-border bg-muted/30 p-5">
+            <p className="text-sm text-muted-foreground">
+              📌 Feel free to explore other pages — we&apos;ll send you a notification when your report is ready.
+            </p>
+            <Button
+              variant="outline"
+              onClick={() => router.push('/dashboard')}
+              className="text-sm"
+            >
+              Continue Exploring →
+            </Button>
+          </div>
         )}
 
-        {progress?.status === 'failed' && (
-          <Button variant="outline" onClick={() => { reset(); setApiError(null); }}>
-            Try Again
-          </Button>
+        {/* Failure retry */}
+        {hasFailed && (
+          <div className="text-center">
+            <Button variant="outline" onClick={() => { reset(); setApiError(null); }}>
+              Try Again
+            </Button>
+          </div>
         )}
 
         <ApiErrorToast error={apiError ?? hookError} onDismiss={() => setApiError(null)} />

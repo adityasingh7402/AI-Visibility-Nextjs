@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useCallback, useState } from 'react';
+import { useEffect, useCallback, useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useActivePipelines } from '@/hooks/useGeo';
 import { useSSEProgress } from '@/hooks/useSSEProgress';
@@ -8,6 +8,7 @@ import { PHASE_DISPLAY } from '@/lib/report-types';
 import type { ActivePipeline } from '@/lib/report-types';
 import { Loader2, ExternalLink, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { toast } from 'sonner';
 
 const POLL_INTERVAL = 15000; // Refresh active pipelines every 15s
 const LOCAL_STORAGE_KEY = 'geo_active_analysis';
@@ -46,6 +47,7 @@ export function clearActiveAnalysis() {
 function PipelineTracker({ pipeline }: { pipeline: ActivePipeline }) {
   const { progress, connected } = useSSEProgress(pipeline.analysis_id);
   const router = useRouter();
+  const toastFiredRef = useRef(false);
 
   const percent = progress?.progress_percent ?? pipeline.progress?.progress_percent ?? 0;
   const stage = progress?.current_stage ?? pipeline.progress?.current_stage ?? 'queued';
@@ -57,7 +59,26 @@ function PipelineTracker({ pipeline }: { pipeline: ActivePipeline }) {
     if (isComplete || isFailed) {
       clearActiveAnalysis();
     }
-  }, [isComplete, isFailed]);
+    // Fire toast notification exactly once on completion
+    if (isComplete && !toastFiredRef.current) {
+      toastFiredRef.current = true;
+      toast.success(`Analysis complete for "${pipeline.brand_name}"`, {
+        description: 'Your AI visibility report is ready to view.',
+        action: {
+          label: 'View Report',
+          onClick: () => router.push('/dashboard/reports'),
+        },
+        duration: 10000,
+      });
+    }
+    if (isFailed && !toastFiredRef.current) {
+      toastFiredRef.current = true;
+      toast.error(`Analysis failed for "${pipeline.brand_name}"`, {
+        description: progress?.error_message || 'Please try again.',
+        duration: 8000,
+      });
+    }
+  }, [isComplete, isFailed, pipeline.brand_name, router, progress?.error_message]);
 
   if (isComplete) {
     return (
