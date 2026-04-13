@@ -97,7 +97,7 @@ export function LLMBreakdownTable({ visibilityByLLM, confidenceByLLM }: LLMBreak
               {/* Avg position */}
               <div className="col-span-2">
                 <p className="text-xs font-bold text-slate-300">
-                  {scores.average_position !== undefined ? `#${scores.average_position.toFixed(1)}` : '—'}
+                  {scores.average_position != null ? `#${scores.average_position.toFixed(1)}` : '—'}
                 </p>
               </div>
 
