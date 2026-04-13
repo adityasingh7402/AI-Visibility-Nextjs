@@ -74,13 +74,14 @@ export function MarkdownReportViewer({
       .from(container)
       .save();
   }, [markdown, brandName, reportDate]);
+
+  const handleCopyMarkdown = useCallback(async () => {
     if (!markdown) return;
     try {
       await navigator.clipboard.writeText(markdown);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     } catch {
-      // Fallback for older browsers
       const textarea = document.createElement('textarea');
       textarea.value = markdown;
       document.body.appendChild(textarea);
@@ -113,7 +114,7 @@ export function MarkdownReportViewer({
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
         <CardTitle className="text-base">Report</CardTitle>
         <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" onClick={handleCopy}>
+          <Button variant="outline" size="sm" onClick={handleCopyMarkdown}>
             {copied ? (
               <><Check className="h-3.5 w-3.5 mr-1.5" />Copied</>
             ) : (
