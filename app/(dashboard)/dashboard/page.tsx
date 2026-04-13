@@ -335,7 +335,7 @@ export default function DashboardPage() {
               <p className="text-4xl mb-4">📊</p>
               <p className="font-bold text-foreground mb-2 text-lg">No analyses yet</p>
               <p className="text-sm text-muted-foreground mb-6 max-w-sm mx-auto">
-                Run your first GEO analysis to evaluate your brand's standing among top AI assistants.
+                Run your first GEO analysis to evaluate your brand&apos;s standing among top AI assistants.
               </p>
               <Link href="/dashboard/audit">
                 <Button className="rounded-lg font-semibold shadow-sm hover:-translate-y-0.5 transition-transform">

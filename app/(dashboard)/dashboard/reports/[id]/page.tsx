@@ -24,7 +24,7 @@ import { EvidenceTranscripts } from '@/components/geo/EvidenceTranscripts';
 import { ImprovementRoadmap } from '@/components/geo/ImprovementRoadmap';
 import type { StructuredReport, ReportTab } from '@/lib/report-v2-types';
 import { REPORT_TABS, getMaturityLevel } from '@/lib/report-v2-types';
-import { scoresToSubScores, providersToBreakdownMap, normalizeCompetitors } from '@/lib/report-adapters';
+import { scoresToSubScores, normalizeCompetitors } from '@/lib/report-adapters';
 import { V19_DIMENSIONS } from '@/lib/report-types';
 
 // --- Helpers for safe raw_payload access ---
