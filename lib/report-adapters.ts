@@ -9,14 +9,25 @@ import type { VisibilitySubScoresV19 } from './report-types';
 // ── DimensionRadar Adapter ──
 
 /** Convert StructuredScore[] (flat array) → VisibilitySubScoresV19 (17-key record).
- *  DimensionRadar component expects the record form. */
+ *  DimensionRadar component expects the record form.
+ *  Provides 0-defaults for any missing dimension to avoid undefined access. */
 export function scoresToSubScores(scores: StructuredScore[] | null): VisibilitySubScoresV19 | null {
   if (!scores || scores.length === 0) return null;
-  const result: Record<string, number> = {};
+  const defaults: VisibilitySubScoresV19 = {
+    llm_mention: 0, llm_consistency: 0, llm_position: 0,
+    authority: 0, web_presence: 0, citation_strength: 0,
+    content_fit: 0, citability: 0, page_quality: 0, freshness: 0,
+    technical_seo: 0, ai_readiness: 0,
+    competitor_gap: 0, pattern_match: 0,
+    sentiment: 0, consistency: 0,
+    aeo_readiness: 0,
+  };
   for (const s of scores) {
-    result[s.dimension] = s.score;
+    if (s.dimension in defaults) {
+      defaults[s.dimension as keyof VisibilitySubScoresV19] = s.score;
+    }
   }
-  return result as unknown as VisibilitySubScoresV19;
+  return defaults;
 }
 
 // ── LLMBreakdownTable Adapter ──

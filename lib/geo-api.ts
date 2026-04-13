@@ -446,12 +446,12 @@ class GEOApi {
 
   async checkPrompt(request: {
     brand_name: string;
-    query: string;
+    prompt: string;
     llm_providers?: string[];
   }): Promise<KeywordValidateResponse> {
     const { data } = await this.client.post('/api/v1/keywords/validate', {
       brand_name: request.brand_name,
-      query: request.query,
+      prompt: request.prompt,
       llm_providers: request.llm_providers,
     });
     return data as KeywordValidateResponse;

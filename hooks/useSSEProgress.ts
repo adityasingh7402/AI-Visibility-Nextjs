@@ -41,7 +41,8 @@ export function useSSEProgress(analysisId: string | null) {
     if (!analysisId) return;
 
     let cancelled = false;
-    let hasRetriedAuth = false;
+    let retryCount = 0;
+    const MAX_RETRIES = 3;
 
     /**
      * Fetch a valid Supabase JWT, refreshing the session if the current
@@ -99,7 +100,7 @@ export function useSSEProgress(analysisId: string | null) {
       es.addEventListener('connected', () => {
         setConnected(true);
         setError(null);
-        hasRetriedAuth = false;
+        retryCount = 0; // Reset on successful connection
       });
 
       es.addEventListener('progress', (event: MessageEvent) => {
@@ -109,8 +110,15 @@ export function useSSEProgress(analysisId: string | null) {
           setProgress(prev => {
             if (!prev) return data;
             if (data.progress_percent >= prev.progress_percent) return data;
-            // Keep higher progress but update other fields (stage label, message)
-            return { ...data, progress_percent: prev.progress_percent };
+            // Keep higher progress and stage_progress_percent but update other fields
+            return {
+              ...data,
+              progress_percent: prev.progress_percent,
+              stage_progress_percent: Math.max(
+                data.stage_progress_percent ?? 0,
+                prev.stage_progress_percent ?? 0,
+              ),
+            };
           });
         } catch {
           console.error('[SSE] Failed to parse progress event');
@@ -142,11 +150,36 @@ export function useSSEProgress(analysisId: string | null) {
         setConnected(false);
       });
 
+      // Listen for backend-sent error events (e.g. consecutive poll failures)
+      es.addEventListener('error', (event: MessageEvent) => {
+        try {
+          const data = JSON.parse(event.data);
+          const msg = data.message || data.error || 'Stream error from server';
+          if (data.retrying) {
+            // Transient error — backend is retrying, just log
+            console.warn('[SSE] Server-side poll error (retrying):', msg);
+          } else {
+            // Fatal error — close and surface
+            setError(msg);
+            es.close();
+            setConnected(false);
+            eventSourceRef.current = null;
+          }
+        } catch {
+          // Non-JSON error event — treat as fatal
+          setError('Stream error from server');
+          es.close();
+          setConnected(false);
+          eventSourceRef.current = null;
+        }
+      });
+
+      // Network-level errors (connection dropped, 401, etc)
       es.onerror = () => {
         if (es.readyState === EventSource.CLOSED) {
-          // Attempt one token-refresh reconnect on auth failure (HTTP 401)
-          if (!hasRetriedAuth && !cancelled) {
-            hasRetriedAuth = true;
+          retryCount++;
+          if (retryCount <= MAX_RETRIES && !cancelled) {
+            console.warn(`[SSE] Connection lost, retrying (${retryCount}/${MAX_RETRIES})...`);
             es.close();
             eventSourceRef.current = null;
             setConnected(false);
@@ -154,7 +187,7 @@ export function useSSEProgress(analysisId: string | null) {
             return;
           }
 
-          setError('Connection lost. Progress tracking stopped.');
+          setError('Connection lost after multiple retries. Please refresh the page.');
           setConnected(false);
           eventSourceRef.current = null;
         }

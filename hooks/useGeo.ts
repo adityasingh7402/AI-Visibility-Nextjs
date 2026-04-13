@@ -371,7 +371,7 @@ export function usePromptCheck() {
 
   const check = useCallback(async (request: {
     brand_name: string;
-    query: string;
+    prompt: string;
     llm_providers?: string[];
   }) => {
     setLoading(true);

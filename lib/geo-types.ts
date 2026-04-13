@@ -340,6 +340,7 @@ export interface ContentLiveTestRequest {
   target_queries?: string[];
   providers: LLMProvider[];
   competitors?: string[];
+  content_type?: string;
 }
 
 export interface ContentLiveTestResponse extends ContentValidationResponse {

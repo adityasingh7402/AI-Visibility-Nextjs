@@ -45,7 +45,7 @@ export function clearActiveAnalysis() {
 
 /** Single pipeline progress tracker */
 function PipelineTracker({ pipeline }: { pipeline: ActivePipeline }) {
-  const { progress, connected } = useSSEProgress(pipeline.analysis_id);
+  const { progress, connected, error: sseError } = useSSEProgress(pipeline.analysis_id);
   const router = useRouter();
   const toastFiredRef = useRef(false);
 
@@ -74,11 +74,19 @@ function PipelineTracker({ pipeline }: { pipeline: ActivePipeline }) {
     if (isFailed && !toastFiredRef.current) {
       toastFiredRef.current = true;
       toast.error(`Analysis failed for "${pipeline.brand_name}"`, {
-        description: progress?.error_message || 'Please try again.',
-        duration: 8000,
+        description: progress?.error_message || 'An unexpected error occurred.',
+        duration: 15000,
       });
     }
-  }, [isComplete, isFailed, pipeline.brand_name, router, progress?.error_message]);
+    // Surface SSE connection errors (lost connection, auth failure)
+    if (sseError && !isComplete && !isFailed && !toastFiredRef.current) {
+      toastFiredRef.current = true;
+      toast.error(`Connection lost for "${pipeline.brand_name}"`, {
+        description: sseError,
+        duration: 15000,
+      });
+    }
+  }, [isComplete, isFailed, sseError, pipeline.brand_name, router, progress?.error_message]);
 
   if (isComplete) {
     return (

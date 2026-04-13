@@ -24,7 +24,7 @@ export default function PromptCheckPage() {
     if (!canSubmit) return;
     await check({
       brand_name: brandName.trim(),
-      query: query.trim(),
+      prompt: query.trim(),
       llm_providers: Object.keys(selectedProviders),
     });
   }, [canSubmit, brandName, query, selectedProviders, check]);
