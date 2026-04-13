@@ -19,6 +19,7 @@ import {
   Key, BarChart3, Sparkles, Save, TestTube, FileText,
   AlertCircle, Loader2, CheckCircle2, XCircle, Minus,
 } from 'lucide-react';
+import { toast } from 'sonner';
 
 /* ------------------------------------------------------------------ */
 /*  Scan Mode Definitions                                              */
@@ -75,8 +76,9 @@ export default function ScanPage() {
 
     try {
       await discover(req);
+      toast.success('Keyword discovery complete!', { description: `${scanMode} scan finished` });
     } catch {
-      // error surfaced via hook
+      toast.error('Keyword discovery failed', { description: 'Please check the form and try again.' });
     }
   }, [brandName, category, scanMode, providerKeys, url, competitors, targetAudience, region, discover]);
 

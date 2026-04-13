@@ -15,6 +15,7 @@ import { Label } from '@/components/ui/label';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Globe, ChevronDown, Rocket, Zap, Search as SearchIcon, Loader2, CheckCircle2, AlertCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { toast } from 'sonner';
 
 // Scan mode options
 const SCAN_MODES: { value: ScanMode; label: string; desc: string; icon: React.ReactNode }[] = [
@@ -48,6 +49,7 @@ export default function FullSiteAuditPage() {
   const [scanMode, setScanMode] = useState<ScanMode>('full');
   const [selectedProviders, setSelectedProviders] = useState<ProviderSelection>({});
   const [showAdvanced, setShowAdvanced] = useState(false);
+  const [touched, setTouched] = useState<Record<string, boolean>>({});
 
   // Advanced options
   const [competitors, setCompetitors] = useState('');
@@ -63,11 +65,18 @@ export default function FullSiteAuditPage() {
   // Track if we already redirected
   const redirectedRef = useRef(false);
 
+  // Inline validation
+  const urlValid = /^https?:\/\/.+/.test(url.trim());
+  const brandValid = brandName.trim().length > 0;
+  const categoryValid = category.trim().length > 0;
+  const providersValid = Object.keys(selectedProviders).length > 0;
+
   // Auto-redirect when analysis completes
   useEffect(() => {
     if (stage === 'completed' && analysisId && !redirectedRef.current) {
       redirectedRef.current = true;
       markComplete();
+      toast.success('Analysis complete!', { description: 'Your AI visibility report is ready.' });
       const targetId = sseProgress?.report_id || analysisId;
       const timer = setTimeout(() => {
         router.push(`/dashboard/reports/${targetId}`);
@@ -76,39 +85,58 @@ export default function FullSiteAuditPage() {
     }
     if (stage === 'failed') {
       markError('Analysis failed');
+      toast.error('Analysis failed', { description: 'Please check the error details and try again.' });
     }
   }, [stage, analysisId, sseProgress?.report_id, router, markComplete, markError]);
 
-  const canSubmit = url.trim() && brandName.trim() && Object.keys(selectedProviders).length > 0 && !submitting && !analysisId;
+  const canSubmit = urlValid && brandValid && categoryValid && providersValid && !submitting && !analysisId;
 
   const handleSubmit = useCallback(async () => {
-    if (!canSubmit) return;
+    // Mark all fields as touched to show validation errors
+    setTouched({ url: true, brand: true, category: true, providers: true });
+
+    if (!canSubmit) {
+      toast.error('Please fix the errors below', {
+        description: !urlValid ? 'A valid URL is required (e.g. https://example.com)'
+          : !brandValid ? 'Brand name is required'
+          : !categoryValid ? 'Category is required (e.g. SaaS, E-commerce)'
+          : 'Select at least 1 AI provider',
+      });
+      return;
+    }
 
     const providerIds = Object.keys(selectedProviders);
     const models: Record<string, string> = {};
     for (const [pid, mid] of Object.entries(selectedProviders)) {
-      models[pid] = mid;
+      if (mid) models[pid] = mid;
     }
 
     const request: GeoAnalysisRequest = {
       url: url.trim(),
       brand_name: brandName.trim(),
+      category: category.trim(),
       scan_mode: scanMode,
       providers: providerIds as GeoProvider[],
-      models,
-      category: category.trim() || undefined,
-      competitors: competitors.trim() ? competitors.split(',').map((c) => c.trim()).filter(Boolean) : undefined,
-      aliases: aliases.trim() ? aliases.split(',').map((a) => a.trim()).filter(Boolean) : undefined,
-      brand_description: description.trim() || undefined,
-      region: region !== 'global' ? region : undefined,
+      ...(Object.keys(models).length > 0 && { models }),
+      ...(competitors.trim() && { competitors: competitors.split(',').map((c) => c.trim()).filter(Boolean) }),
+      ...(aliases.trim() && { aliases: aliases.split(',').map((a) => a.trim()).filter(Boolean) }),
+      ...(description.trim() && { brand_description: description.trim() }),
+      ...(region && region !== 'global' && { region }),
     };
 
     redirectedRef.current = false;
-    const result = await submit(request);
-    if (result?.analysis_id) {
-      setActiveAnalysis(result.analysis_id, brandName.trim());
+    try {
+      const result = await submit(request);
+      if (result?.analysis_id) {
+        setActiveAnalysis(result.analysis_id, brandName.trim());
+        toast.success('Analysis submitted!', {
+          description: `Analyzing "${brandName.trim()}" — this may take a few minutes.`,
+        });
+      }
+    } catch {
+      toast.error('Failed to submit analysis', { description: 'Please check the error details below.' });
     }
-  }, [canSubmit, url, brandName, scanMode, selectedProviders, category, competitors, aliases, description, region, submit]);
+  }, [canSubmit, urlValid, brandValid, categoryValid, url, brandName, scanMode, selectedProviders, category, competitors, aliases, description, region, submit]);
 
   const isRunning = !!analysisId && stage !== 'completed' && stage !== 'failed';
   const friendlyMessage = stageLabel || (stage ? FRIENDLY_STAGES[stage] ?? `Processing: ${stage}…` : 'Submitting analysis…');
@@ -128,7 +156,7 @@ export default function FullSiteAuditPage() {
 
       {/* Show progress when running */}
       {(submitting || isRunning) && (
-        <div className="rounded-lg border bg-card p-6 space-y-4">
+        <div className="rounded-xl border bg-card p-6 space-y-4 shadow-sm">
           <div className="flex items-center gap-3">
             {stage === 'completed' ? (
               <CheckCircle2 className="h-5 w-5 text-green-500" />
@@ -143,13 +171,22 @@ export default function FullSiteAuditPage() {
           {/* Progress bar */}
           {typeof percent === 'number' && (
             <div className="space-y-1">
-              <div className="h-2 rounded-full bg-muted overflow-hidden">
+              <div className="h-2.5 rounded-full bg-muted overflow-hidden">
                 <div
-                  className="h-full rounded-full bg-primary transition-all duration-500"
+                  className="h-full rounded-full bg-gradient-to-r from-primary to-blue-400 transition-all duration-700 ease-out"
                   style={{ width: `${Math.min(percent, 100)}%` }}
                 />
               </div>
-              <p className="text-xs text-muted-foreground text-right">{Math.round(percent)}%</p>
+              <p className="text-xs text-muted-foreground text-right font-mono">{Math.round(percent)}%</p>
+            </div>
+          )}
+
+          {/* Navigate-away safe messaging */}
+          {!stage?.match(/completed|failed/) && (
+            <div className="text-center py-2">
+              <p className="text-sm text-muted-foreground">
+                📌 You can navigate away — we&apos;ll notify you when your report is ready.
+              </p>
             </div>
           )}
 
@@ -164,17 +201,22 @@ export default function FullSiteAuditPage() {
         <div className="space-y-6">
           {/* URL — Hero Input */}
           <div className="space-y-2">
-            <Label htmlFor="url" className="text-base font-semibold">Website URL</Label>
+            <Label htmlFor="url" className="text-base font-semibold">Website URL *</Label>
             <Input
               id="url"
               type="url"
               placeholder="https://example.com"
               value={url}
               onChange={(e) => setUrl(e.target.value)}
-              className="h-12 text-lg"
+              onBlur={() => setTouched(t => ({ ...t, url: true }))}
+              className={cn('h-12 text-lg', touched.url && !urlValid && url.trim() && 'border-destructive focus-visible:ring-destructive')}
               autoFocus
             />
-            <p className="text-xs text-muted-foreground">Enter the URL you want to audit for AI visibility</p>
+            {touched.url && !urlValid && url.trim() ? (
+              <p className="text-xs text-destructive">Please enter a valid URL starting with https://</p>
+            ) : (
+              <p className="text-xs text-muted-foreground">Enter the URL you want to audit for AI visibility</p>
+            )}
           </div>
 
           {/* Brand Name & Category */}
@@ -186,16 +228,28 @@ export default function FullSiteAuditPage() {
                 placeholder="e.g. Acme Corp"
                 value={brandName}
                 onChange={(e) => setBrandName(e.target.value)}
+                onBlur={() => setTouched(t => ({ ...t, brand: true }))}
+                className={cn(touched.brand && !brandValid && 'border-destructive focus-visible:ring-destructive')}
               />
+              {touched.brand && !brandValid && (
+                <p className="text-xs text-destructive">Brand name is required</p>
+              )}
             </div>
             <div className="space-y-2">
-              <Label htmlFor="category">Category</Label>
+              <Label htmlFor="category">Category *</Label>
               <Input
                 id="category"
-                placeholder="e.g. SaaS, E-commerce"
+                placeholder="e.g. SaaS, E-commerce, Developer Tools"
                 value={category}
                 onChange={(e) => setCategory(e.target.value)}
+                onBlur={() => setTouched(t => ({ ...t, category: true }))}
+                className={cn(touched.category && !categoryValid && 'border-destructive focus-visible:ring-destructive')}
               />
+              {touched.category && !categoryValid ? (
+                <p className="text-xs text-destructive">Category is required for accurate analysis</p>
+              ) : (
+                <p className="text-xs text-muted-foreground">Helps AI understand your competitive landscape</p>
+              )}
             </div>
           </div>
 
@@ -255,9 +309,9 @@ export default function FullSiteAuditPage() {
                   type="button"
                   onClick={() => setScanMode(mode.value)}
                   className={cn(
-                    'rounded-lg border p-4 text-left transition-all',
+                    'rounded-xl border-2 p-4 text-left transition-all',
                     scanMode === mode.value
-                      ? 'border-primary bg-primary/5 ring-1 ring-primary/20'
+                      ? 'border-primary bg-primary/5 ring-1 ring-primary/20 shadow-sm'
                       : 'border-border hover:border-muted-foreground/30'
                   )}
                 >
@@ -273,17 +327,20 @@ export default function FullSiteAuditPage() {
 
           {/* Provider Selection */}
           <div className="space-y-3">
-            <Label className="text-base font-semibold">AI Providers</Label>
+            <Label className="text-base font-semibold">AI Providers *</Label>
             <ProviderSelector
               selected={selectedProviders}
               onChange={setSelectedProviders}
             />
+            {touched.providers && !providersValid && (
+              <p className="text-xs text-destructive">Select at least 1 AI provider</p>
+            )}
           </div>
 
           {/* Submit */}
           <Button
             onClick={handleSubmit}
-            disabled={!canSubmit}
+            disabled={submitting}
             size="lg"
             className="w-full h-12 text-base font-semibold"
           >

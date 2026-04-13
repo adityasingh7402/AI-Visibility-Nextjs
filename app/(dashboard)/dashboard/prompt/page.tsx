@@ -10,6 +10,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { MessageSquare, Loader2, CheckCircle2, XCircle } from 'lucide-react';
+import { toast } from 'sonner';
 
 export default function PromptCheckPage() {
   const { data, loading, error, check, reset } = usePromptCheck();
@@ -21,13 +22,29 @@ export default function PromptCheckPage() {
   const canSubmit = brandName.trim() && query.trim() && Object.keys(selectedProviders).length > 0 && !loading;
 
   const handleSubmit = useCallback(async () => {
-    if (!canSubmit) return;
-    await check({
-      brand_name: brandName.trim(),
-      prompt: query.trim(),
-      llm_providers: Object.keys(selectedProviders),
-    });
-  }, [canSubmit, brandName, query, selectedProviders, check]);
+    if (!brandName.trim()) {
+      toast.error('Brand name is required');
+      return;
+    }
+    if (!query.trim() || query.trim().length < 5) {
+      toast.error('Please enter a question (at least 5 characters)');
+      return;
+    }
+    if (Object.keys(selectedProviders).length === 0) {
+      toast.error('Select at least 1 AI provider');
+      return;
+    }
+    try {
+      await check({
+        brand_name: brandName.trim(),
+        prompt: query.trim(),
+        llm_providers: Object.keys(selectedProviders),
+      });
+      toast.success('Prompt check complete!');
+    } catch {
+      toast.error('Prompt check failed', { description: 'Please try again.' });
+    }
+  }, [brandName, query, selectedProviders, check]);
 
   const handleReset = () => {
     reset();

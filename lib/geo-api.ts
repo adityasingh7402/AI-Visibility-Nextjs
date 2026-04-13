@@ -269,7 +269,10 @@ class GEOApi {
 
   /** Poll analysis progress */
   async pollProgress(analysisId: string): Promise<AnalysisProgress> {
-    const { data } = await this.client.get(`/api/v1/progress/poll/${analysisId}`, { timeout: 10000 });
+    const { data } = await this.client.get(`/api/v1/progress/poll/${analysisId}`, {
+      timeout: 10000,
+      headers: { 'Cache-Control': 'no-store, no-cache', 'Pragma': 'no-cache' },
+    });
     return data;
   }
 
@@ -399,7 +402,9 @@ class GEOApi {
   // ---- Active Pipelines (running analyses) ----
 
   async getActivePipelines(): Promise<ActivePipeline[]> {
-    const { data } = await this.client.get('/api/v1/progress/active');
+    const { data } = await this.client.get('/api/v1/progress/active', {
+      headers: { 'Cache-Control': 'no-store, no-cache', 'Pragma': 'no-cache' },
+    });
     return data as ActivePipeline[];
   }
 

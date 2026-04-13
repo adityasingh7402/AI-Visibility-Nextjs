@@ -11,6 +11,7 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { Key, Loader2, Plus, X, ClipboardPaste, RotateCcw } from 'lucide-react';
+import { toast } from 'sonner';
 
 export default function KeywordTestPage() {
   const { data, loading, error, test } = useKeywordTest();
@@ -44,14 +45,30 @@ export default function KeywordTestPage() {
   const canSubmit = brandName.trim() && keywords.length > 0 && Object.keys(selectedProviders).length > 0 && !loading;
 
   const handleSubmit = useCallback(async () => {
-    if (!canSubmit) return;
+    if (!brandName.trim()) {
+      toast.error('Brand name is required');
+      return;
+    }
+    if (keywords.length === 0) {
+      toast.error('Add at least 1 keyword to test');
+      return;
+    }
+    if (Object.keys(selectedProviders).length === 0) {
+      toast.error('Select at least 1 AI provider');
+      return;
+    }
     const request: KeywordTestRequest = {
       brand_name: brandName.trim(),
       keywords,
       llm_providers: Object.keys(selectedProviders) as LLMProvider[],
     };
-    await test(request);
-  }, [canSubmit, brandName, keywords, selectedProviders, test]);
+    try {
+      await test(request);
+      toast.success('Keyword test complete!', { description: `Tested ${keywords.length} keywords` });
+    } catch {
+      toast.error('Keyword test failed', { description: 'Please check the error details and try again.' });
+    }
+  }, [brandName, keywords, selectedProviders, test]);
 
   const handleReset = () => {
     setKeywords([]);

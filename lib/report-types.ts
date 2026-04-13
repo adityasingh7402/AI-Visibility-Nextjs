@@ -245,7 +245,7 @@ export interface GeoAnalysisRequest {
   brand_name: string;
   aliases?: string[];
   competitors?: string[];
-  category?: string;
+  category: string;  // REQUIRED — backend returns 400 if empty
   brand_description?: string;
   region?: string;
   target_audiences?: string[];

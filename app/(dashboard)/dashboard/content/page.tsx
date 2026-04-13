@@ -18,6 +18,7 @@ import {
   Loader2, Zap, Bot, Sparkles, CheckCircle, AlertTriangle,
   AlertCircle, Copy, ArrowRight, ShieldAlert,
 } from 'lucide-react';
+import { toast } from 'sonner';
 
 /* ------------------------------------------------------------------ */
 /*  Constants                                                          */
@@ -152,11 +153,15 @@ export default function ContentLabPage() {
   const live = useContentValidation();
   const enhancement = useContentEnhancement();
 
-  const canSubmit = !!brandName.trim() && !!content.trim();
+  const canSubmit = !!brandName.trim() && content.trim().length >= 50;
 
   // ---- handlers ----
   const handleStructural = async () => {
-    if (!canSubmit) return;
+    if (!canSubmit) {
+      if (!brandName.trim()) toast.error('Brand name is required');
+      else if (content.trim().length < 50) toast.error('Content must be at least 50 characters');
+      return;
+    }
     try {
       await structural.validate({
         content,
@@ -165,13 +170,23 @@ export default function ContentLabPage() {
         competitors: parseList(competitors),
         content_type: contentType,
       });
-    } catch { /* error surfaced via hook state */ }
+      toast.success('Structural check complete!');
+    } catch {
+      toast.error('Structural check failed');
+    }
   };
 
   const handleLiveTest = async () => {
-    if (!canSubmit) return;
+    if (!canSubmit) {
+      if (!brandName.trim()) toast.error('Brand name is required');
+      else if (content.trim().length < 50) toast.error('Content must be at least 50 characters');
+      return;
+    }
     const providers = Object.keys(selectedProviders) as LLMProvider[];
-    if (providers.length === 0) return;
+    if (providers.length === 0) {
+      toast.error('Select at least 1 AI provider for live testing');
+      return;
+    }
     try {
       await live.testLive({
         content,
@@ -180,11 +195,18 @@ export default function ContentLabPage() {
         providers,
         competitors: parseList(competitors),
       });
-    } catch { /* error surfaced via hook state */ }
+      toast.success('Live AI test complete!');
+    } catch {
+      toast.error('Live test failed');
+    }
   };
 
   const handleEnhance = async () => {
-    if (!canSubmit) return;
+    if (!canSubmit) {
+      if (!brandName.trim()) toast.error('Brand name is required');
+      else if (content.trim().length < 50) toast.error('Content must be at least 50 characters');
+      return;
+    }
     try {
       await enhancement.enhance({
         content,
@@ -193,7 +215,10 @@ export default function ContentLabPage() {
         competitors: parseList(competitors),
         content_type: contentType,
       });
-    } catch { /* error surfaced via hook state */ }
+      toast.success('Content enhanced! ✨');
+    } catch {
+      toast.error('Enhancement failed');
+    }
   };
 
   const handleCopy = async (text: string) => {
@@ -296,12 +321,15 @@ export default function ContentLabPage() {
               <Label htmlFor="content-input">Content *</Label>
               <span className={cn(
                 'text-xs',
-                content.length > 0 && content.length < 500
+                content.length > 0 && content.length < 50
+                  ? 'text-destructive'
+                  : content.length >= 50 && content.length < 500
                   ? 'text-amber-500'
                   : 'text-muted-foreground',
               )}>
                 {content.length.toLocaleString()} chars
-                {content.length > 0 && content.length < 500 && ' — min 500 recommended'}
+                {content.length > 0 && content.length < 50 && ' — min 50 required'}
+                {content.length >= 50 && content.length < 500 && ' — min 500 recommended'}
               </span>
             </div>
             <Textarea

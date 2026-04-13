@@ -10,7 +10,7 @@ import { Loader2, ExternalLink, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 
-const POLL_INTERVAL = 15000; // Refresh active pipelines every 15s
+const POLL_INTERVAL = 30000; // Refresh active pipelines every 30s (was 15s — reduced to fix 304 flooding)
 const LOCAL_STORAGE_KEY = 'geo_active_analysis';
 
 /** Store active analysis in localStorage for persistence across page navigation */
