@@ -13,9 +13,10 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Skeleton } from '@/components/ui/skeleton';
 import { ArrowLeft, Calendar, Download } from 'lucide-react';
 import { MarkdownReportViewer } from '@/components/dashboard/MarkdownReportViewer';
+import { ReportDetailSkeleton } from '@/components/ui/report-skeleton';
+import { ErrorState, ReportNotFoundState } from '@/components/ui/error-states';
 import type { StructuredReport, StructuredScore, ReportTab } from '@/lib/report-v2-types';
 import { REPORT_TABS, getMaturityLevel } from '@/lib/report-v2-types';
 import { scoresToSubScores, providersToBreakdownMap, normalizeCompetitors } from '@/lib/report-adapters';
@@ -624,32 +625,22 @@ export default function ReportDetailPage() {
 
   // ── Loading state ──
   if (loading) {
-    return (
-      <div className="space-y-6">
-        <div className="flex items-center gap-3">
-          <Skeleton className="h-10 w-10 rounded" />
-          <Skeleton className="h-8 w-64" />
-        </div>
-        <Skeleton className="h-48 rounded-xl" />
-        <Skeleton className="h-10 w-96" />
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <Skeleton className="h-64" />
-          <Skeleton className="h-64" />
-        </div>
-      </div>
-    );
+    return <ReportDetailSkeleton />;
   }
 
   // ── Error state ──
   if (error || (!structuredReport && !rawReport)) {
-    return (
-      <div className="flex flex-col items-center justify-center py-20 space-y-4">
-        <p className="text-lg font-semibold text-destructive">{error || 'Report not found'}</p>
-        <Button variant="outline" onClick={() => router.push('/dashboard/reports')}>
-          <ArrowLeft className="h-4 w-4 mr-2" /> Back to Reports
-        </Button>
-      </div>
-    );
+    if (error) {
+      return (
+        <ErrorState
+          title="Failed to load report"
+          message={error}
+          onRetry={() => window.location.reload()}
+          showBack
+        />
+      );
+    }
+    return <ReportNotFoundState />;
   }
 
   // ════════════════════════════════════════════════════

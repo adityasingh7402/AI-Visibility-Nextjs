@@ -12,6 +12,7 @@ import type { Brand } from '@/lib/brands-api';
 import type { VisibilityTrend } from '@/lib/geo-types';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { WelcomeState } from '@/components/ui/error-states';
 import {
   TrendingUp, BarChart3, Search, FileText,
   Plus, RefreshCw, ArrowRight, AlertCircle, ChevronRight, Building2,
@@ -205,6 +206,11 @@ export default function DashboardPage() {
     if (!stats) return '';
     const v = stats[key];
     return v !== null ? `${getMaturityLevel(v).label}` : '';
+  }
+
+  // First-time user: show welcome state
+  if (!loading && !brandsLoading && analyses.length === 0 && brands.length === 0) {
+    return <WelcomeState />;
   }
 
   return (

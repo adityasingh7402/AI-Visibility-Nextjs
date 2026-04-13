@@ -9,6 +9,8 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
+import { ReportsListSkeleton } from '@/components/ui/report-skeleton';
+import { ErrorState } from '@/components/ui/error-states';
 import {
   Select,
   SelectContent,
@@ -211,23 +213,15 @@ export default function ReportsPage() {
       </div>
 
       {/* Loading */}
-      {loading && (
-        <div className="space-y-3">
-          {Array.from({ length: 5 }).map((_, i) => (
-            <Skeleton key={i} className="h-14 w-full rounded-lg" />
-          ))}
-        </div>
-      )}
+      {loading && <ReportsListSkeleton />}
 
       {/* Error */}
       {!loading && error && (
-        <div className="rounded-xl bg-destructive/10 border border-destructive/20 p-6 text-center space-y-3">
-          <AlertCircle className="h-8 w-8 text-destructive mx-auto" />
-          <p className="text-sm font-semibold text-destructive">{error}</p>
-          <Button onClick={() => fetchReports(offset)} variant="outline" size="sm" className="rounded-lg">
-            Retry
-          </Button>
-        </div>
+        <ErrorState
+          title="Failed to load reports"
+          message={error}
+          onRetry={() => fetchReports(offset)}
+        />
       )}
 
       {/* Empty State */}

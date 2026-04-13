@@ -41,7 +41,39 @@ export function MarkdownReportViewer({
     URL.revokeObjectURL(url);
   }, [markdown, brandName, reportDate]);
 
-  const handleCopy = useCallback(async () => {
+  const handleDownloadPdf = useCallback(async () => {
+    if (!markdown) return;
+    // Dynamic import to avoid SSR issues
+    const html2pdf = (await import('html2pdf.js')).default;
+    const container = document.createElement('div');
+    container.className = 'prose prose-sm max-w-none';
+    container.style.padding = '32px';
+    container.style.fontFamily = 'system-ui, sans-serif';
+
+    // Render markdown to HTML using a temporary ReactDOM render
+    // Simpler approach: convert markdown to HTML via the existing rendered element
+    const rendered = document.querySelector('[data-report-markdown]');
+    if (rendered) {
+      container.innerHTML = rendered.innerHTML;
+    } else {
+      container.innerText = markdown;
+    }
+
+    const safeBrand = (brandName || 'report').replace(/[^a-zA-Z0-9_-]/g, '_');
+    const dateStr = reportDate
+      ? new Date(reportDate).toISOString().slice(0, 10)
+      : new Date().toISOString().slice(0, 10);
+
+    html2pdf()
+      .set({
+        margin: [10, 10, 10, 10],
+        filename: `ai-visibility-${safeBrand}-${dateStr}.pdf`,
+        html2canvas: { scale: 2, useCORS: true },
+        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
+      })
+      .from(container)
+      .save();
+  }, [markdown, brandName, reportDate]);
     if (!markdown) return;
     try {
       await navigator.clipboard.writeText(markdown);
@@ -90,12 +122,16 @@ export function MarkdownReportViewer({
           </Button>
           <Button variant="outline" size="sm" onClick={handleDownloadMd}>
             <Download className="h-3.5 w-3.5 mr-1.5" />
-            Download .md
+            .md
+          </Button>
+          <Button variant="outline" size="sm" onClick={handleDownloadPdf}>
+            <FileText className="h-3.5 w-3.5 mr-1.5" />
+            .pdf
           </Button>
         </div>
       </CardHeader>
       <CardContent>
-        <article className="prose prose-sm dark:prose-invert max-w-none prose-headings:scroll-mt-20 prose-table:text-sm prose-th:text-left prose-td:py-1.5">
+        <article data-report-markdown className="prose prose-sm dark:prose-invert max-w-none prose-headings:scroll-mt-20 prose-table:text-sm prose-th:text-left prose-td:py-1.5">
           <ReactMarkdown remarkPlugins={[remarkGfm]}>{markdown}</ReactMarkdown>
         </article>
       </CardContent>
