@@ -6,6 +6,9 @@ import { geoApi } from '@/lib/geo-api';
 import { ScoreGauge } from '@/components/geo/ScoreGauge';
 import { ScoreCard } from '@/components/geo/ScoreCard';
 import { ReportHero } from '@/components/geo/ReportHero';
+import { DimensionRadar } from '@/components/geo/DimensionRadar';
+import { ClusterBreakdown } from '@/components/geo/DimensionCards';
+import { LLMBreakdownTable } from '@/components/geo/LLMBreakdownTable';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
@@ -15,7 +18,7 @@ import { ArrowLeft, Calendar, Download } from 'lucide-react';
 import { MarkdownReportViewer } from '@/components/dashboard/MarkdownReportViewer';
 import type { StructuredReport, StructuredScore, ReportTab } from '@/lib/report-v2-types';
 import { REPORT_TABS, getMaturityLevel } from '@/lib/report-v2-types';
-import { normalizeCompetitors } from '@/lib/report-adapters';
+import { scoresToSubScores, providersToBreakdownMap, normalizeCompetitors } from '@/lib/report-adapters';
 import { V19_DIMENSIONS } from '@/lib/report-types';
 
 // --- Fallback raw report type (for keywords/content or when /full fails) ---
@@ -38,20 +41,7 @@ interface RawReport {
 // ── GEO V2 Tab: Overview ──
 function OverviewTab({ report }: { report: StructuredReport }) {
   const scores = report.scores ?? [];
-  const V19_CLUSTERS: Record<string, string[]> = {
-    'AI Visibility': ['llm_mention', 'llm_consistency', 'llm_position'],
-    'Authority': ['authority', 'web_presence', 'citation_strength'],
-    'Content': ['content_fit', 'citability', 'page_quality', 'freshness'],
-    'Technical': ['technical_seo', 'ai_readiness'],
-    'Competitive': ['competitor_gap', 'pattern_match'],
-    'Signals': ['sentiment', 'consistency'],
-    'AEO': ['aeo_readiness'],
-  };
-
-  const scoreMap: Record<string, StructuredScore> = {};
-  for (const s of scores) scoreMap[s.dimension] = s;
-
-  // Executive summary
+  const subScores = scoresToSubScores(scores);
   const summary = report.executive_summary;
 
   return (
@@ -68,37 +58,48 @@ function OverviewTab({ report }: { report: StructuredReport }) {
         </Card>
       )}
 
-      {/* Score Breakdown by Cluster */}
-      {scores.length > 0 && (
+      {/* Radar + Cluster Breakdown side-by-side */}
+      {subScores && (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>Dimension Radar</CardTitle>
+              <CardDescription>17-dimension V1.9 visibility profile</CardDescription>
+            </CardHeader>
+            <CardContent className="flex justify-center">
+              <DimensionRadar scores={subScores} size={320} />
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Cluster Breakdown</CardTitle>
+              <CardDescription>Scores grouped by 7 weighted clusters</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <ClusterBreakdown scores={subScores} />
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {/* Fallback: ScoreCard grid when no sub_scores available */}
+      {!subScores && scores.length > 0 && (
         <Card>
           <CardHeader>
             <CardTitle>Score Breakdown</CardTitle>
-            <CardDescription>17-dimension V1.9 scoring across 7 clusters</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="space-y-6">
-              {Object.entries(V19_CLUSTERS).map(([cluster, keys]) => {
-                const activeScores = keys
-                  .filter(k => scoreMap[k])
-                  .map(k => scoreMap[k]);
-                if (activeScores.length === 0) return null;
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+              {scores.map(s => {
+                const dimMeta = V19_DIMENSIONS.find(d => d.key === s.dimension);
                 return (
-                  <div key={cluster}>
-                    <h4 className="text-sm font-semibold mb-3">{cluster}</h4>
-                    <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                      {activeScores.map(s => {
-                        const dimMeta = V19_DIMENSIONS.find(d => d.key === s.dimension);
-                        return (
-                          <ScoreCard
-                            key={s.dimension}
-                            label={dimMeta?.label ?? s.dimension.replace(/_/g, ' ')}
-                            score={s.score}
-                            size="sm"
-                          />
-                        );
-                      })}
-                    </div>
-                  </div>
+                  <ScoreCard
+                    key={s.dimension}
+                    label={dimMeta?.label ?? s.dimension.replace(/_/g, ' ')}
+                    score={s.score}
+                    size="sm"
+                  />
                 );
               })}
             </div>
@@ -106,7 +107,7 @@ function OverviewTab({ report }: { report: StructuredReport }) {
         </Card>
       )}
 
-      {/* Quick Stats */}
+      {/* Quick Provider Summary */}
       {report.providers && report.providers.length > 0 && (
         <Card>
           <CardHeader>
@@ -142,6 +143,7 @@ function OverviewTab({ report }: { report: StructuredReport }) {
 // ── GEO V2 Tab: Providers ──
 function ProvidersTab({ report }: { report: StructuredReport }) {
   const providers = report.providers ?? [];
+  const breakdownMap = providersToBreakdownMap(providers);
 
   if (providers.length === 0) {
     return (
@@ -153,8 +155,31 @@ function ProvidersTab({ report }: { report: StructuredReport }) {
     );
   }
 
+  // Build LLMVisibilityScore record for the breakdown table
+  const visibilityByLLM: Record<string, { visibility_score: number; mention_rate: number; average_position?: number }> = {};
+  for (const p of providers) {
+    visibilityByLLM[p.provider] = {
+      visibility_score: (p.mention_rate ?? 0) * 100,
+      mention_rate: p.mention_rate ?? 0,
+      average_position: p.average_position,
+    };
+  }
+
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
+      {/* LLM Breakdown Table (visual comparison) */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Provider Comparison</CardTitle>
+          <CardDescription>Side-by-side visibility metrics across tested AI providers</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <LLMBreakdownTable visibilityByLLM={visibilityByLLM} />
+        </CardContent>
+      </Card>
+
+      {/* Detailed per-provider cards */}
+      <h3 className="text-lg font-bold">Detailed Provider Results</h3>
       {providers.map(p => {
         const mentionPct = Math.round((p.mention_rate ?? 0) * 100);
         const maturity = getMaturityLevel(mentionPct);
@@ -188,7 +213,6 @@ function ProvidersTab({ report }: { report: StructuredReport }) {
                   <p className="text-xl font-bold">{p.mentioned_count ?? 0}/{p.total_queries ?? 0}</p>
                 </div>
               </div>
-              {/* Mention rate bar */}
               <div className="mt-4">
                 <div className="h-2 w-full rounded-full bg-muted">
                   <div

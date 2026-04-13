@@ -4,7 +4,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { geoApi, type UnifiedReport } from '@/lib/geo-api';
-import { getGradeColor } from '@/lib/report-types';
+import { getMaturityLevel, getMaturityColor } from '@/lib/report-v2-types';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
@@ -88,11 +88,12 @@ function StatusBadge({ status }: { status: string }) {
 
 function ScoreBadge({ score, grade }: { score: number | null; grade: string }) {
   if (score == null) return <span className="text-sm text-muted-foreground">—</span>;
-  const color = getGradeColor(grade);
+  const maturity = getMaturityLevel(score);
+  const color = maturity.color;
   return (
     <span className="inline-flex items-center gap-1.5">
       <span className="text-sm font-black tabular-nums" style={{ color }}>{score}</span>
-      <Badge variant="outline" className="text-[10px] font-bold" style={{ color, borderColor: color }}>{grade}</Badge>
+      <Badge variant="outline" className="text-[10px] font-bold" style={{ color, borderColor: color }}>{maturity.label}</Badge>
     </span>
   );
 }

@@ -3,10 +3,9 @@
 import {
   V19_DIMENSIONS,
   V19_CLUSTERS,
-  getGrade,
-  getGradeColor,
   type VisibilitySubScoresV19,
 } from '@/lib/report-types';
+import { getMaturityColor } from '@/lib/report-v2-types';
 
 // ── DimensionCard: single dimension with score bar ──
 
@@ -22,8 +21,7 @@ export function DimensionCard({ dimensionKey, score, compact }: DimensionCardPro
 
   const clusterMeta = V19_CLUSTERS.find((c) => c.name === meta.cluster);
   const color = clusterMeta?.color || '#6B7280';
-  const grade = getGrade(score);
-  const gradeColor = getGradeColor(grade);
+  const scoreColor = getMaturityColor(score);
 
   if (compact) {
     return (
@@ -39,7 +37,7 @@ export function DimensionCard({ dimensionKey, score, compact }: DimensionCardPro
               style={{ width: `${Math.min(score, 100)}%`, backgroundColor: color }}
             />
           </div>
-          <span className="text-xs font-bold tabular-nums w-7 text-right" style={{ color: gradeColor }}>
+          <span className="text-xs font-bold tabular-nums w-7 text-right" style={{ color: scoreColor }}>
             {Math.round(score)}
           </span>
         </div>
@@ -54,7 +52,7 @@ export function DimensionCard({ dimensionKey, score, compact }: DimensionCardPro
           <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: color }} />
           <span className="text-sm font-semibold text-foreground">{meta.label}</span>
         </div>
-        <span className="text-lg font-black tabular-nums" style={{ color: gradeColor }}>
+        <span className="text-lg font-black tabular-nums" style={{ color: scoreColor }}>
           {Math.round(score)}
         </span>
       </div>

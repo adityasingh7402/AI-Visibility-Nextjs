@@ -1,7 +1,7 @@
 'use client';
 
 import type { PlatformReadiness, EEATBreakdown } from '@/lib/report-types';
-import { getGrade, getGradeColor } from '@/lib/report-types';
+import { getMaturityLevel, getMaturityColor } from '@/lib/report-v2-types';
 
 // ── Platform Readiness Grid ──
 
@@ -27,8 +27,8 @@ export function PlatformReadinessGrid({ readiness }: PlatformReadinessGridProps)
   return (
     <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
       {entries.map(([platform, score]) => {
-        const grade = getGrade(score);
-        const color = getGradeColor(grade);
+        const maturity = getMaturityLevel(score);
+        const color = maturity.color;
         const icon = PLATFORM_ICONS[platform] || '🌐';
         const label = platform.replace(/_/g, ' ');
 
@@ -45,7 +45,7 @@ export function PlatformReadinessGrid({ readiness }: PlatformReadinessGridProps)
               {Math.round(score)}
             </span>
             <span className="text-[10px] font-semibold" style={{ color }}>
-              Grade {grade}
+              {maturity.label}
             </span>
           </div>
         );
@@ -69,20 +69,21 @@ interface EEATBreakdownCardProps {
 
 export function EEATBreakdownCard({ eeat }: EEATBreakdownCardProps) {
   const dimensions = ['experience', 'expertise', 'authoritativeness', 'trustworthiness'] as const;
+  const totalColor = getMaturityColor(eeat.total);
 
   return (
     <div className="space-y-4">
       {/* Total */}
       <div className="flex items-center justify-between">
         <span className="text-sm font-bold text-foreground">E-E-A-T Total</span>
-        <span className="text-xl font-black" style={{ color: getGradeColor(getGrade(eeat.total)) }}>
+        <span className="text-xl font-black" style={{ color: totalColor }}>
           {Math.round(eeat.total)}
         </span>
       </div>
       <div className="h-2 rounded-full bg-muted overflow-hidden">
         <div
           className="h-full rounded-full transition-all duration-700"
-          style={{ width: `${Math.min(eeat.total, 100)}%`, backgroundColor: getGradeColor(getGrade(eeat.total)) }}
+          style={{ width: `${Math.min(eeat.total, 100)}%`, backgroundColor: totalColor }}
         />
       </div>
 
@@ -91,8 +92,8 @@ export function EEATBreakdownCard({ eeat }: EEATBreakdownCardProps) {
         {dimensions.map((key) => {
           const value = eeat[key];
           const meta = EEAT_LABELS[key];
-          const grade = getGrade(value);
-          const color = getGradeColor(grade);
+          const maturity = getMaturityLevel(value);
+          const color = maturity.color;
 
           return (
             <div key={key} className="rounded-lg border border-border bg-card/50 p-3 space-y-2">
@@ -105,7 +106,7 @@ export function EEATBreakdownCard({ eeat }: EEATBreakdownCardProps) {
                   {Math.round(value)}
                 </span>
                 <span className="text-[10px] font-bold" style={{ color }}>
-                  {grade}
+                  {maturity.label}
                 </span>
               </div>
               <div className="h-1 rounded-full bg-muted overflow-hidden">

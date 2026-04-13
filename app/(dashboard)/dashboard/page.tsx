@@ -4,7 +4,7 @@ import { useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import { useGeoAnalyses } from '@/hooks/useGeo';
 import { ScoreGauge } from '@/components/geo/ScoreGauge';
-import { getGrade, getGradeColor } from '@/lib/report-types';
+import { getMaturityLevel, getMaturityColor } from '@/lib/report-v2-types';
 import type { StoredGeoAnalysis } from '@/lib/report-types';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -43,8 +43,8 @@ const QUICK_ACTIONS = [
 // ── Analysis row ─────────────────────────────────────────────────────────────
 function AnalysisRow({ analysis }: { analysis: StoredGeoAnalysis }) {
   const score = analysis.overall_score ?? 0;
-  const grade = getGrade(score);
-  const color = getGradeColor(grade);
+  const maturity = getMaturityLevel(score);
+  const color = maturity.color;
 
   return (
     <Link
@@ -61,7 +61,7 @@ function AnalysisRow({ analysis }: { analysis: StoredGeoAnalysis }) {
         </p>
       </div>
       <Badge variant="outline" className="shrink-0 font-bold" style={{ color, borderColor: color }}>
-        {grade}
+        {maturity.label}
       </Badge>
       <span className="text-xs text-muted-foreground shrink-0 w-16 text-right">
         {relTime(analysis.created_at)}
@@ -106,7 +106,7 @@ export default function DashboardPage() {
     if (key === 'total') return 'all time';
     if (!stats) return '';
     const v = stats[key];
-    return v !== null ? `Grade ${getGrade(v)}` : '';
+    return v !== null ? `${getMaturityLevel(v).label}` : '';
   }
 
   return (
