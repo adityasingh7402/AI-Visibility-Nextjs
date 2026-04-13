@@ -630,21 +630,40 @@ export default function ReportDetailPage() {
       try {
         // Try /full endpoint first (returns structured data for GEO reports)
         const fullData = await geoApi.getReportFull(id);
+        const status = fullData.status?.toLowerCase();
+        
+        if ((status === 'processing' || status === 'pending' || status === 'running') && remaining > 0) {
+          setStructuredReport(fullData);
+          setLoading(false); // Enable partial UI
+          await new Promise(r => setTimeout(r, 4000));
+          return attempt(remaining - 1);
+        }
+
         setStructuredReport(fullData);
         setError(null);
         setLoading(false);
       } catch {
-        // Fallback to basic /reports/:id
+        // Fallback to basic /reports/:id (might be because /full throws 404 while processing)
         try {
           const data = await geoApi.getReport(id);
-          setRawReport(data as unknown as RawReport);
+          const raw = data as unknown as RawReport;
+          const status = raw.status?.toLowerCase();
+
+          if ((status === 'processing' || status === 'pending' || status === 'running') && remaining > 0) {
+            setRawReport(raw);
+            setLoading(false);
+            await new Promise(r => setTimeout(r, 4000));
+            return attempt(remaining - 1); // Crucial! Polling continues
+          }
+
+          setRawReport(raw);
           setError(null);
           setLoading(false);
         } catch (err: unknown) {
           const axiosErr = err as { response?: { status?: number; data?: { error?: string } } };
           const status = axiosErr.response?.status;
           if (remaining > 0 && (status === 404 || status === 500)) {
-            await new Promise(r => setTimeout(r, 3000));
+            await new Promise(r => setTimeout(r, 4000));
             return attempt(remaining - 1);
           }
           const msg = status === 404
@@ -655,7 +674,7 @@ export default function ReportDetailPage() {
         }
       }
     };
-    await attempt(8);
+    await attempt(20); // 20 attempts * 4s = ~80 seconds of polling
   }, []);
 
   useEffect(() => {
