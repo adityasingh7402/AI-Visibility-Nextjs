@@ -8,6 +8,16 @@ import {
   type StructuredReport,
 } from '@/lib/report-v2-types';
 import { buildScanCoverage } from '@/lib/report-adapters';
+import { buttonVariants } from '@/components/ui/button';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { Download, FileJson, FileText, Printer } from 'lucide-react';
+import { downloadJson, downloadCsv, triggerPrint } from '@/lib/export-utils';
+import { cn } from '@/lib/utils';
 
 interface ReportHeroProps {
   report: StructuredReport;
@@ -48,6 +58,32 @@ export function ReportHero({ report }: ReportHeroProps) {
               <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold ${maturity.badgeClass}`}>
                 {maturity.icon} {maturity.label}
               </span>
+              
+              {/* Export Dropdown */}
+              <DropdownMenu>
+                <DropdownMenuTrigger
+                  className={cn(
+                    buttonVariants({ variant: 'outline', size: 'sm' }),
+                    'ml-auto hidden sm:flex pointer-events-auto'
+                  )}
+                >
+                  <Download className="h-4 w-4 mr-2" />
+                  Export
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem onClick={triggerPrint}>
+                    <Printer className="h-4 w-4 mr-2" /> Print / Save as PDF
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => downloadJson(report.raw_payload || report, report.brand_name || 'report')}>
+                    <FileJson className="h-4 w-4 mr-2" /> Download JSON
+                  </DropdownMenuItem>
+                  {report.scores && report.scores.length > 0 && (
+                    <DropdownMenuItem onClick={() => downloadCsv(report.scores!.map(s => ({ ...s })), `${report.brand_name}-scores`)}>
+                      <FileText className="h-4 w-4 mr-2" /> Export Scores to CSV
+                    </DropdownMenuItem>
+                  )}
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
 
             {/* Meta row */}

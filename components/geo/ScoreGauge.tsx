@@ -1,6 +1,7 @@
 'use client';
 
-import { getMaturityLevel, type MaturityLevel } from '@/lib/report-v2-types';
+import * as React from 'react';
+import { getMaturityLevel } from '@/lib/report-v2-types';
 
 interface ScoreGaugeProps {
   score: number;
@@ -36,7 +37,7 @@ export function ScoreGauge({ score, size = 120, label, showMaturity = true }: Sc
             strokeWidth={8}
             className="text-muted/30"
           />
-          {/* Progress ring */}
+          {/* Progress ring with glow */}
           <circle
             cx={center}
             cy={center}
@@ -47,7 +48,8 @@ export function ScoreGauge({ score, size = 120, label, showMaturity = true }: Sc
             strokeLinecap="round"
             strokeDasharray={circumference}
             strokeDashoffset={offset}
-            className="transition-all duration-1000 ease-out"
+            className="transition-all duration-1000 ease-out drop-shadow-sm"
+            style={{ filter: `drop-shadow(0 0 6px ${color}40)` }}
           />
         </svg>
         {/* Center text */}

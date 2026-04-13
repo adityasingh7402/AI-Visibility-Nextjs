@@ -180,6 +180,9 @@ export interface StructuredReport {
   // Markdown report
   markdown_report: string | null;
 
+  // Raw Python response payload (for V1.9 rich features like battle_cards)
+  raw_payload: Record<string, unknown> | null;
+
   // Metadata
   _has_structured_data: boolean;
 }

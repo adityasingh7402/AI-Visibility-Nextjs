@@ -7,7 +7,6 @@ import {
   Globe,
   Key,
   FileText,
-  BarChart3,
   CreditCard,
   Settings,
   Users,
@@ -27,8 +26,8 @@ import {
   SidebarGroupLabel,
   SidebarHeader,
   SidebarMenu,
-  SidebarMenuButton,
   SidebarMenuItem,
+  SidebarMenuButton,
   SidebarSeparator,
 } from '@/components/ui/sidebar';
 import { Button } from '@/components/ui/button';
@@ -91,7 +90,7 @@ export function AppSidebar({ userRole, userName, userEmail }: AppSidebarProps) {
   const bottomItems = filterByRole(NAV_BOTTOM);
 
   const activeClass =
-    'data-[active=true]:bg-primary/10 data-[active=true]:text-primary data-[active=true]:font-semibold';
+    'data-[active=true]:bg-primary/10 data-[active=true]:text-primary data-[active=true]:font-bold relative overflow-hidden group/item transition-colors hover:bg-muted/60 data-[active=true]:after:absolute data-[active=true]:after:left-0 data-[active=true]:after:top-1 data-[active=true]:after:bottom-1 data-[active=true]:after:w-1 data-[active=true]:after:bg-primary data-[active=true]:after:rounded-r-md';
 
   return (
     <Sidebar collapsible="icon" className="border-r border-sidebar-border">

@@ -4,6 +4,7 @@ import { useState, useCallback, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useFullAnalysis } from '@/hooks/useGeo';
 import { useSSEProgress } from '@/hooks/useSSEProgress';
+import { useNotifications } from '@/hooks/useNotifications';
 import type { GeoAnalysisRequest, GeoProvider, ScanMode } from '@/lib/report-types';
 import type { ProviderSelection } from '@/lib/types/providers';
 import { ProviderSelector } from '@/components/geo/ProviderSelector';
@@ -41,6 +42,7 @@ const FRIENDLY_STAGES: Record<string, string> = {
 export default function FullSiteAuditPage() {
   const router = useRouter();
   const { submit, loading: submitting, error: submitError, analysisId, markComplete, markError } = useFullAnalysis();
+  const { addNotification } = useNotifications();
 
   // Form state
   const [url, setUrl] = useState('');
@@ -76,8 +78,15 @@ export default function FullSiteAuditPage() {
     if (stage === 'completed' && analysisId && !redirectedRef.current) {
       redirectedRef.current = true;
       markComplete();
-      toast.success('Analysis complete!', { description: 'Your AI visibility report is ready.' });
+      
       const targetId = sseProgress?.report_id || analysisId;
+      addNotification({
+        type: 'success',
+        title: 'Analysis Complete',
+        message: 'Your AI visibility report has been successfully generated.',
+        link: `/dashboard/reports/${targetId}`
+      });
+      
       const timer = setTimeout(() => {
         router.push(`/dashboard/reports/${targetId}`);
       }, 2000);
@@ -85,9 +94,13 @@ export default function FullSiteAuditPage() {
     }
     if (stage === 'failed') {
       markError('Analysis failed');
-      toast.error('Analysis failed', { description: 'Please check the error details and try again.' });
+      addNotification({
+        type: 'error',
+        title: 'Analysis Failed',
+        message: 'There was an error generating your report. Please check the details and try again.',
+      });
     }
-  }, [stage, analysisId, sseProgress?.report_id, router, markComplete, markError]);
+  }, [stage, analysisId, sseProgress?.report_id, router, markComplete, markError, addNotification]);
 
   const canSubmit = urlValid && brandValid && categoryValid && providersValid && !submitting && !analysisId;
 

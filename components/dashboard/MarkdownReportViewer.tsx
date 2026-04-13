@@ -18,7 +18,6 @@ export function MarkdownReportViewer({
   markdown,
   brandName = 'report',
   reportDate,
-  reportId,
 }: MarkdownReportViewerProps) {
   const [copied, setCopied] = useState(false);
 

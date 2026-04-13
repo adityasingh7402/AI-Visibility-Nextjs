@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
+import React, { createContext, useContext, useState, useCallback } from 'react';
 import { toast } from 'sonner';
 
 export type NotificationType = 'success' | 'error' | 'warning' | 'info';

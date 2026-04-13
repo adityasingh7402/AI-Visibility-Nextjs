@@ -4,6 +4,7 @@ import { SidebarProvider, SidebarInset } from '@/components/ui/sidebar';
 import { AppSidebar } from '@/components/dashboard/app-sidebar';
 import { DashboardHeader } from '@/components/dashboard/dashboard-header';
 import { ActiveAnalysisBanner } from '@/components/dashboard/ActiveAnalysisBanner';
+import { NotificationProvider } from '@/hooks/useNotifications';
 
 export default async function DashboardLayout({
   children,
@@ -18,21 +19,23 @@ export default async function DashboardLayout({
   const defaultOpen = cookieStore.get('sidebar:state')?.value !== 'false';
 
   return (
-    <SidebarProvider defaultOpen={defaultOpen}>
-      <AppSidebar
-        userRole="CUSTOMER"
-        userName={user?.user_metadata?.full_name || ''}
-        userEmail={user?.email || ''}
-      />
-      <SidebarInset>
-        <DashboardHeader />
-        <ActiveAnalysisBanner />
-        <div className="flex-1 overflow-y-auto px-6 py-8 md:px-10 md:py-10">
-          <div className="mx-auto max-w-7xl">
-            {children}
+    <NotificationProvider>
+      <SidebarProvider defaultOpen={defaultOpen}>
+        <AppSidebar
+          userRole="CUSTOMER"
+          userName={user?.user_metadata?.full_name || ''}
+          userEmail={user?.email || ''}
+        />
+        <SidebarInset>
+          <DashboardHeader />
+          <ActiveAnalysisBanner />
+          <div className="flex-1 overflow-y-auto px-6 py-8 md:px-10 md:py-10">
+            <div className="mx-auto max-w-7xl">
+              {children}
+            </div>
           </div>
-        </div>
-      </SidebarInset>
-    </SidebarProvider>
+        </SidebarInset>
+      </SidebarProvider>
+    </NotificationProvider>
   );
 }

@@ -4,11 +4,10 @@ import { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { geoApi, type UnifiedReport } from '@/lib/geo-api';
-import { getMaturityLevel, getMaturityColor } from '@/lib/report-v2-types';
+import { getMaturityLevel } from '@/lib/report-v2-types';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
-import { Skeleton } from '@/components/ui/skeleton';
 import { ReportsListSkeleton } from '@/components/ui/report-skeleton';
 import { ErrorState } from '@/components/ui/error-states';
 import {
@@ -30,7 +29,6 @@ import {
   Search,
   ArrowRight,
   Clock,
-  AlertCircle,
   RefreshCw,
   Plus,
   ChevronLeft,
@@ -88,7 +86,7 @@ function StatusBadge({ status }: { status: string }) {
   return <Badge variant="outline" className="text-muted-foreground text-[10px] font-bold uppercase">{status}</Badge>;
 }
 
-function ScoreBadge({ score, grade }: { score: number | null; grade: string }) {
+function ScoreBadge({ score }: { score: number | null }) {
   if (score == null) return <span className="text-sm text-muted-foreground">—</span>;
   const maturity = getMaturityLevel(score);
   const color = maturity.color;
@@ -276,7 +274,7 @@ export default function ReportsPage() {
                       </span>
                     </TableCell>
                     <TableCell>
-                      <ScoreBadge score={report.score} grade={report.grade} />
+                      <ScoreBadge score={report.score} />
                     </TableCell>
                     <TableCell className="hidden md:table-cell max-w-[300px]">
                       <span className="text-sm text-muted-foreground truncate block">

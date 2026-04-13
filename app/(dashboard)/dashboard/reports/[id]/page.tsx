@@ -17,10 +17,26 @@ import { ArrowLeft, Calendar, Download } from 'lucide-react';
 import { MarkdownReportViewer } from '@/components/dashboard/MarkdownReportViewer';
 import { ReportDetailSkeleton } from '@/components/ui/report-skeleton';
 import { ErrorState, ReportNotFoundState } from '@/components/ui/error-states';
-import type { StructuredReport, StructuredScore, ReportTab } from '@/lib/report-v2-types';
+import { ScoreBreakdownGrid } from '@/components/geo/ScoreBreakdownGrid';
+import { ProviderModelMatrix } from '@/components/geo/ProviderModelMatrix';
+import { CompetitorBattleCards } from '@/components/geo/CompetitorBattleCards';
+import { EvidenceTranscripts } from '@/components/geo/EvidenceTranscripts';
+import { ImprovementRoadmap } from '@/components/geo/ImprovementRoadmap';
+import type { StructuredReport, ReportTab } from '@/lib/report-v2-types';
 import { REPORT_TABS, getMaturityLevel } from '@/lib/report-v2-types';
 import { scoresToSubScores, providersToBreakdownMap, normalizeCompetitors } from '@/lib/report-adapters';
 import { V19_DIMENSIONS } from '@/lib/report-types';
+
+// --- Helpers for safe raw_payload access ---
+function safeArray(obj: Record<string, unknown> | null | undefined, key: string): Record<string, unknown>[] {
+  const val = obj?.[key];
+  return Array.isArray(val) ? (val as Record<string, unknown>[]) : [];
+}
+
+function safeString(obj: Record<string, unknown> | null | undefined, key: string): string | undefined {
+  const val = obj?.[key];
+  return typeof val === 'string' ? val : undefined;
+}
 
 // --- Fallback raw report type (for keywords/content or when /full fails) ---
 interface RawReport {
@@ -84,8 +100,13 @@ function OverviewTab({ report }: { report: StructuredReport }) {
         </div>
       )}
 
-      {/* Fallback: ScoreCard grid when no sub_scores available */}
-      {!subScores && scores.length > 0 && (
+      {/* Score Breakdown Grid (V1.9 clusters) */}
+      <div className="mt-8">
+        <ScoreBreakdownGrid rawPayload={report.raw_payload} />
+      </div>
+
+      {/* Fallback: ScoreCard grid when no sub_scores available and no V1.9 clusters rendered */}
+      {!subScores && scores.length > 0 && !report.raw_payload?.visibility_score_v19 && (
         <Card>
           <CardHeader>
             <CardTitle>Score Breakdown</CardTitle>
@@ -144,7 +165,6 @@ function OverviewTab({ report }: { report: StructuredReport }) {
 // ── GEO V2 Tab: Providers ──
 function ProvidersTab({ report }: { report: StructuredReport }) {
   const providers = report.providers ?? [];
-  const breakdownMap = providersToBreakdownMap(providers);
 
   if (providers.length === 0) {
     return (
@@ -178,6 +198,9 @@ function ProvidersTab({ report }: { report: StructuredReport }) {
           <LLMBreakdownTable visibilityByLLM={visibilityByLLM} />
         </CardContent>
       </Card>
+
+      {/* Provider Matrix */}
+      <ProviderModelMatrix providers={providers} />
 
       {/* Detailed per-provider cards */}
       <h3 className="text-lg font-bold">Detailed Provider Results</h3>
@@ -234,7 +257,9 @@ function ProvidersTab({ report }: { report: StructuredReport }) {
 function CompetitorsTab({ report }: { report: StructuredReport }) {
   const competitors = normalizeCompetitors(report.competitors);
 
-  if (competitors.length === 0) {
+  const battleCards = safeArray(report.raw_payload, 'battle_cards');
+
+  if (competitors.length === 0 && battleCards.length === 0) {
     return (
       <Card>
         <CardContent className="py-12 text-center text-muted-foreground">
@@ -245,7 +270,9 @@ function CompetitorsTab({ report }: { report: StructuredReport }) {
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-8">
+      {/* V1.9 Battle Cards */}
+      <CompetitorBattleCards battleCards={battleCards} />
       {competitors.map(c => (
         <Card key={c.competitor_name}>
           <CardContent className="py-5">
@@ -312,8 +339,9 @@ function CompetitorsTab({ report }: { report: StructuredReport }) {
 // ── GEO V2 Tab: Recommendations ──
 function RecommendationsTab({ report }: { report: StructuredReport }) {
   const recs = report.recommendations ?? [];
+  const roadmap = safeArray(report.raw_payload, 'improvement_roadmap');
 
-  if (recs.length === 0) {
+  if (recs.length === 0 && roadmap.length === 0) {
     return (
       <Card>
         <CardContent className="py-12 text-center text-muted-foreground">
@@ -321,6 +349,11 @@ function RecommendationsTab({ report }: { report: StructuredReport }) {
         </CardContent>
       </Card>
     );
+  }
+
+  // Pre-render the V1.9 Roadmap which replaces or supplements raw recs
+  if (roadmap.length > 0) {
+    return <ImprovementRoadmap rawPayload={report.raw_payload} recommendations={recs} />;
   }
 
   const priorityOrder = { high: 0, medium: 1, low: 2 };
@@ -369,6 +402,13 @@ function RecommendationsTab({ report }: { report: StructuredReport }) {
 
 // ── GEO V2 Tab: Evidence (placeholder — Wave 2 will add LLM transcripts) ──
 function EvidenceTab({ report }: { report: StructuredReport }) {
+  const whatAiSees = safeString(report.raw_payload, 'what_ai_sees');
+  const citationSources = safeArray(report.raw_payload, 'citation_sources');
+
+  if (whatAiSees || citationSources.length > 0) {
+    return <EvidenceTranscripts rawPayload={report.raw_payload} />;
+  }
+
   return (
     <Card>
       <CardHeader>
@@ -593,7 +633,7 @@ export default function ReportDetailPage() {
         setStructuredReport(fullData);
         setError(null);
         setLoading(false);
-      } catch (fullErr: unknown) {
+      } catch {
         // Fallback to basic /reports/:id
         try {
           const data = await geoApi.getReport(id);

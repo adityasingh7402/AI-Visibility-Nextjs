@@ -147,7 +147,7 @@ function TrendSection({ analyses }: { analyses: StoredGeoAnalysis[] }) {
   if (!trend) return null;
 
   return (
-    <div className="bg-card rounded-xl border border-border p-6 space-y-4">
+    <div className="glass-card rounded-2xl p-6 space-y-4 hover:-translate-y-1 transition-transform duration-300">
       <div className="flex items-center justify-between">
         <h3 className="text-lg font-bold text-foreground flex items-center gap-2">
           <TrendingUp className="h-5 w-5 text-primary" />
@@ -165,7 +165,7 @@ function TrendSection({ analyses }: { analyses: StoredGeoAnalysis[] }) {
 // ── Main page ────────────────────────────────────────────────────────────────
 export default function DashboardPage() {
   const { data: analyses, loading, error, fetchAnalyses } = useGeoAnalyses();
-  const { brands, loading: brandsLoading, error: brandsError, fetchBrands } = useBrands();
+  const { brands, loading: brandsLoading, fetchBrands } = useBrands();
 
   useEffect(() => { fetchAnalyses(); fetchBrands(); }, [fetchAnalyses, fetchBrands]);
 
@@ -242,12 +242,12 @@ export default function DashboardPage() {
       )}
 
       {/* ── Stats row ────────────────────────────────────────────────── */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-5">
         {STAT_META.map(({ key, label, icon: Icon, iconClass }) => (
-          <div key={key} className="bg-card rounded-xl border border-border p-5 space-y-3">
+          <div key={key} className="glass-card rounded-2xl p-6 space-y-4 hover:-translate-y-1 transition-transform duration-300">
             <div className="flex items-center justify-between">
-              <div className="p-2 rounded-lg bg-muted">
-                <Icon className={`h-5 w-5 ${iconClass}`} />
+              <div className="p-2.5 rounded-xl bg-primary/10">
+                <Icon className={`h-[22px] w-[22px] ${iconClass}`} />
               </div>
               <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
                 {statSub(key)}
@@ -290,21 +290,21 @@ export default function DashboardPage() {
       )}
 
       {!brandsLoading && brands.length === 0 && !loading && analyses.length > 0 && (
-        <div className="rounded-xl border border-dashed border-border bg-card p-6 flex items-center gap-4">
-          <div className="h-12 w-12 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
-            <Building2 className="h-6 w-6 text-primary" />
+        <div className="glass-card rounded-2xl p-6 flex flex-col items-center justify-center gap-4 text-center">
+          <div className="h-16 w-16 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+            <Building2 className="h-8 w-8 text-primary" />
           </div>
-          <div className="flex-1">
-            <p className="font-bold text-foreground">Track your brands</p>
-            <p className="text-sm text-muted-foreground">
-              Add brands to monitor their AI visibility over time with trend tracking.
+          <div className="max-w-md">
+            <p className="font-bold text-foreground text-lg mb-1">Track your brands</p>
+            <p className="text-sm text-muted-foreground mb-4">
+              Add brands to monitor their AI visibility over time with trend tracking and compare performance.
             </p>
+            <Link href="/dashboard/brands">
+              <Button size="sm" className="rounded-lg font-semibold gap-1.5">
+                <Plus className="h-4 w-4" /> Add Brand
+              </Button>
+            </Link>
           </div>
-          <Link href="/dashboard/brands">
-            <Button size="sm" variant="outline" className="shrink-0 gap-1.5">
-              <Plus className="h-3.5 w-3.5" /> Add Brand
-            </Button>
-          </Link>
         </div>
       )}
 
@@ -314,7 +314,7 @@ export default function DashboardPage() {
       {/* ── Two-column body ──────────────────────────────────────────── */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         {/* Recent analyses (8/12) */}
-        <div className="lg:col-span-8 bg-card rounded-xl border border-border p-6 space-y-4">
+        <div className="lg:col-span-8 glass-card rounded-2xl p-6 space-y-4">
           <div className="flex items-center justify-between">
             <h3 className="text-lg font-bold text-foreground">Recent Analyses</h3>
             {recentAnalyses.length > 0 && (
@@ -331,14 +331,16 @@ export default function DashboardPage() {
           )}
 
           {!loading && recentAnalyses.length === 0 && (
-            <div className="text-center py-12 rounded-lg border border-dashed border-border">
-              <p className="text-3xl mb-3">📊</p>
-              <p className="font-bold text-foreground mb-1">No analyses yet</p>
-              <p className="text-sm text-muted-foreground mb-4">
-                Run your first GEO analysis to see results here.
+            <div className="text-center py-16 rounded-xl border border-dashed border-border/50 bg-muted/20">
+              <p className="text-4xl mb-4">📊</p>
+              <p className="font-bold text-foreground mb-2 text-lg">No analyses yet</p>
+              <p className="text-sm text-muted-foreground mb-6 max-w-sm mx-auto">
+                Run your first GEO analysis to evaluate your brand's standing among top AI assistants.
               </p>
               <Link href="/dashboard/audit">
-                <Button size="sm" className="rounded-lg font-semibold">Start Analysis</Button>
+                <Button className="rounded-lg font-semibold shadow-sm hover:-translate-y-0.5 transition-transform">
+                  Start Analysis
+                </Button>
               </Link>
             </div>
           )}
@@ -351,23 +353,23 @@ export default function DashboardPage() {
         </div>
 
         {/* Quick actions (4/12) */}
-        <div className="lg:col-span-4 bg-card rounded-xl border border-border p-6 space-y-4 h-fit">
+        <div className="lg:col-span-4 glass-card rounded-2xl p-6 space-y-4 h-fit">
           <h3 className="text-lg font-bold text-foreground">Quick Actions</h3>
           <div className="space-y-2">
             {QUICK_ACTIONS.map(item => (
               <Link
                 key={item.label}
                 href={item.href}
-                className="flex items-center gap-3 p-3 rounded-lg border border-border hover:bg-accent transition-colors group"
+                className="flex items-center gap-3 p-3 rounded-xl border border-transparent bg-muted/50 hover:bg-card hover:border-border/60 hover:shadow-sm transition-all duration-300 group"
               >
-                <div className={`h-9 w-9 rounded-lg flex items-center justify-center shrink-0 ${item.color}`}>
-                  <item.icon className="h-4 w-4" />
+                <div className={`h-10 w-10 rounded-xl flex items-center justify-center shrink-0 ${item.color}`}>
+                  <item.icon className="h-5 w-5" />
                 </div>
                 <div className="min-w-0 flex-1">
-                  <p className="text-sm font-semibold text-foreground">{item.label}</p>
-                  <p className="text-[11px] text-muted-foreground truncate">{item.desc}</p>
+                  <p className="text-sm font-bold text-foreground">{item.label}</p>
+                  <p className="text-[11px] text-muted-foreground truncate font-medium mt-0.5">{item.desc}</p>
                 </div>
-                <ChevronRight className="h-4 w-4 text-muted-foreground group-hover:text-foreground transition-colors shrink-0" />
+                <ChevronRight className="h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors shrink-0 translate-x-0 group-hover:translate-x-1 duration-300" />
               </Link>
             ))}
           </div>
@@ -375,10 +377,10 @@ export default function DashboardPage() {
           <Button
             variant="outline"
             size="sm"
-            className="w-full rounded-lg font-semibold gap-2 mt-2"
+            className="w-full rounded-xl font-semibold gap-2 mt-4 py-5 hover:bg-primary hover:text-primary-foreground hover:border-primary transition-colors"
             onClick={() => { fetchAnalyses(); fetchBrands(); }}
           >
-            <RefreshCw className="h-3.5 w-3.5" /> Refresh Data
+            <RefreshCw className="h-4 w-4" /> Refresh Data
           </Button>
         </div>
       </div>

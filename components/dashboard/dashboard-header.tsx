@@ -3,8 +3,8 @@
 import React from 'react';
 import { usePathname } from 'next/navigation';
 import Link from 'next/link';
-import { Bell, Bolt } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { Bolt } from 'lucide-react';
+import { NotificationCenter } from '@/components/dashboard/NotificationCenter';
 import { SidebarTrigger } from '@/components/ui/sidebar';
 import { Separator } from '@/components/ui/separator';
 import {
@@ -67,10 +67,7 @@ export function DashboardHeader() {
 
       {/* Right side actions */}
       <div className="ml-auto flex items-center gap-2">
-        <Button variant="ghost" size="icon" className="relative rounded-lg h-9 w-9">
-          <Bell className="h-4 w-4 text-muted-foreground" />
-          <span className="absolute top-1.5 right-1.5 h-2 w-2 bg-destructive rounded-full" />
-        </Button>
+        <NotificationCenter />
         <Link
           href="/dashboard/analysis"
           className="inline-flex items-center justify-center rounded-lg font-semibold shadow-sm h-9 px-4 text-sm bg-primary text-primary-foreground hover:bg-primary/90"
