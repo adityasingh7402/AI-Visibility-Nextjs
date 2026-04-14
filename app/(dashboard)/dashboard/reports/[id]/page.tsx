@@ -22,8 +22,8 @@ import { ProviderModelMatrix } from '@/components/geo/ProviderModelMatrix';
 import { CompetitorBattleCards } from '@/components/geo/CompetitorBattleCards';
 import { EvidenceTranscripts } from '@/components/geo/EvidenceTranscripts';
 import { ImprovementRoadmap } from '@/components/geo/ImprovementRoadmap';
-import type { StructuredReport, ReportTab } from '@/lib/report-v2-types';
-import { REPORT_TABS, getMaturityLevel } from '@/lib/report-v2-types';
+import type { StructuredReport, ReportTab, ReportTabConfig, ReportVariant } from '@/lib/report-v2-types';
+import { REPORT_TABS, getMaturityLevel, getPublicReportLabel, getPublicReportVariant } from '@/lib/report-v2-types';
 import { scoresToSubScores, normalizeCompetitors } from '@/lib/report-adapters';
 import { V19_DIMENSIONS } from '@/lib/report-types';
 
@@ -38,9 +38,16 @@ function safeString(obj: Record<string, unknown> | null | undefined, key: string
   return typeof val === 'string' ? val : undefined;
 }
 
+function safeStringArray(obj: Record<string, unknown> | null | undefined, key: string): string[] {
+  const val = obj?.[key];
+  return Array.isArray(val) ? val.filter((item): item is string => typeof item === 'string') : [];
+}
+
 // --- Fallback raw report type (for keywords/content or when /full fails) ---
 interface RawReport {
   _type: 'geo' | 'keywords' | 'content';
+  _variant?: ReportVariant;
+  _display_label?: string;
   id: string;
   report_type?: string;
   brand_name?: string;
@@ -53,6 +60,29 @@ interface RawReport {
   markdown_report?: string | null;
   response_payload?: Record<string, unknown>;
   request_payload?: Record<string, unknown>;
+}
+
+const AEO_CORE_DIMENSIONS = new Set(['llm_mention', 'llm_consistency', 'llm_position']);
+const REPORT_VARIANT_BADGES: Record<ReportVariant, string> = {
+  geo: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300',
+  aeo: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300',
+  combined: 'bg-cyan-100 text-cyan-800 dark:bg-cyan-900/30 dark:text-cyan-300',
+  keywords: 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300',
+  content: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300',
+};
+
+function getVisibleTabs(report: StructuredReport): ReportTabConfig[] {
+  const hasCompetitors = Boolean(
+    (report.competitors && report.competitors.length > 0) ||
+    safeArray(report.raw_payload, 'battle_cards').length > 0
+  );
+
+  return REPORT_TABS.filter((tab) => {
+    if (tab.id === 'competitors' && (!hasCompetitors || report.variant === 'aeo')) {
+      return false;
+    }
+    return true;
+  });
 }
 
 // ── GEO V2 Tab: Overview ──
@@ -148,6 +178,143 @@ function OverviewTab({ report }: { report: StructuredReport }) {
                     <div className="text-right">
                       <p className="text-lg font-bold" style={{ color: maturity.color }}>
                         {Math.round((p.mention_rate ?? 0) * 100)}%
+                      </p>
+                      <p className="text-xs text-muted-foreground">Mention Rate</p>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+    </div>
+  );
+}
+
+function AEOOverviewTab({ report }: { report: StructuredReport }) {
+  const summary = report.executive_summary;
+  const coreScores = (report.scores ?? []).filter(score => AEO_CORE_DIMENSIONS.has(score.dimension));
+  const layersCompleted = safeStringArray(report.raw_payload, 'layers_completed');
+  const providersTested =
+    typeof report.scan_coverage?.providers_tested === 'number'
+      ? report.scan_coverage.providers_tested
+      : report.tested_providers.length;
+  const modelsTested =
+    typeof report.scan_coverage?.models_tested === 'number'
+      ? report.scan_coverage.models_tested
+      : report.providers?.length ?? 0;
+  const totalDataPoints =
+    typeof report.scan_coverage?.total_data_points === 'number'
+      ? report.scan_coverage.total_data_points
+      : 0;
+
+  return (
+    <div className="space-y-6">
+      <Card className="border-emerald-500/20 bg-emerald-500/5">
+        <CardHeader>
+          <CardTitle>AEO Scan</CardTitle>
+          <CardDescription>
+            Focused AI visibility analysis using the dedicated 5-node AEO pipeline and the 3 core answer-engine dimensions.
+          </CardDescription>
+        </CardHeader>
+      </Card>
+
+      {summary && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Executive Summary</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-sm leading-relaxed text-muted-foreground">{summary}</p>
+          </CardContent>
+        </Card>
+      )}
+
+      {coreScores.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle>AEO Core Dimensions</CardTitle>
+            <CardDescription>These are the 3 measured dimensions in the dedicated AEO workflow.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              {coreScores.map(score => (
+                <ScoreCard
+                  key={score.dimension}
+                  label={V19_DIMENSIONS.find(d => d.key === score.dimension)?.label ?? score.dimension.replace(/_/g, ' ')}
+                  score={score.score}
+                  size="sm"
+                />
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <Card>
+          <CardHeader>
+            <CardTitle>Coverage Snapshot</CardTitle>
+            <CardDescription>How broad this AEO run was across providers and prompts.</CardDescription>
+          </CardHeader>
+          <CardContent className="grid grid-cols-2 gap-4">
+            <div>
+              <p className="text-xs text-muted-foreground">Providers Tested</p>
+              <p className="text-2xl font-bold">{providersTested}</p>
+            </div>
+            <div>
+              <p className="text-xs text-muted-foreground">Models Tested</p>
+              <p className="text-2xl font-bold">{modelsTested}</p>
+            </div>
+            <div>
+              <p className="text-xs text-muted-foreground">Total Data Points</p>
+              <p className="text-2xl font-bold">{totalDataPoints || '—'}</p>
+            </div>
+            <div>
+              <p className="text-xs text-muted-foreground">Scan Mode</p>
+              <p className="text-2xl font-bold capitalize">{report.scan_mode || '—'}</p>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Pipeline Nodes</CardTitle>
+            <CardDescription>The dedicated AEO workflow runs a smaller node set than GEO.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="flex flex-wrap gap-2">
+              {(layersCompleted.length > 0 ? layersCompleted : ['brand_resolver', 'crawler', 'llm_tester', 'score_calculator', 'report_generator']).map(layer => (
+                <Badge key={layer} variant="outline" className="capitalize">
+                  {layer.replace(/_/g, ' ')}
+                </Badge>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {report.providers && report.providers.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle>AI Provider Summary</CardTitle>
+            <CardDescription>Answer-engine mention rates across tested providers.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+              {report.providers.map(provider => {
+                const mentionPct = Math.round((provider.mention_rate ?? 0) * 100);
+                const maturity = getMaturityLevel(mentionPct);
+                return (
+                  <div key={provider.provider} className="flex items-center justify-between rounded-lg border p-3">
+                    <div>
+                      <p className="text-sm font-semibold">{provider.provider_display || provider.provider}</p>
+                      <p className="text-xs text-muted-foreground">{provider.model_name || provider.model_id || 'default'}</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-lg font-bold" style={{ color: maturity.color }}>
+                        {mentionPct}%
                       </p>
                       <p className="text-xs text-muted-foreground">Mention Rate</p>
                     </div>
@@ -706,6 +873,11 @@ export default function ReportDetailPage() {
   // PATH A: Structured report from /full (GEO reports)
   // ════════════════════════════════════════════════════
   if (structuredReport && structuredReport.type === 'geo') {
+    const visibleTabs = getVisibleTabs(structuredReport);
+    const activeTab = visibleTabs.some(tab => tab.id === currentTab)
+      ? currentTab
+      : visibleTabs[0]?.id ?? 'overview';
+
     return (
       <div className="space-y-6">
         {/* Back button */}
@@ -720,9 +892,9 @@ export default function ReportDetailPage() {
         <ReportHero report={structuredReport} />
 
         {/* 6-Tab Layout */}
-        <Tabs value={currentTab} onValueChange={setTab}>
+        <Tabs value={activeTab} onValueChange={setTab}>
           <TabsList className="flex-wrap">
-            {REPORT_TABS.map(tab => (
+            {visibleTabs.map(tab => (
               <TabsTrigger key={tab.id} value={tab.id} className="gap-1.5">
                 <span>{tab.icon}</span>
                 <span className="hidden sm:inline">{tab.label}</span>
@@ -731,28 +903,41 @@ export default function ReportDetailPage() {
           </TabsList>
 
           <TabsContent value="overview" className="mt-4">
-            <OverviewTab report={structuredReport} />
+            {structuredReport.variant === 'aeo'
+              ? <AEOOverviewTab report={structuredReport} />
+              : <OverviewTab report={structuredReport} />
+            }
           </TabsContent>
 
-          <TabsContent value="providers" className="mt-4">
-            <ProvidersTab report={structuredReport} />
-          </TabsContent>
+          {visibleTabs.some(tab => tab.id === 'providers') && (
+            <TabsContent value="providers" className="mt-4">
+              <ProvidersTab report={structuredReport} />
+            </TabsContent>
+          )}
 
-          <TabsContent value="competitors" className="mt-4">
-            <CompetitorsTab report={structuredReport} />
-          </TabsContent>
+          {visibleTabs.some(tab => tab.id === 'competitors') && (
+            <TabsContent value="competitors" className="mt-4">
+              <CompetitorsTab report={structuredReport} />
+            </TabsContent>
+          )}
 
-          <TabsContent value="recommendations" className="mt-4">
-            <RecommendationsTab report={structuredReport} />
-          </TabsContent>
+          {visibleTabs.some(tab => tab.id === 'recommendations') && (
+            <TabsContent value="recommendations" className="mt-4">
+              <RecommendationsTab report={structuredReport} />
+            </TabsContent>
+          )}
 
-          <TabsContent value="evidence" className="mt-4">
-            <EvidenceTab report={structuredReport} />
-          </TabsContent>
+          {visibleTabs.some(tab => tab.id === 'evidence') && (
+            <TabsContent value="evidence" className="mt-4">
+              <EvidenceTab report={structuredReport} />
+            </TabsContent>
+          )}
 
-          <TabsContent value="report" className="mt-4">
-            <FullReportTab report={structuredReport} />
-          </TabsContent>
+          {visibleTabs.some(tab => tab.id === 'report') && (
+            <TabsContent value="report" className="mt-4">
+              <FullReportTab report={structuredReport} />
+            </TabsContent>
+          )}
         </Tabs>
       </div>
     );
@@ -762,7 +947,8 @@ export default function ReportDetailPage() {
   // PATH B: Non-GEO structured report (keywords/content via /full)
   // ════════════════════════════════════════════════════
   if (structuredReport) {
-    const payload = (structuredReport as unknown as { response_payload?: Record<string, unknown> }).response_payload ?? {};
+    const payload = structuredReport.raw_payload ?? {};
+    const publicVariant = getPublicReportVariant(structuredReport.variant);
     return (
       <div className="space-y-6">
         <div className="flex items-center gap-3">
@@ -772,8 +958,8 @@ export default function ReportDetailPage() {
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 flex-wrap">
               <h1 className="text-2xl font-bold truncate">{structuredReport.brand_name || 'Untitled Report'}</h1>
-              <Badge className="bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300">
-                {structuredReport.type === 'keywords' ? '🔑 Keyword Discovery' : '📝 Content Validation'}
+              <Badge className={REPORT_VARIANT_BADGES[publicVariant]}>
+                {getPublicReportLabel(structuredReport.variant)}
               </Badge>
             </div>
           </div>
@@ -790,12 +976,9 @@ export default function ReportDetailPage() {
   // PATH C: Raw fallback (when /full endpoint fails)
   // ════════════════════════════════════════════════════
   const report = rawReport!;
-  const TYPE_META: Record<string, { label: string; color: string; emoji: string }> = {
-    geo: { label: 'GEO Analysis', color: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300', emoji: '🌐' },
-    keywords: { label: 'Keyword Discovery', color: 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300', emoji: '🔑' },
-    content: { label: 'Content Validation', color: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300', emoji: '📝' },
-  };
-  const meta = TYPE_META[report._type] || TYPE_META.geo;
+  const reportVariant = getPublicReportVariant(report._variant || report._type);
+  const reportLabel = report._display_label || getPublicReportLabel(report._variant || report._type);
+  const reportBadgeClass = REPORT_VARIANT_BADGES[reportVariant];
   const payload = report.response_payload ?? {};
   const markdownContent = report.markdown_report
     || (payload.markdown_report as string | undefined)
@@ -821,7 +1004,7 @@ export default function ReportDetailPage() {
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
             <h1 className="text-2xl font-bold truncate">{report.brand_name || 'Untitled Report'}</h1>
-            <Badge className={meta.color}>{meta.emoji} {meta.label}</Badge>
+            <Badge className={reportBadgeClass}>{reportLabel}</Badge>
           </div>
           <div className="flex items-center gap-4 text-sm text-muted-foreground mt-1">
             <span className="flex items-center gap-1">

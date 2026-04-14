@@ -102,9 +102,9 @@ export default function ScanPage() {
     <div className="mx-auto max-w-4xl space-y-8 px-4 py-8">
       {/* Header */}
       <div>
-        <h1 className="text-3xl font-bold tracking-tight">AI Visibility Scan</h1>
+        <h1 className="text-3xl font-bold tracking-tight">Keyword Discovery</h1>
         <p className="mt-1 text-muted-foreground">
-          How visible is your brand across AI platforms? Run a scan to find out.
+          Discover high-opportunity AI search topics and prompt gaps for your brand.
         </p>
       </div>
 
@@ -234,7 +234,7 @@ export default function ScanPage() {
           ) : (
             <span className="flex items-center gap-2">
               <Search className="h-5 w-5" />
-              Run AI Visibility Scan
+              Run Keyword Discovery
             </span>
           )}
         </Button>

@@ -25,7 +25,7 @@ import type {
   AnalysisProgress,
   ActivePipeline,
 } from './report-types';
-import type { StructuredReport } from './report-v2-types';
+import type { ReportFamily, ReportVariant, StructuredReport } from './report-v2-types';
 import type { ProviderRegistry } from './types/providers';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
@@ -34,7 +34,10 @@ const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
 
 export interface UnifiedReport {
   id: string;
-  type: 'geo' | 'keywords' | 'content';
+  type: ReportFamily;
+  variant: ReportVariant;
+  report_type: string;
+  display_label: string;
   brand_name: string;
   score: number | null;
   grade: string;
@@ -299,19 +302,21 @@ class GEOApi {
 
   // ---- Analyses (from Supabase via Express) ----
 
-  async getAnalyses(brand?: string, type?: string, limit?: number): Promise<Analysis[]> {
+  async getAnalyses(brand?: string, type?: string, limit?: number, variant?: string): Promise<Analysis[]> {
     const params = new URLSearchParams();
     if (brand) params.set('brand', brand);
     if (type) params.set('type', type);
+    if (variant) params.set('variant', variant);
     if (limit) params.set('limit', String(limit));
     const { data } = await this.client.get(`/api/v1/progress/analyses?${params.toString()}`);
     return data;
   }
 
   /** Get all GEO analyses for the user */
-  async getGeoAnalyses(brand?: string, limit?: number): Promise<StoredGeoAnalysis[]> {
+  async getGeoAnalyses(brand?: string, limit?: number, variant?: string): Promise<StoredGeoAnalysis[]> {
     const params = new URLSearchParams();
     if (brand) params.set('brand', brand);
+    if (variant) params.set('variant', variant);
     if (limit) params.set('limit', String(limit));
     const { data } = await this.client.get(`/api/v1/progress/geo-analyses?${params.toString()}`);
     return data;
@@ -369,6 +374,7 @@ class GEOApi {
 
   async getReports(params?: {
     type?: string;
+    variant?: string;
     brand?: string;
     sort?: string;
     limit?: number;

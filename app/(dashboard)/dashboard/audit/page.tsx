@@ -9,7 +9,7 @@ import type { GeoAnalysisRequest, GeoProvider, ScanMode } from '@/lib/report-typ
 import type { ProviderSelection } from '@/lib/types/providers';
 import { ProviderSelector } from '@/components/geo/ProviderSelector';
 import { ApiErrorToast } from '@/components/geo/ApiErrorToast';
-import { setActiveAnalysis } from '@/components/dashboard/ActiveAnalysisBanner';
+import { clearActiveAnalysis, setActiveAnalysis } from '@/components/dashboard/ActiveAnalysisBanner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -77,6 +77,7 @@ export default function FullSiteAuditPage() {
   useEffect(() => {
     if (stage === 'completed' && analysisId && !redirectedRef.current) {
       redirectedRef.current = true;
+      clearActiveAnalysis();
       markComplete();
       
       const targetId = sseProgress?.report_id || analysisId;
@@ -93,6 +94,7 @@ export default function FullSiteAuditPage() {
       return () => clearTimeout(timer);
     }
     if (stage === 'failed') {
+      clearActiveAnalysis();
       markError('Analysis failed');
       addNotification({
         type: 'error',
@@ -141,7 +143,7 @@ export default function FullSiteAuditPage() {
     try {
       const result = await submit(request);
       if (result?.analysis_id) {
-        setActiveAnalysis(result.analysis_id, brandName.trim());
+        setActiveAnalysis(result.analysis_id, brandName.trim(), 'full');
         toast.success('Analysis submitted!', {
           description: `Analyzing "${brandName.trim()}" — this may take a few minutes.`,
         });
@@ -160,10 +162,10 @@ export default function FullSiteAuditPage() {
       <div>
         <h1 className="text-2xl font-bold flex items-center gap-2">
           <Globe className="h-6 w-6 text-primary" />
-          Full Site Audit
+          Legacy GEO Audit
         </h1>
         <p className="text-muted-foreground mt-1">
-          Comprehensive GEO/AEO analysis of your website across AI platforms
+          Legacy full-site audit flow. Use AI Visibility Analysis for the primary AEO/GEO workflow.
         </p>
       </div>
 

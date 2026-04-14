@@ -11,11 +11,11 @@ const STAGE_LABELS: Record<string, string> = {
   // Legacy agent-style names (backward compat)
   'Starting Analysis': 'Initializing agents…',
   'Running Crawler Agent': 'Crawling web content…',
-  'Running Researcher Agent': 'Researching competitors…',
+  'Running Researcher Agent': 'Researching market signals…',
   'Running LLM Tester Agent': 'Testing AI model visibility…',
   'Running Image Analyzer': 'Analyzing brand imagery…',
-  'Running Optimizer Agent': 'Generating GEO score…',
-  'Running Verifier Agent': 'Verifying results…',
+  'Running Optimizer Agent': 'Generating visibility score…',
+  'Running Verifier Agent': 'Validating results…',
 };
 
 /**

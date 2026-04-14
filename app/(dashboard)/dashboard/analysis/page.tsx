@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useCallback, useEffect, useMemo } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useFullAnalysis, useProviders } from '@/hooks/useGeo';
 import { useSSEProgress } from '@/hooks/useSSEProgress';
 import type { GeoAnalysisRequest, GeoAnalysisType, GeoProvider, ScanMode, IndustryProfile } from '@/lib/report-types';
@@ -9,6 +9,7 @@ import type { ProviderSelection } from '@/lib/types/providers';
 import { ProviderSelector } from '@/components/geo/ProviderSelector';
 import { AnalysisStageList } from '@/components/geo/AnalysisStageList';
 import { ApiErrorToast } from '@/components/geo/ApiErrorToast';
+import { clearActiveAnalysis, setActiveAnalysis } from '@/components/dashboard/ActiveAnalysisBanner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -34,11 +35,23 @@ const INDUSTRY_OPTIONS: { value: IndustryProfile; label: string }[] = [
   { value: 'media_publisher', label: 'Media / Publisher' },
 ];
 
-const ANALYSIS_TYPES: { value: GeoAnalysisType; label: string; desc: string }[] = [
+const ANALYSIS_TYPES: { value: Extract<GeoAnalysisType, 'full' | 'aeo_scan'>; label: string; desc: string }[] = [
   { value: 'full', label: 'GEO Analysis', desc: 'Full 17-dimension analysis' },
   { value: 'aeo_scan', label: 'AEO Scan', desc: 'Fast answer-engine visibility check' },
-  { value: 'combined', label: 'Combined', desc: 'Run AEO and GEO together' },
 ];
+
+const ANALYSIS_TYPE_META: Record<Extract<GeoAnalysisType, 'full' | 'aeo_scan'>, { scope: string; pipeline: string; bestFor: string }> = {
+  full: {
+    scope: '17 GEO dimensions with AEO included inside the full scorecard',
+    pipeline: 'Full GEO pipeline',
+    bestFor: 'Production benchmarking, competitors, roadmap, and full-site visibility work',
+  },
+  aeo_scan: {
+    scope: '3 measured AEO core dimensions using the dedicated 5-node AEO workflow',
+    pipeline: '5-node AEO pipeline',
+    bestFor: 'Fast AI visibility checks focused on mentions, consistency, and answer positioning',
+  },
+};
 
 const REGION_OPTIONS = [
   { value: 'global', label: 'Global' },
@@ -62,6 +75,12 @@ const LANGUAGE_OPTIONS = [
 // ---------------------------------------------------------------------------
 export default function AnalysisPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const presetAnalysisType = searchParams.get('analysis_type');
+  const initialAnalysisType: GeoAnalysisType =
+    presetAnalysisType === 'full' || presetAnalysisType === 'aeo_scan'
+      ? presetAnalysisType
+      : 'full';
 
   // --- Hook state ---
   const { analysisId, loading, error: hookError, submit, markComplete, markError, reset } = useFullAnalysis();
@@ -78,7 +97,7 @@ export default function AnalysisPage() {
   const [competitors, setCompetitors] = useState('');
   const [brandDescription, setBrandDescription] = useState('');
   const [region, setRegion] = useState('global');
-  const [analysisType, setAnalysisType] = useState<GeoAnalysisType>('full');
+  const [analysisType, setAnalysisType] = useState<Extract<GeoAnalysisType, 'full' | 'aeo_scan'>>(initialAnalysisType);
   const [industryProfile, setIndustryProfile] = useState<IndustryProfile | ''>('');
   const [targetAudiences, setTargetAudiences] = useState('');
   const [keyProducts, setKeyProducts] = useState('');
@@ -107,6 +126,10 @@ export default function AnalysisPage() {
     () => ANALYSIS_TYPES.find((t) => t.value === analysisType)?.label ?? analysisType,
     [analysisType]
   );
+  const activeAnalysisMeta = useMemo(
+    () => ANALYSIS_TYPE_META[analysisType] ?? ANALYSIS_TYPE_META.full,
+    [analysisType]
+  );
   const primaryLanguageLabel = useMemo(
     () => LANGUAGE_OPTIONS.find((l) => l.value === primaryLanguage)?.label ?? primaryLanguage,
     [primaryLanguage]
@@ -115,6 +138,7 @@ export default function AnalysisPage() {
   // --- Auto-redirect on completion ---
   useEffect(() => {
     if (progress?.status === 'completed' && analysisId) {
+      clearActiveAnalysis();
       markComplete();
       // Use report_id from SSE complete event if available, else fall back to analysisId
       const targetId = progress.report_id || analysisId;
@@ -122,6 +146,7 @@ export default function AnalysisPage() {
       return () => clearTimeout(timer);
     }
     if (progress?.status === 'failed') {
+      clearActiveAnalysis();
       markComplete();
     }
   }, [progress?.status, progress?.report_id, analysisId, router, markComplete]);
@@ -169,7 +194,10 @@ export default function AnalysisPage() {
     };
 
     try {
-      await submit(request);
+      const result = await submit(request);
+      if (result?.analysis_id) {
+        setActiveAnalysis(result.analysis_id, brandName.trim(), analysisType);
+      }
     } catch (err) {
       setApiError(err);
     }
@@ -194,6 +222,7 @@ export default function AnalysisPage() {
         {/* Stage list with per-provider sub-progress */}
         <AnalysisStageList
           progress={progress}
+          analysisType={analysisType}
           brandName={brandName || undefined}
           providerNames={providerNames}
           timeConfig={timeConfig}
@@ -236,9 +265,9 @@ export default function AnalysisPage() {
     <div className="space-y-6 px-2 sm:px-4 pb-12">
       {/* Header */}
       <div>
-        <h1 className="text-2xl font-bold tracking-tight">GEO Analysis</h1>
+        <h1 className="text-2xl font-bold tracking-tight">AI Visibility Analysis</h1>
         <p className="text-muted-foreground text-sm mt-1">
-          Measure how visible your brand is across AI assistants
+          Run focused AEO scans or full GEO analyses across AI assistants
         </p>
       </div>
 
@@ -296,7 +325,7 @@ export default function AnalysisPage() {
           {/* Analysis type */}
           <div className="space-y-3">
             <Label className="text-base font-semibold">Analysis Type *</Label>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               {ANALYSIS_TYPES.map((t) => (
                 <button
                   key={t.value}
@@ -312,6 +341,18 @@ export default function AnalysisPage() {
                   <p className="text-xs text-muted-foreground mt-1">{t.desc}</p>
                 </button>
               ))}
+            </div>
+            <div className="rounded-xl border bg-muted/30 p-4 space-y-2">
+              <div className="flex flex-wrap items-center gap-2">
+                <Badge variant="secondary" className="font-semibold">{analysisTypeLabel}</Badge>
+                <span className="text-xs text-muted-foreground">{activeAnalysisMeta.pipeline}</span>
+              </div>
+              <p className="text-sm text-foreground">
+                <span className="font-medium">Scope:</span> {activeAnalysisMeta.scope}
+              </p>
+              <p className="text-xs text-muted-foreground">
+                <span className="font-medium text-foreground">Best for:</span> {activeAnalysisMeta.bestFor}
+              </p>
             </div>
           </div>
 

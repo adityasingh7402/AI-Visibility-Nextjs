@@ -3,6 +3,25 @@
 // Aligned with backend routes/reports.js structuredResponse
 // ============================================================
 
+export type ReportFamily = 'geo' | 'keywords' | 'content';
+export type ReportVariant = 'geo' | 'aeo' | 'combined' | 'keywords' | 'content';
+
+export const REPORT_VARIANT_LABELS: Record<ReportVariant, string> = {
+  geo: 'GEO Analysis',
+  aeo: 'AEO Scan',
+  combined: 'GEO Analysis',
+  keywords: 'Keyword Discovery',
+  content: 'Content Validation',
+};
+
+export function getPublicReportVariant(variant: ReportVariant): Exclude<ReportVariant, 'combined'> | 'geo' {
+  return variant === 'combined' ? 'geo' : variant;
+}
+
+export function getPublicReportLabel(variant: ReportVariant): string {
+  return REPORT_VARIANT_LABELS[getPublicReportVariant(variant)];
+}
+
 // ── Maturity Level System (replaces A-F grades) ──
 
 export type MaturityLevel = 'INVISIBLE' | 'EMERGING' | 'RECOGNIZED' | 'ESTABLISHED' | 'DOMINANT';
@@ -149,7 +168,10 @@ export interface ScanCoverageV2 {
 export interface StructuredReport {
   // Identity
   id: string;
-  type: 'geo' | 'keywords' | 'content';
+  type: ReportFamily;
+  variant: ReportVariant;
+  report_type: string;
+  display_label: string;
   brand_name: string;
   category: string;
   score: number | null;
@@ -162,6 +184,7 @@ export interface StructuredReport {
 
   // Summary
   executive_summary: string | null;
+  summary: string;
 
   // Structured child data
   scores: StructuredScore[] | null;

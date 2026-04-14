@@ -13,19 +13,42 @@ import { toast } from 'sonner';
 const POLL_INTERVAL = 30000; // Refresh active pipelines every 30s (was 15s — reduced to fix 304 flooding)
 const LOCAL_STORAGE_KEY = 'geo_active_analysis';
 
+type StoredActiveAnalysis = {
+  analysisId: string;
+  brandName: string;
+  analysisType?: ActivePipeline['analysis_type'];
+  displayLabel?: string | null;
+  ts: number;
+};
+
+function getAnalysisDisplayLabel(analysisType?: ActivePipeline['analysis_type'] | null): string {
+  return analysisType === 'aeo_scan' ? 'AEO Scan' : 'GEO Analysis';
+}
+
 /** Store active analysis in localStorage for persistence across page navigation */
-export function setActiveAnalysis(analysisId: string, brandName: string) {
+export function setActiveAnalysis(
+  analysisId: string,
+  brandName: string,
+  analysisType: ActivePipeline['analysis_type'] = 'full',
+) {
   if (typeof window !== 'undefined') {
-    localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify({ analysisId, brandName, ts: Date.now() }));
+    const payload: StoredActiveAnalysis = {
+      analysisId,
+      brandName,
+      analysisType,
+      displayLabel: getAnalysisDisplayLabel(analysisType),
+      ts: Date.now(),
+    };
+    localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(payload));
   }
 }
 
-export function getActiveAnalysis(): { analysisId: string; brandName: string } | null {
+export function getActiveAnalysis(): StoredActiveAnalysis | null {
   if (typeof window === 'undefined') return null;
   try {
     const raw = localStorage.getItem(LOCAL_STORAGE_KEY);
     if (!raw) return null;
-    const parsed = JSON.parse(raw);
+    const parsed = JSON.parse(raw) as StoredActiveAnalysis;
     // Expire after 20 minutes
     if (Date.now() - parsed.ts > 20 * 60 * 1000) {
       localStorage.removeItem(LOCAL_STORAGE_KEY);
@@ -48,6 +71,7 @@ function PipelineTracker({ pipeline }: { pipeline: ActivePipeline }) {
   const { progress, connected, error: sseError } = useSSEProgress(pipeline.analysis_id);
   const router = useRouter();
   const toastFiredRef = useRef(false);
+  const analysisLabel = pipeline.display_label || getAnalysisDisplayLabel(pipeline.analysis_type);
 
   const percent = progress?.progress_percent ?? pipeline.progress?.progress_percent ?? 0;
   const stage = progress?.current_stage ?? pipeline.progress?.current_stage ?? 'queued';
@@ -62,7 +86,7 @@ function PipelineTracker({ pipeline }: { pipeline: ActivePipeline }) {
     // Fire toast notification exactly once on completion
     if (isComplete && !toastFiredRef.current) {
       toastFiredRef.current = true;
-      toast.success(`Analysis complete for "${pipeline.brand_name}"`, {
+      toast.success(`${analysisLabel} complete for "${pipeline.brand_name}"`, {
         description: 'Your AI visibility report is ready to view.',
         action: {
           label: 'View Report',
@@ -73,7 +97,7 @@ function PipelineTracker({ pipeline }: { pipeline: ActivePipeline }) {
     }
     if (isFailed && !toastFiredRef.current) {
       toastFiredRef.current = true;
-      toast.error(`Analysis failed for "${pipeline.brand_name}"`, {
+      toast.error(`${analysisLabel} failed for "${pipeline.brand_name}"`, {
         description: progress?.error_message || 'An unexpected error occurred.',
         duration: 15000,
       });
@@ -81,18 +105,18 @@ function PipelineTracker({ pipeline }: { pipeline: ActivePipeline }) {
     // Surface SSE connection errors (lost connection, auth failure)
     if (sseError && !isComplete && !isFailed && !toastFiredRef.current) {
       toastFiredRef.current = true;
-      toast.error(`Connection lost for "${pipeline.brand_name}"`, {
+      toast.error(`Connection lost for ${analysisLabel.toLowerCase()} "${pipeline.brand_name}"`, {
         description: sseError,
         duration: 15000,
       });
     }
-  }, [isComplete, isFailed, sseError, pipeline.brand_name, router, progress?.error_message]);
+  }, [analysisLabel, isComplete, isFailed, sseError, pipeline.brand_name, router, progress?.error_message]);
 
   if (isComplete) {
     return (
       <div className="flex items-center gap-3 text-sm">
         <span className="text-emerald-600 dark:text-emerald-400 font-semibold">
-          ✅ Analysis complete for &quot;{pipeline.brand_name}&quot;
+          ✅ {analysisLabel} complete for &quot;{pipeline.brand_name}&quot;
         </span>
         <Button
           size="sm"
@@ -109,7 +133,7 @@ function PipelineTracker({ pipeline }: { pipeline: ActivePipeline }) {
   if (isFailed) {
     return (
       <div className="flex items-center gap-3 text-sm text-red-600 dark:text-red-400 font-semibold">
-        ❌ Analysis failed for &quot;{pipeline.brand_name}&quot;
+        ❌ {analysisLabel} failed for &quot;{pipeline.brand_name}&quot;
       </div>
     );
   }
@@ -119,7 +143,7 @@ function PipelineTracker({ pipeline }: { pipeline: ActivePipeline }) {
       <div className="flex items-center gap-2 min-w-0 flex-1">
         <Loader2 className="h-4 w-4 animate-spin text-primary shrink-0" />
         <span className="text-sm font-medium truncate">
-          Analyzing &quot;{pipeline.brand_name}&quot;
+          {analysisLabel} for &quot;{pipeline.brand_name}&quot;
         </span>
         <span className="text-xs text-muted-foreground hidden sm:inline">
           {phaseInfo.icon} {phaseInfo.description}
@@ -159,6 +183,8 @@ export function ActiveAnalysisBanner() {
       brand_name: stored.brandName,
       status: 'running',
       started_at: new Date().toISOString(),
+      analysis_type: stored.analysisType ?? 'full',
+      display_label: stored.displayLabel || getAnalysisDisplayLabel(stored.analysisType),
       progress: null,
     };
   });

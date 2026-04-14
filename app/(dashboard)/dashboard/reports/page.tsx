@@ -4,7 +4,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { geoApi, type UnifiedReport } from '@/lib/geo-api';
-import { getMaturityLevel } from '@/lib/report-v2-types';
+import { getMaturityLevel, getPublicReportLabel, getPublicReportVariant, type ReportVariant } from '@/lib/report-v2-types';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
@@ -56,14 +56,17 @@ function relTime(dateStr: string): string {
   return new Date(dateStr).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 }
 
-const TYPE_META: Record<string, { label: string; color: string; icon: React.ReactNode }> = {
-  geo:      { label: 'GEO',      color: 'text-blue-600 bg-blue-500/10 border-blue-500/20',      icon: <Globe className="h-3 w-3" /> },
-  keywords: { label: 'Keywords', color: 'text-violet-600 bg-violet-500/10 border-violet-500/20', icon: <KeyRound className="h-3 w-3" /> },
-  content:  { label: 'Content',  color: 'text-amber-600 bg-amber-500/10 border-amber-500/20',    icon: <FileText className="h-3 w-3" /> },
+const TYPE_META: Record<ReportVariant, { label: string; color: string; icon: React.ReactNode }> = {
+  geo:      { label: 'GEO',      color: 'text-blue-600 bg-blue-500/10 border-blue-500/20',          icon: <Globe className="h-3 w-3" /> },
+  aeo:      { label: 'AEO',      color: 'text-emerald-600 bg-emerald-500/10 border-emerald-500/20', icon: <Search className="h-3 w-3" /> },
+  combined: { label: 'Combined', color: 'text-cyan-700 bg-cyan-500/10 border-cyan-500/20',          icon: <RefreshCw className="h-3 w-3" /> },
+  keywords: { label: 'Keywords', color: 'text-violet-600 bg-violet-500/10 border-violet-500/20',    icon: <KeyRound className="h-3 w-3" /> },
+  content:  { label: 'Content',  color: 'text-amber-600 bg-amber-500/10 border-amber-500/20',       icon: <FileText className="h-3 w-3" /> },
 };
 
-function TypeBadge({ type }: { type: string }) {
-  const meta = TYPE_META[type] ?? TYPE_META.geo;
+function TypeBadge({ variant }: { variant: ReportVariant }) {
+  const publicVariant = getPublicReportVariant(variant);
+  const meta = TYPE_META[publicVariant] ?? TYPE_META.geo;
   return (
     <span className={`inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider ${meta.color}`}>
       {meta.icon}
@@ -126,7 +129,11 @@ export default function ReportsPage() {
         offset: newOffset,
         sort: sortBy,
       };
-      if (typeFilter !== 'all') params.type = typeFilter;
+      if (typeFilter === 'geo' || typeFilter === 'keywords' || typeFilter === 'content') {
+        params.type = typeFilter;
+      } else if (typeFilter !== 'all') {
+        params.variant = typeFilter;
+      }
       if (brandSearch.trim()) params.brand = brandSearch.trim();
 
       const res = await geoApi.getReports(params);
@@ -157,14 +164,14 @@ export default function ReportsPage() {
         <div>
           <h1 className="text-3xl font-black text-foreground tracking-tight mb-1">Reports</h1>
           <p className="text-sm text-muted-foreground">
-            All your GEO analyses, keyword discoveries, and content validations.
+            All your GEO analyses, AEO scans, keyword discoveries, and content validations.
           </p>
         </div>
         <div className="flex items-center gap-3">
           <Button onClick={() => fetchReports(offset)} variant="outline" size="sm" className="rounded-lg gap-2 font-semibold">
             <RefreshCw className="h-3.5 w-3.5" /> Refresh
           </Button>
-          <Link href="/dashboard/audit">
+          <Link href="/dashboard/analysis">
             <Button size="sm" className="rounded-lg gap-2 font-semibold shadow-sm">
               <Plus className="h-3.5 w-3.5" /> New Analysis
             </Button>
@@ -182,6 +189,7 @@ export default function ReportsPage() {
           <SelectContent>
             <SelectItem value="all">All Types</SelectItem>
             <SelectItem value="geo">GEO Analysis</SelectItem>
+            <SelectItem value="aeo">AEO Scan</SelectItem>
             <SelectItem value="keywords">Keywords</SelectItem>
             <SelectItem value="content">Content</SelectItem>
           </SelectContent>
@@ -235,7 +243,7 @@ export default function ReportsPage() {
               : 'Run your first analysis to get started.'}
           </p>
           {!hasFilters && (
-            <Link href="/dashboard/audit">
+            <Link href="/dashboard/analysis">
               <Button size="sm" className="rounded-lg font-semibold">Run Analysis</Button>
             </Link>
           )}
@@ -266,7 +274,7 @@ export default function ReportsPage() {
                     onClick={() => router.push(`/dashboard/reports/${report.id}`)}
                   >
                     <TableCell>
-                      <TypeBadge type={report.type} />
+                      <TypeBadge variant={report.variant} />
                     </TableCell>
                     <TableCell>
                       <span className="font-bold text-foreground group-hover:text-primary transition-colors">
@@ -278,7 +286,7 @@ export default function ReportsPage() {
                     </TableCell>
                     <TableCell className="hidden md:table-cell max-w-[300px]">
                       <span className="text-sm text-muted-foreground truncate block">
-                        {report.summary}
+                        {report.summary || getPublicReportLabel(report.variant)}
                       </span>
                     </TableCell>
                     <TableCell>

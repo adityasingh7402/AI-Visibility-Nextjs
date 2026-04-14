@@ -3,6 +3,7 @@
 import { ScoreGauge } from './ScoreGauge';
 import {
   getMaturityLevel,
+  getPublicReportLabel,
   isReportStale,
   daysSinceReport,
   type StructuredReport,
@@ -97,9 +98,9 @@ export function ReportHero({ report }: ReportHeroProps) {
               {report.methodology_version && (
                 <span title="Methodology version">V{report.methodology_version}</span>
               )}
-              {report.type && (
+              {(report.display_label || report.variant) && (
                 <span className="uppercase font-medium text-xs tracking-wider" title="Report type">
-                  {report.type === 'geo' ? 'GEO Analysis' : report.type}
+                  {report.variant === 'combined' ? getPublicReportLabel(report.variant) : (report.display_label || getPublicReportLabel(report.variant))}
                 </span>
               )}
             </div>

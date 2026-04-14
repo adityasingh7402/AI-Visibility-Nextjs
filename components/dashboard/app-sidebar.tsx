@@ -43,11 +43,11 @@ interface NavItem {
 }
 
 const NAV_ENGINE: NavItem[] = [
-  { label: 'AI Visibility Scan', icon: Search,        href: '/dashboard/scan',     roles: ['CUSTOMER', 'SUPERADMIN'] },
+  { label: 'AI Visibility Analysis', icon: Search,    href: '/dashboard/analysis', roles: ['CUSTOMER', 'SUPERADMIN'] },
   { label: 'Keyword Test',       icon: Key,           href: '/dashboard/keywords', roles: ['CUSTOMER', 'SUPERADMIN'] },
   { label: 'Prompt Check',       icon: MessageSquare, href: '/dashboard/prompt',   roles: ['CUSTOMER', 'SUPERADMIN'] },
   { label: 'Content Lab',        icon: FileText,      href: '/dashboard/content',  roles: ['CUSTOMER', 'SUPERADMIN'] },
-  { label: 'Full Site Audit',    icon: Globe,         href: '/dashboard/audit',    roles: ['CUSTOMER', 'SUPERADMIN'] },
+  { label: 'Keyword Discovery',  icon: Globe,         href: '/dashboard/scan',     roles: ['CUSTOMER', 'SUPERADMIN'] },
 ];
 
 const NAV_ANALYTICS: NavItem[] = [

@@ -3,6 +3,8 @@
 // Aligned with Python AnalyzeResponse (models/analysis.py)
 // ============================================================
 
+import type { ReportFamily, ReportVariant } from './report-v2-types';
+
 // ── Scan mode / analysis type enums ──
 export type ScanMode = 'quick' | 'full' | 'deep';
 export type GeoAnalysisType = 'full' | 'aeo_scan' | 'combined' | 'geo_only' | 'seo_only' | 'marketing_only';
@@ -324,6 +326,9 @@ export interface ActivePipeline {
   brand_name: string;
   status: string;
   started_at: string;
+  analysis_type?: GeoAnalysisType | null;
+  variant?: ReportVariant;
+  display_label?: string | null;
   progress: AnalysisProgress | null;
 }
 
@@ -334,12 +339,18 @@ export interface ActivePipeline {
 export interface StoredGeoAnalysis {
   id: string;
   analysis_id: string | null;
+  type?: ReportFamily;
+  variant?: ReportVariant;
+  report_type?: string;
   brand_name: string;
   category: string;
   overall_score: number | null;
+  grade?: string | null;
   status: string;
+  scan_mode?: string | null;
   processing_time_seconds: number | null;
   created_at: string;
+  methodology_version?: string | null;
   request_payload: GeoAnalysisRequest;
   response_payload?: GeoAnalysisResponse;
 }

@@ -1,6 +1,6 @@
 'use client';
 
-import type { AnalysisProgress, ProgressPhase } from '@/lib/report-types';
+import type { AnalysisProgress, GeoAnalysisType, ProgressPhase } from '@/lib/report-types';
 import { PHASE_DISPLAY } from '@/lib/report-types';
 
 // ── Stage definition with microcopy ─────────────────────────────────────
@@ -10,13 +10,22 @@ interface StageInfo {
   microcopy: string;
 }
 
-const PIPELINE_STAGES: StageInfo[] = [
+const GEO_PIPELINE_STAGES: StageInfo[] = [
   { phase: 'crawling',         microcopy: 'Reading your website to understand content structure…' },
   { phase: 'researching',      microcopy: 'Analyzing your market position and identifying competitors…' },
   { phase: 'testing_llms',     microcopy: 'Asking AI platforms about your brand to measure visibility…' },
   { phase: 'analyzing_images', microcopy: 'Auditing visual content for AI-readiness signals…' },
   { phase: 'optimizing',       microcopy: 'Calculating your 17-dimension AI visibility score…' },
   { phase: 'verifying',        microcopy: 'Running 20 quality checks to ensure report accuracy…' },
+];
+
+const AEO_PIPELINE_STAGES: StageInfo[] = [
+  { phase: 'crawling',         microcopy: 'Reading your site and brand pages to capture answer-engine context…' },
+  { phase: 'researching',      microcopy: 'Collecting the brand signals needed for answer-engine visibility checks…' },
+  { phase: 'testing_llms',     microcopy: 'Testing AI assistants for mentions, consistency, and answer placement…' },
+  { phase: 'analyzing_images', microcopy: 'Reviewing supporting assets and evidence for the final AEO report…' },
+  { phase: 'optimizing',       microcopy: 'Scoring the 3 measured AEO dimensions across the 5-node workflow…' },
+  { phase: 'verifying',        microcopy: 'Validating answer-engine findings before finalizing the report…' },
 ];
 
 // ── Time estimation ──────────────────────────────────────────────────────
@@ -44,6 +53,7 @@ export function getTimeEstimate(config: TimeEstimateConfig): string {
 
 interface AnalysisStageListProps {
   progress: AnalysisProgress | null;
+  analysisType?: Extract<GeoAnalysisType, 'full' | 'aeo_scan'>;
   /** Brand name being analyzed */
   brandName?: string;
   /** Provider names being tested (e.g. ["ChatGPT", "Gemini"]) */
@@ -54,6 +64,7 @@ interface AnalysisStageListProps {
 
 export function AnalysisStageList({
   progress,
+  analysisType = 'full',
   brandName,
   providerNames,
   timeConfig,
@@ -66,6 +77,8 @@ export function AnalysisStageList({
   const percent = progress?.progress_percent ?? 0;
 
   const barColor = isComplete ? '#10B981' : isFailed ? '#EF4444' : '#3B82F6';
+  const pipelineLabel = analysisType === 'aeo_scan' ? 'AEO Scan' : 'GEO Analysis';
+  const stages = analysisType === 'aeo_scan' ? AEO_PIPELINE_STAGES : GEO_PIPELINE_STAGES;
 
   return (
     <div className="rounded-2xl border border-border bg-card p-6 space-y-6 w-full max-w-xl mx-auto">
@@ -80,7 +93,7 @@ export function AnalysisStageList({
         </h2>
         {providerNames && providerNames.length > 0 && !isComplete && !isFailed && (
           <p className="text-sm text-muted-foreground">
-            Full GEO Analysis · {providerNames.length} AI Provider{providerNames.length > 1 ? 's' : ''}
+            {pipelineLabel} · {providerNames.length} AI Provider{providerNames.length > 1 ? 's' : ''}
           </p>
         )}
       </div>
@@ -101,7 +114,7 @@ export function AnalysisStageList({
 
       {/* Stage list */}
       <div className="space-y-1">
-        {PIPELINE_STAGES.map((stage) => {
+        {stages.map((stage) => {
           const isDone = completedStages.has(stage.phase) || isComplete;
           const isActive = currentStage === stage.phase && !isComplete && !isFailed;
           const isPending = !isDone && !isActive;

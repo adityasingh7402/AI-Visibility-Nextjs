@@ -6,7 +6,7 @@ import { useGeoAnalyses } from '@/hooks/useGeo';
 import { useBrands } from '@/hooks/useBrands';
 import { ScoreGauge } from '@/components/geo/ScoreGauge';
 import { TrendChart } from '@/components/geo/TrendChart';
-import { getMaturityLevel } from '@/lib/report-v2-types';
+import { getMaturityLevel, getPublicReportLabel, getPublicReportVariant, type ReportVariant } from '@/lib/report-v2-types';
 import type { StoredGeoAnalysis } from '@/lib/report-types';
 import type { Brand } from '@/lib/brands-api';
 import type { VisibilityTrend } from '@/lib/geo-types';
@@ -40,16 +40,32 @@ const STAT_META = [
 
 // ── Quick actions ────────────────────────────────────────────────────────────
 const QUICK_ACTIONS = [
-  { label: 'AI Visibility Scan', desc: 'Discover & test keywords', href: '/dashboard/scan', icon: Search, color: 'text-primary bg-primary/10' },
-  { label: 'Full Site Audit', desc: 'Comprehensive 25-query audit', href: '/dashboard/audit', icon: BarChart3, color: 'text-blue-500 bg-blue-500/10' },
+  { label: 'AEO Scan', desc: 'Run the focused 5-node AI visibility workflow', href: '/dashboard/analysis?analysis_type=aeo_scan', icon: Search, color: 'text-emerald-600 bg-emerald-500/10' },
+  { label: 'GEO Audit', desc: 'Launch the full 17-dimension GEO workflow', href: '/dashboard/analysis?analysis_type=full', icon: BarChart3, color: 'text-blue-500 bg-blue-500/10' },
   { label: 'Content Lab', desc: 'Validate & enhance content', href: '/dashboard/content', icon: FileText, color: 'text-emerald-500 bg-emerald-500/10' },
 ];
+
+const ANALYSIS_VARIANT_BADGES: Record<ReportVariant, string> = {
+  geo: 'text-blue-600 bg-blue-500/10 border-blue-500/20',
+  aeo: 'text-emerald-600 bg-emerald-500/10 border-emerald-500/20',
+  combined: 'text-cyan-700 bg-cyan-500/10 border-cyan-500/20',
+  keywords: 'text-violet-600 bg-violet-500/10 border-violet-500/20',
+  content: 'text-amber-600 bg-amber-500/10 border-amber-500/20',
+};
+
+function resolveAnalysisVariant(analysis: StoredGeoAnalysis): ReportVariant {
+  if (analysis.variant) return analysis.variant;
+  if (analysis.report_type === 'aeo_scan') return 'aeo';
+  if (analysis.report_type === 'combined_analysis') return 'combined';
+  return 'geo';
+}
 
 // ── Analysis row ─────────────────────────────────────────────────────────────
 function AnalysisRow({ analysis }: { analysis: StoredGeoAnalysis }) {
   const score = analysis.overall_score ?? 0;
   const maturity = getMaturityLevel(score);
   const color = maturity.color;
+  const variant = getPublicReportVariant(resolveAnalysisVariant(analysis));
 
   return (
     <Link
@@ -61,9 +77,12 @@ function AnalysisRow({ analysis }: { analysis: StoredGeoAnalysis }) {
         <p className="text-sm font-bold text-foreground truncate group-hover:text-primary transition-colors">
           {analysis.brand_name}
         </p>
-        <p className="text-xs text-muted-foreground truncate mt-0.5">
-          {analysis.category}
-        </p>
+        <div className="mt-1 flex items-center gap-2 text-xs text-muted-foreground">
+          <span className="truncate">{analysis.category}</span>
+          <Badge variant="outline" className={`hidden sm:inline-flex text-[10px] font-bold ${ANALYSIS_VARIANT_BADGES[variant]}`}>
+            {getPublicReportLabel(variant)}
+          </Badge>
+        </div>
       </div>
       <Badge variant="outline" className="shrink-0 font-bold" style={{ color, borderColor: color }}>
         {maturity.label}
@@ -169,28 +188,33 @@ export default function DashboardPage() {
 
   useEffect(() => { fetchAnalyses(); fetchBrands(); }, [fetchAnalyses, fetchBrands]);
 
+  const comparableAnalyses = useMemo(() => {
+    const nonAeoAnalyses = analyses.filter(analysis => resolveAnalysisVariant(analysis) !== 'aeo');
+    return nonAeoAnalyses.length > 0 ? nonAeoAnalyses : analyses;
+  }, [analyses]);
+
   const stats = useMemo(() => {
-    if (!analyses.length) return null;
-    const scores = analyses.filter(a => a.overall_score).map(a => a.overall_score!);
+    if (!comparableAnalyses.length) return null;
+    const scores = comparableAnalyses.filter(a => a.overall_score).map(a => a.overall_score!);
     return {
-      total: analyses.length,
+      total: comparableAnalyses.length,
       latest: scores[0] ?? null,
       average: scores.length ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length) : null,
       best: scores.length ? Math.max(...scores) : null,
     };
-  }, [analyses]);
+  }, [comparableAnalyses]);
 
   // Build latest score per brand (from analyses)
   const brandScoreMap = useMemo(() => {
     const map: Record<string, number | null> = {};
     for (const brand of brands) {
-      const match = analyses.find(a =>
+      const match = comparableAnalyses.find(a =>
         a.brand_name?.toLowerCase() === brand.brand_name.toLowerCase()
       );
       map[brand.id] = match?.overall_score ?? null;
     }
     return map;
-  }, [brands, analyses]);
+  }, [brands, comparableAnalyses]);
 
   const recentAnalyses = analyses.slice(0, 5);
 
@@ -223,7 +247,7 @@ export default function DashboardPage() {
             Your AI visibility performance at a glance.
           </p>
         </div>
-        <Link href="/dashboard/audit">
+        <Link href="/dashboard/analysis">
           <Button size="sm" className="rounded-lg font-semibold gap-2 shadow-sm">
             <Plus className="h-3.5 w-3.5" /> New Analysis
           </Button>
@@ -309,7 +333,7 @@ export default function DashboardPage() {
       )}
 
       {/* ── Visibility Trend ──────────────────────────────────────────── */}
-      <TrendSection analyses={analyses} />
+      <TrendSection analyses={comparableAnalyses} />
 
       {/* ── Two-column body ──────────────────────────────────────────── */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
@@ -335,9 +359,9 @@ export default function DashboardPage() {
               <p className="text-4xl mb-4">📊</p>
               <p className="font-bold text-foreground mb-2 text-lg">No analyses yet</p>
               <p className="text-sm text-muted-foreground mb-6 max-w-sm mx-auto">
-                Run your first GEO analysis to evaluate your brand&apos;s standing among top AI assistants.
+                Run your first AEO or GEO analysis to evaluate your brand&apos;s standing across AI assistants.
               </p>
-              <Link href="/dashboard/audit">
+              <Link href="/dashboard/analysis">
                 <Button className="rounded-lg font-semibold shadow-sm hover:-translate-y-0.5 transition-transform">
                   Start Analysis
                 </Button>

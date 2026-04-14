@@ -177,11 +177,11 @@ export function useAnalyses() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchAnalyses = useCallback(async (brand?: string, type?: string, limit?: number) => {
+  const fetchAnalyses = useCallback(async (brand?: string, type?: string, limit?: number, variant?: string) => {
     setLoading(true);
     setError(null);
     try {
-      const result = await geoApi.getAnalyses(brand, type, limit);
+      const result = await geoApi.getAnalyses(brand, type, limit, variant);
       setData(result);
       return result;
     } catch (e: unknown) {
@@ -299,11 +299,11 @@ export function useGeoAnalyses() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchAnalyses = useCallback(async (brand?: string, limit?: number) => {
+  const fetchAnalyses = useCallback(async (brand?: string, limit?: number, variant?: string) => {
     setLoading(true);
     setError(null);
     try {
-      const result = await geoApi.getGeoAnalyses(brand, limit);
+      const result = await geoApi.getGeoAnalyses(brand, limit, variant);
       setData(result);
       return result;
     } catch (e: unknown) {
