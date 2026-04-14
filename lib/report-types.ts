@@ -277,6 +277,7 @@ export interface GeoAnalysisAsyncResponse {
 
 export type ProgressPhase =
   | 'queued'
+  | 'resolving_brand'
   | 'crawling'
   | 'researching'
   | 'testing_llms'
@@ -287,6 +288,13 @@ export type ProgressPhase =
   | 'failed';
 
 export type ProgressStatus = 'pending' | 'processing' | 'completed' | 'failed';
+
+/** Per-node status from LangGraph streaming (Mission Control grid) */
+export interface NodeStatus {
+  node: string;
+  node_status: 'running' | 'completed' | 'failed' | 'unknown';
+  completed_nodes: string[];
+}
 
 export interface AnalysisProgress {
   analysis_id: string;
@@ -302,12 +310,15 @@ export interface AnalysisProgress {
   estimated_seconds_remaining: number | null;
   timestamp: string;
   report_id?: string | null;
+  /** Per-node status from native LangGraph streaming */
+  node_status?: NodeStatus;
 }
 
 // ── Phase display metadata ──
 
 export const PHASE_DISPLAY: Record<ProgressPhase, { label: string; icon: string; description: string }> = {
   queued:           { label: 'Queued',           icon: '⏳', description: 'Waiting in queue' },
+  resolving_brand:  { label: 'Resolving Brand',  icon: '🔍', description: 'Identifying brand identity' },
   crawling:         { label: 'Crawling',         icon: '🕸️', description: 'Scanning website pages' },
   researching:      { label: 'Researching',      icon: '🔬', description: 'Analyzing competitors & web presence' },
   testing_llms:     { label: 'Testing LLMs',     icon: '🤖', description: 'Probing AI models for brand mentions' },

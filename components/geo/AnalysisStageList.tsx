@@ -11,6 +11,7 @@ interface StageInfo {
 }
 
 const GEO_PIPELINE_STAGES: StageInfo[] = [
+  { phase: 'resolving_brand', microcopy: 'Identifying your brand identity and variations…' },
   { phase: 'crawling',         microcopy: 'Reading your website to understand content structure…' },
   { phase: 'researching',      microcopy: 'Analyzing your market position and identifying competitors…' },
   { phase: 'testing_llms',     microcopy: 'Asking AI platforms about your brand to measure visibility…' },
@@ -20,10 +21,8 @@ const GEO_PIPELINE_STAGES: StageInfo[] = [
 ];
 
 const AEO_PIPELINE_STAGES: StageInfo[] = [
-  { phase: 'crawling',         microcopy: 'Reading your site and brand pages to capture answer-engine context…' },
-  { phase: 'researching',      microcopy: 'Collecting the brand signals needed for answer-engine visibility checks…' },
+  { phase: 'resolving_brand', microcopy: 'Identifying brand identity for answer-engine context…' },
   { phase: 'testing_llms',     microcopy: 'Testing AI assistants for mentions, consistency, and answer placement…' },
-  { phase: 'analyzing_images', microcopy: 'Reviewing supporting assets and evidence for the final AEO report…' },
   { phase: 'optimizing',       microcopy: 'Scoring the 3 measured AEO dimensions across the 5-node workflow…' },
   { phase: 'verifying',        microcopy: 'Validating answer-engine findings before finalizing the report…' },
 ];
@@ -171,6 +170,25 @@ export function AnalysisStageList({
           );
         })}
       </div>
+
+      {/* Node-level progress from LangGraph streaming */}
+      {progress?.node_status && !isComplete && !isFailed && (
+        <div className="px-3 py-2 rounded-lg bg-muted/50 text-xs space-y-1">
+          <div className="flex items-center justify-between">
+            <span className="text-muted-foreground font-medium">🧠 Agent Progress</span>
+            <span className="text-muted-foreground">
+              {progress.node_status.completed_nodes.length} agents done
+            </span>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-emerald-500">✓</span>
+            <span className="text-foreground">
+              {progress.node_status.node.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
+            </span>
+            <span className="text-muted-foreground">— completed</span>
+          </div>
+        </div>
+      )}
 
       {/* Time estimate + elapsed */}
       <div className="flex items-center justify-between text-xs text-muted-foreground pt-2 border-t border-border">
