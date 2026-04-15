@@ -1,7 +1,6 @@
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { CheckCircle2 } from "lucide-react";
 import { signup, loginWithGoogle } from "../actions";
 
 export const metadata = {
@@ -9,22 +8,12 @@ export const metadata = {
   description: "Join 5,000+ B2B marketing professionals using GEO to dominate AI-driven search results.",
 };
 
-export default function SignupPage() {
-  const benefits = [
-    {
-      title: "Analyze",
-      description: "Deep crawl of your visibility across GPT, Claude, and Gemini.",
-    },
-    {
-      title: "Diagnose",
-      description: "Identify authority gaps and semantic mismatch in real-time.",
-    },
-    {
-      title: "Fix",
-      description: "AI-suggested content optimizations to improve citations.",
-    },
-  ];
-
+export default async function SignupPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ message?: string }>
+}) {
+  const { message } = await searchParams;
   return (
     <div className="space-y-8">
       <div>
@@ -35,6 +24,20 @@ export default function SignupPage() {
           Join 5,000+ B2B marketing professionals using GEO to dominate AI-driven search results.
         </p>
       </div>
+
+      {message && (
+        <div className={`rounded-xl p-4 border ${
+          message.toLowerCase().includes('check your email')
+            ? 'bg-blue-50 dark:bg-blue-950/30 border-blue-200 dark:border-blue-800'
+            : 'bg-red-50 dark:bg-red-950/30 border-red-200 dark:border-red-800'
+        }`}>
+          <p className={`text-sm font-medium ${
+            message.toLowerCase().includes('check your email')
+              ? 'text-blue-700 dark:text-blue-400'
+              : 'text-red-700 dark:text-red-400'
+          }`}>{message}</p>
+        </div>
+      )}
 
       <div className="space-y-6">
         <form action={signup} className="space-y-4">

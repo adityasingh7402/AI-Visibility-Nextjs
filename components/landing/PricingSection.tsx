@@ -2,7 +2,6 @@
 import { motion } from "framer-motion";
 import { Check } from "lucide-react";
 import { useState } from "react";
-import SectionWatermark from "./SectionWatermark";
 import BackgroundHexagons from "./BackgroundHexagons";
 
 const tiers = [
@@ -62,7 +61,7 @@ const PricingSection = () => {
               className="section-subtitle mt-3"
             >
               Whether your GEO optimization needs are large or small,<br className="hidden md:block" />
-              we're here to help you scale.
+              we&apos;re here to help you scale.
             </motion.p>
           </div>
 

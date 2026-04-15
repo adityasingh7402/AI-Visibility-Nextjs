@@ -104,7 +104,7 @@ const FooterCTASection = () => {
             <div>
               <h4 className="text-primary-foreground text-sm font-semibold mb-5">Subscribe</h4>
               <p className="text-primary-foreground/40 text-sm leading-relaxed mb-4">
-                Don't miss our latest insights on AI search optimization. Subscribe below.
+                Don&apos;t miss our latest insights on AI search optimization. Subscribe below.
               </p>
               <div className="flex items-center">
                 <input
@@ -112,7 +112,7 @@ const FooterCTASection = () => {
                   placeholder="Email Address"
                   className="h-10 flex-1 px-4 bg-primary-foreground/5 border border-primary-foreground/10 rounded-l-lg text-primary-foreground placeholder:text-primary-foreground/25 text-sm focus:outline-none focus:border-primary-foreground/20 transition-colors"
                 />
-                <button className="h-10 w-10 bg-accent flex items-center justify-center rounded-r-lg hover:bg-accent/90 active:scale-95 transition-all">
+                <button aria-label="Subscribe" className="h-10 w-10 bg-accent flex items-center justify-center rounded-r-lg hover:bg-accent/90 active:scale-95 transition-all">
                   <ArrowRight className="w-4 h-4 text-accent-foreground" />
                 </button>
               </div>

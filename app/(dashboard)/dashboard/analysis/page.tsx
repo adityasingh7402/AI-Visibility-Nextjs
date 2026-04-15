@@ -1,316 +1,598 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
-import { useRouter } from 'next/navigation';
-import { useKeywordDiscovery, useAnalyses } from '@/hooks/useGeo';
+import { useState, useCallback, useEffect, useMemo } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { useFullAnalysis, useProviders } from '@/hooks/useGeo';
 import { useSSEProgress } from '@/hooks/useSSEProgress';
-import { AnalysisProgressBar } from '@/components/geo/AnalysisProgressBar';
+import type { GeoAnalysisRequest, GeoAnalysisType, GeoProvider, ScanMode, IndustryProfile } from '@/lib/report-types';
+import type { ProviderSelection } from '@/lib/types/providers';
+import { ProviderSelector } from '@/components/geo/ProviderSelector';
+import { AnalysisStageList } from '@/components/geo/AnalysisStageList';
 import { ApiErrorToast } from '@/components/geo/ApiErrorToast';
-import type { DiscoveryMode, LLMProvider } from '@/lib/geo-types';
-import {
-  BrainCircuit, Zap, Cpu, Lightbulb, Rocket, Clock, Bolt, CheckCircle2, AlertCircle, Info
-} from 'lucide-react';
-import { Button } from "@/components/ui/button";
+import { clearActiveAnalysis, setActiveAnalysis } from '@/components/dashboard/ActiveAnalysisBanner';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Badge } from '@/components/ui/badge';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { ChevronDown, Rocket, Zap, Search as SearchIcon, Play } from 'lucide-react';
 
-const LLM_OPTIONS: { id: LLMProvider; label: string; icon: React.ReactNode; desc: string }[] = [
-  { id: 'chatgpt', label: 'ChatGPT', icon: <BrainCircuit className="text-emerald-500" size={20} />, desc: 'OpenAI GPT-4o' },
-  { id: 'claude', label: 'Claude', icon: <Zap className="text-amber-500" size={20} />, desc: 'Anthropic Claude' },
-  { id: 'gemini', label: 'Gemini', icon: <Cpu className="text-blue-500" size={20} />, desc: 'Google Gemini' },
-  { id: 'perplexity', label: 'Perplexity', icon: <Lightbulb className="text-purple-500" />, desc: 'Perplexity AI' },
-  { id: 'grok', label: 'Grok', icon: <Rocket className="text-sky-400" size={20} />, desc: 'xAI Grok' },
-  { id: 'digitalocean', label: 'DigitalOcean AI', icon: <Bolt className="text-blue-400" size={20} />, desc: 'DigitalOcean GenAI' },
+// ---------------------------------------------------------------------------
+// Constants
+// ---------------------------------------------------------------------------
+
+const SCAN_MODES: { value: ScanMode; label: string; desc: string; icon: React.ReactNode }[] = [
+  { value: 'quick', label: 'Quick', desc: '~2 min · core checks', icon: <Zap className="h-5 w-5" /> },
+  { value: 'full', label: 'Full', desc: '~5 min · recommended', icon: <SearchIcon className="h-5 w-5" /> },
+  { value: 'deep', label: 'Deep', desc: '~10 min · comprehensive', icon: <Rocket className="h-5 w-5" /> },
 ];
 
-const MODES: { id: DiscoveryMode; label: string; desc: string; eta: string; icon: React.ReactNode }[] = [
-  { id: 'quick', label: 'Quick', desc: 'Fast scan, 5 prompts', eta: '~15s', icon: <Zap size={16} /> },
-  { id: 'standard', label: 'Standard', desc: 'Balanced, 10 prompts', eta: '~45s', icon: <Cpu size={16} /> },
-  { id: 'deep', label: 'Deep', desc: 'Comprehensive, 25+ prompts', eta: '~90s', icon: <BrainCircuit size={16} /> },
+const INDUSTRY_OPTIONS: { value: IndustryProfile; label: string }[] = [
+  { value: 'saas', label: 'SaaS' },
+  { value: 'local_business', label: 'Local Business' },
+  { value: 'ecommerce', label: 'E-Commerce' },
+  { value: 'media_publisher', label: 'Media / Publisher' },
 ];
 
-function getRelativeTime(dateStr: string): string {
-  const diff = Date.now() - new Date(dateStr).getTime();
-  const min = Math.floor(diff / 60000);
-  if (min < 1) return 'Just now';
-  if (min < 60) return `${min}m ago`;
-  const hrs = Math.floor(min / 60);
-  if (hrs < 24) return `${hrs}h ago`;
-  const days = Math.floor(hrs / 24);
-  if (days < 7) return `${days}d ago`;
-  return new Date(dateStr).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-}
+const ANALYSIS_TYPES: { value: Extract<GeoAnalysisType, 'full' | 'aeo_scan'>; label: string; desc: string }[] = [
+  { value: 'full', label: 'GEO Analysis', desc: 'Full 17-dimension analysis' },
+  { value: 'aeo_scan', label: 'AEO Scan', desc: 'Fast answer-engine visibility check' },
+];
 
+const ANALYSIS_TYPE_META: Record<Extract<GeoAnalysisType, 'full' | 'aeo_scan'>, { scope: string; pipeline: string; bestFor: string }> = {
+  full: {
+    scope: '17 GEO dimensions with AEO included inside the full scorecard',
+    pipeline: 'Full GEO pipeline',
+    bestFor: 'Production benchmarking, competitors, roadmap, and full-site visibility work',
+  },
+  aeo_scan: {
+    scope: '3 measured AEO core dimensions using the dedicated 5-node AEO workflow',
+    pipeline: '5-node AEO pipeline',
+    bestFor: 'Fast AI visibility checks focused on mentions, consistency, and answer positioning',
+  },
+};
+
+const REGION_OPTIONS = [
+  { value: 'global', label: 'Global' },
+  { value: 'US', label: 'United States' },
+  { value: 'IN', label: 'India' },
+  { value: 'UK', label: 'United Kingdom' },
+  { value: 'EU', label: 'Europe' },
+  { value: 'APAC', label: 'APAC' },
+];
+
+const LANGUAGE_OPTIONS = [
+  { value: 'en', label: 'English' },
+  { value: 'hi', label: 'Hindi' },
+  { value: 'es', label: 'Spanish' },
+  { value: 'fr', label: 'French' },
+  { value: 'de', label: 'German' },
+];
+
+// ---------------------------------------------------------------------------
+// Page component
+// ---------------------------------------------------------------------------
 export default function AnalysisPage() {
   const router = useRouter();
-  const { discover, loading, error } = useKeywordDiscovery();
-  const { data: recentAnalyses, fetchAnalyses } = useAnalyses();
-  const [analysisId, setAnalysisId] = useState<string | null>(null);
-  const { progress, stageLabel } = useSSEProgress(loading ? analysisId : null);
-  const [apiError, setApiError] = useState<unknown>(null);
+  const searchParams = useSearchParams();
+  const presetAnalysisType = searchParams.get('analysis_type');
+  const initialAnalysisType: GeoAnalysisType =
+    presetAnalysisType === 'full' || presetAnalysisType === 'aeo_scan'
+      ? presetAnalysisType
+      : 'full';
 
-  // Fetch latest analysis on mount for the "Last Analysis" badge
-  useEffect(() => { fetchAnalyses(undefined, undefined, 1); }, [fetchAnalyses]);
+  // --- Hook state ---
+  const { analysisId, loading, error: hookError, submit, markComplete, markError, reset } = useFullAnalysis();
+  const { progress, error: sseError } = useSSEProgress(analysisId);
 
-  const lastAnalysisLabel = useMemo(() => {
-    if (!recentAnalyses || recentAnalyses.length === 0) return 'No runs yet';
-    return `Last: ${getRelativeTime(recentAnalyses[0].created_at)}`;
-  }, [recentAnalyses]);
+  // --- Provider registry (dynamic from backend) ---
+  const { providers: registry } = useProviders();
 
-  // Form state
+  // --- Form state ---
+  const [url, setUrl] = useState('');
   const [brandName, setBrandName] = useState('');
   const [category, setCategory] = useState('');
+  const [aliases, setAliases] = useState('');
   const [competitors, setCompetitors] = useState('');
-  const [targetAudience, setTargetAudience] = useState('');
-  const [mode, setMode] = useState<DiscoveryMode>('standard');
-  const [selectedLLMs, setSelectedLLMs] = useState<LLMProvider[]>(['chatgpt', 'gemini', 'perplexity']);
+  const [brandDescription, setBrandDescription] = useState('');
+  const [region, setRegion] = useState('global');
+  const [analysisType, setAnalysisType] = useState<Extract<GeoAnalysisType, 'full' | 'aeo_scan'>>(initialAnalysisType);
+  const [industryProfile, setIndustryProfile] = useState<IndustryProfile | ''>('');
+  const [targetAudiences, setTargetAudiences] = useState('');
+  const [keyProducts, setKeyProducts] = useState('');
+  const [uniqueSellingPoints, setUniqueSellingPoints] = useState('');
+  const [brandTone, setBrandTone] = useState('');
+  const [primaryLanguage, setPrimaryLanguage] = useState('en');
+  const [scanMode, setScanMode] = useState<ScanMode>('full');
+  const [providerSelection, setProviderSelection] = useState<ProviderSelection>({});
+  const [apiError, setApiError] = useState<unknown>(null);
 
-  const toggleLLM = (id: LLMProvider) => {
-    setSelectedLLMs(prev => prev.includes(id) ? prev.filter(l => l !== id) : [...prev, id]);
-  };
+  // --- Derived ---
+  const isRunning = !!analysisId && loading;
+  const selectedProviderIds = Object.keys(providerSelection);
+  const isValid = url.trim().length > 0
+    && brandName.trim().length > 0
+    && category.trim().length > 0
+    && region.trim().length > 0
+    && selectedProviderIds.length > 0;
 
-  const handleStart = async (e: React.FormEvent) => {
-    e.preventDefault();
+  // Lookup display name for a provider ID
+  const providerDisplayName = useCallback((id: string): string => {
+    const p = registry?.providers.find((x) => x.id === id);
+    return p?.display_name ?? id;
+  }, [registry]);
+  const analysisTypeLabel = useMemo(
+    () => ANALYSIS_TYPES.find((t) => t.value === analysisType)?.label ?? analysisType,
+    [analysisType]
+  );
+  const activeAnalysisMeta = useMemo(
+    () => ANALYSIS_TYPE_META[analysisType] ?? ANALYSIS_TYPE_META.full,
+    [analysisType]
+  );
+  const primaryLanguageLabel = useMemo(
+    () => LANGUAGE_OPTIONS.find((l) => l.value === primaryLanguage)?.label ?? primaryLanguage,
+    [primaryLanguage]
+  );
+
+  // --- Auto-redirect on completion ---
+  useEffect(() => {
+    if (progress?.status === 'completed' && analysisId) {
+      clearActiveAnalysis();
+      markComplete();
+      // Use report_id from SSE complete event if available, else fall back to analysisId
+      const targetId = progress.report_id || analysisId;
+      const timer = setTimeout(() => router.push(`/dashboard/reports/${targetId}`), 2000);
+      return () => clearTimeout(timer);
+    }
+    if (progress?.status === 'failed') {
+      clearActiveAnalysis();
+      markComplete();
+    }
+  }, [progress?.status, progress?.report_id, analysisId, router, markComplete]);
+
+  // --- Handle SSE connection errors ---
+  useEffect(() => {
+    if (sseError && analysisId) {
+      markError(sseError);
+    }
+  }, [sseError, analysisId, markError]);
+
+  // --- Handlers ---
+
+  const handleSubmit = useCallback(async () => {
+    if (!isValid) return;
     setApiError(null);
-    const tempId = `kd-${brandName.toLowerCase().replace(/\s+/g, '-')}-${Date.now()}`;
-    setAnalysisId(tempId);
+
+    const csvToArray = (s: string) =>
+      s.split(',').map((v) => v.trim()).filter(Boolean);
+
+    // Build models map: only include non-default selections
+    const models: Record<string, string> = {};
+    for (const [pid, mid] of Object.entries(providerSelection)) {
+      if (mid) models[pid] = mid;
+    }
+
+    const request: GeoAnalysisRequest = {
+      url: url.trim(),
+      brand_name: brandName.trim(),
+      category: category.trim(),
+      region: region.trim(),
+      analysis_type: analysisType,
+      providers: selectedProviderIds as GeoProvider[],
+      scan_mode: scanMode,
+      ...(aliases && { aliases: csvToArray(aliases) }),
+      ...(competitors && { competitors: csvToArray(competitors) }),
+      ...(brandDescription && { brand_description: brandDescription }),
+      ...(targetAudiences && { target_audiences: csvToArray(targetAudiences) }),
+      ...(keyProducts && { key_products: csvToArray(keyProducts) }),
+      ...(uniqueSellingPoints && { unique_selling_points: csvToArray(uniqueSellingPoints) }),
+      ...(brandTone && { brand_tone: brandTone.trim() }),
+      ...(primaryLanguage && { primary_language: primaryLanguage.trim() }),
+      ...(industryProfile && { industry_profile: industryProfile }),
+      ...(Object.keys(models).length > 0 && { models }),
+    };
 
     try {
-      const result = await discover({
-        brand_name: brandName,
-        category,
-        competitors: competitors.split(',').map(c => c.trim()).filter(Boolean),
-        target_audience: targetAudience || undefined,
-        region: 'global',
-        mode,
-        llm_providers: selectedLLMs,
-        runs_per_prompt: 1,
-      });
-      if (result?.analysis_id) setAnalysisId(result.analysis_id);
-      router.push('/dashboard/keywords');
+      const result = await submit(request);
+      if (result?.analysis_id) {
+        setActiveAnalysis(result.analysis_id, brandName.trim(), analysisType);
+      }
     } catch (err) {
       setApiError(err);
-    }};
+    }
+  }, [
+    isValid, url, brandName, selectedProviderIds, scanMode, category, region, analysisType,
+    aliases, competitors, brandDescription, targetAudiences, keyProducts,
+    uniqueSellingPoints, brandTone, primaryLanguage, industryProfile,
+    providerSelection, submit,
+  ]);
 
-  const estimatedTime = MODES.find(m => m.id === mode)?.eta ?? '~45s';
-  const canSubmit = brandName.trim() && category.trim() && selectedLLMs.length > 0;
+  // =========================================================================
+  // Progress view (replaces form when running)
+  // =========================================================================
+  if (isRunning || progress) {
+    const providerNames = selectedProviderIds.map(providerDisplayName);
+    const timeConfig = { scanMode, providerCount: selectedProviderIds.length };
+    const isComplete = progress?.status === 'completed';
+    const hasFailed = progress?.status === 'failed';
 
+    return (
+      <div className="mx-auto max-w-2xl py-12 px-4 space-y-8">
+        {/* Stage list with per-provider sub-progress */}
+        <AnalysisStageList
+          progress={progress}
+          analysisType={analysisType}
+          brandName={brandName || undefined}
+          providerNames={providerNames}
+          timeConfig={timeConfig}
+        />
+
+        {/* Navigate-away safe messaging */}
+        {!isComplete && !hasFailed && (
+          <div className="text-center space-y-3 rounded-xl border border-border bg-muted/30 p-5">
+            <p className="text-sm text-muted-foreground">
+              📌 Feel free to explore other pages — we&apos;ll send you a notification when your report is ready.
+            </p>
+            <Button
+              variant="outline"
+              onClick={() => router.push('/dashboard')}
+              className="text-sm"
+            >
+              Continue Exploring →
+            </Button>
+          </div>
+        )}
+
+        {/* Failure retry */}
+        {hasFailed && (
+          <div className="text-center">
+            <Button variant="outline" onClick={() => { reset(); setApiError(null); }}>
+              Try Again
+            </Button>
+          </div>
+        )}
+
+        <ApiErrorToast error={apiError ?? hookError} onDismiss={() => setApiError(null)} />
+      </div>
+    );
+  }
+
+  // =========================================================================
+  // Form view
+  // =========================================================================
   return (
-    <div className="space-y-10 animate-in fade-in duration-700">
+    <div className="space-y-6 px-2 sm:px-4 pb-12">
       {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 px-4">
-        <div className="space-y-2">
-          <h1 className="text-4xl font-black text-slate-900 dark:text-white tracking-tight uppercase italic">GEO Engine</h1>
-          <p className="text-slate-500 dark:text-slate-400 font-bold tracking-tight">Configure your AI visibility analysis parameters.</p>
+      <div>
+        <h1 className="text-2xl font-bold tracking-tight">AI Visibility Analysis</h1>
+        <p className="text-muted-foreground text-sm mt-1">
+          Run focused AEO scans or full GEO analyses across AI assistants
+        </p>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        {/* ---- Left column: Form ---- */}
+        <div className="lg:col-span-8 space-y-6">
+          {/* URL — hero input */}
+          <div className="space-y-2">
+            <Label htmlFor="url" className="text-base font-semibold">Website URL *</Label>
+            <Input
+              id="url"
+              type="url"
+              placeholder="https://example.com"
+              value={url}
+              onChange={(e) => setUrl(e.target.value)}
+              className="h-12 text-lg"
+            />
+          </div>
+
+          {/* Core required fields */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="brand">Brand Name *</Label>
+              <Input
+                id="brand"
+                placeholder="Acme Corp"
+                value={brandName}
+                onChange={(e) => setBrandName(e.target.value)}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="category">Category *</Label>
+              <Input
+                id="category"
+                placeholder="e.g. Project Management"
+                value={category}
+                onChange={(e) => setCategory(e.target.value)}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Region *</Label>
+              <Select value={region} onValueChange={(v) => { if (v != null) setRegion(v); }}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select region" />
+                </SelectTrigger>
+                <SelectContent>
+                  {REGION_OPTIONS.map((o) => (
+                    <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          {/* Analysis type */}
+          <div className="space-y-3">
+            <Label className="text-base font-semibold">Analysis Type *</Label>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {ANALYSIS_TYPES.map((t) => (
+                <button
+                  key={t.value}
+                  type="button"
+                  onClick={() => setAnalysisType(t.value)}
+                  className={`rounded-lg border-2 p-3 text-left transition-all ${
+                    analysisType === t.value
+                      ? 'border-primary bg-primary/5 ring-1 ring-primary/20'
+                      : 'border-border hover:border-muted-foreground/30'
+                  }`}
+                >
+                  <div className="font-medium">{t.label}</div>
+                  <p className="text-xs text-muted-foreground mt-1">{t.desc}</p>
+                </button>
+              ))}
+            </div>
+            <div className="rounded-xl border bg-muted/30 p-4 space-y-2">
+              <div className="flex flex-wrap items-center gap-2">
+                <Badge variant="secondary" className="font-semibold">{analysisTypeLabel}</Badge>
+                <span className="text-xs text-muted-foreground">{activeAnalysisMeta.pipeline}</span>
+              </div>
+              <p className="text-sm text-foreground">
+                <span className="font-medium">Scope:</span> {activeAnalysisMeta.scope}
+              </p>
+              <p className="text-xs text-muted-foreground">
+                <span className="font-medium text-foreground">Best for:</span> {activeAnalysisMeta.bestFor}
+              </p>
+            </div>
+          </div>
+
+          {/* Advanced options (collapsed) */}
+          <Collapsible>
+            <CollapsibleTrigger className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors">
+              <ChevronDown className="h-4 w-4" />
+              Advanced Options
+            </CollapsibleTrigger>
+            <CollapsibleContent className="mt-3 space-y-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="aliases">Brand Aliases</Label>
+                  <Input
+                    id="aliases"
+                    placeholder="Comma-separated"
+                    value={aliases}
+                    onChange={(e) => setAliases(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="competitors">Competitors</Label>
+                  <Input
+                    id="competitors"
+                    placeholder="Comma-separated"
+                    value={competitors}
+                    onChange={(e) => setCompetitors(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="desc">Brand Description</Label>
+                  <Input
+                    id="desc"
+                    placeholder="Short description"
+                    value={brandDescription}
+                    onChange={(e) => setBrandDescription(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="targetAudiences">Target Audiences</Label>
+                  <Input
+                    id="targetAudiences"
+                    placeholder="Comma-separated (e.g. SMB owners, CTOs)"
+                    value={targetAudiences}
+                    onChange={(e) => setTargetAudiences(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="keyProducts">Key Products / Services</Label>
+                  <Input
+                    id="keyProducts"
+                    placeholder="Comma-separated"
+                    value={keyProducts}
+                    onChange={(e) => setKeyProducts(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-2 sm:col-span-2">
+                  <Label htmlFor="usps">Unique Selling Points</Label>
+                  <Input
+                    id="usps"
+                    placeholder="Comma-separated differentiators"
+                    value={uniqueSellingPoints}
+                    onChange={(e) => setUniqueSellingPoints(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="brandTone">Brand Tone</Label>
+                  <Input
+                    id="brandTone"
+                    placeholder="e.g. professional, technical, playful"
+                    value={brandTone}
+                    onChange={(e) => setBrandTone(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Primary Language</Label>
+                  <Select value={primaryLanguage} onValueChange={(v) => { if (v != null) setPrimaryLanguage(v); }}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select language" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {LANGUAGE_OPTIONS.map((o) => (
+                        <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2 sm:col-span-2">
+                  <Label>Industry Profile</Label>
+                  <Select
+                    value={industryProfile}
+                    onValueChange={(v) => { if (v != null) setIndustryProfile(v as IndustryProfile); }}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select industry" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {INDUSTRY_OPTIONS.map((o) => (
+                        <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="sm:col-span-2">
+                  <p className="text-xs text-muted-foreground">
+                    Advanced options improve scoring quality, prompt relevance, and regional targeting.
+                  </p>
+                </div>
+              </div>
+            </CollapsibleContent>
+          </Collapsible>
+
+          {/* Scan Mode */}
+          <div className="space-y-3">
+            <Label className="text-base font-semibold">Scan Mode</Label>
+            <div className="grid grid-cols-3 gap-3">
+              {SCAN_MODES.map((m) => (
+                <button
+                  key={m.value}
+                  type="button"
+                  onClick={() => setScanMode(m.value)}
+                  className={`rounded-lg border-2 p-4 text-left transition-all ${
+                    scanMode === m.value
+                      ? 'border-primary bg-primary/5 ring-1 ring-primary/20'
+                      : 'border-border hover:border-muted-foreground/30'
+                  }`}
+                >
+                  <div className="flex items-center gap-2 font-medium">
+                    {m.icon}
+                    {m.label}
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-1">{m.desc}</p>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* LLM Providers */}
+          <div className="space-y-3">
+            <Label className="text-base font-semibold">
+              AI Providers *
+            </Label>
+            <p className="text-xs text-muted-foreground">
+              Pick providers and models to test. You can search, bulk-select, or choose recommended defaults.
+            </p>
+            <ProviderSelector
+              selected={providerSelection}
+              onChange={setProviderSelection}
+            />
+          </div>
+
+          {/* Submit (mobile — sidebar has it on desktop) */}
+          <div className="lg:hidden pt-2">
+            <Button
+              className="w-full h-12 text-base"
+              disabled={!isValid || loading}
+              onClick={handleSubmit}
+            >
+              <Play className="h-4 w-4 mr-2" />
+              Run Analysis
+            </Button>
+          </div>
         </div>
-        <div className="flex items-center gap-2 px-4 py-2 rounded-2xl bg-primary/5 border border-primary/10">
-          <Clock size={16} className="text-primary" />
-          <span className="text-[10px] font-black uppercase tracking-widest text-primary">{lastAnalysisLabel}</span>
+
+        {/* ---- Right column: Sticky sidebar ---- */}
+        <div className="hidden lg:block lg:col-span-4">
+          <div className="sticky top-24 rounded-xl border bg-card p-5 space-y-4 shadow-sm">
+            <h2 className="font-semibold text-sm uppercase tracking-wide text-muted-foreground">
+              Summary
+            </h2>
+
+            <dl className="space-y-2 text-sm">
+              <SummaryRow label="URL" value={url || '—'} />
+              <SummaryRow label="Brand" value={brandName || '—'} />
+              {category && <SummaryRow label="Category" value={category} />}
+              <SummaryRow label="Region" value={region || '—'} />
+              <SummaryRow label="Analysis Type" value={analysisTypeLabel} />
+              <SummaryRow
+                label="Scan Mode"
+                value={scanMode.charAt(0).toUpperCase() + scanMode.slice(1)}
+              />
+              <SummaryRow label="Language" value={primaryLanguageLabel} />
+              <div>
+                <dt className="text-muted-foreground">Providers</dt>
+                <dd className="flex flex-wrap gap-1 mt-1">
+                  {selectedProviderIds.length === 0 ? (
+                    <span className="text-muted-foreground italic">None selected</span>
+                  ) : (
+                    selectedProviderIds.map((id) => (
+                      <Badge key={id} variant="secondary" className="text-xs">
+                        {providerDisplayName(id)}
+                      </Badge>
+                    ))
+                  )}
+                </dd>
+              </div>
+            </dl>
+
+            <Button
+              className="w-full mt-2"
+              size="lg"
+              disabled={!isValid || loading}
+              onClick={handleSubmit}
+            >
+              <Play className="h-4 w-4 mr-2" />
+              Run Analysis
+            </Button>
+
+            {!isValid && (
+              <p className="text-xs text-destructive">
+                {!url.trim()
+                  ? 'URL is required'
+                  : !brandName.trim()
+                    ? 'Brand name is required'
+                    : !category.trim()
+                      ? 'Category is required'
+                      : !region.trim()
+                        ? 'Region is required'
+                        : 'Select at least 1 provider'}
+              </p>
+            )}
+          </div>
         </div>
       </div>
 
-      {loading ? (
-        <div className="bg-white dark:bg-slate-900/50 rounded-[2.5rem] border border-slate-200 dark:border-white/5 p-12 shadow-2xl shadow-slate-200 dark:shadow-none min-h-[500px] flex flex-col items-center justify-center space-y-12">
-          <div className="relative">
-            <div className="absolute inset-0 bg-primary/20 blur-[100px] rounded-full animate-pulse"></div>
-            <div className="relative w-24 h-24 rounded-[2.5rem] bg-slate-900 dark:bg-white flex items-center justify-center text-white dark:text-slate-900 shadow-2xl">
-              <BrainCircuit size={48} className="animate-spin-slow" />
-            </div>
-          </div>
-          
-          <div className="w-full max-w-2xl space-y-4">
-            <AnalysisProgressBar
-              status={progress?.status ?? 'processing'}
-              currentStage={progress ? stageLabel : 'Waking up analysis agents…'}
-              progressPercent={progress?.progress_percent ?? 5}
-              stageProgressPercent={progress?.stage_progress_percent ?? 20}
-              estimatedSecondsRemaining={progress?.estimated_seconds_remaining}
-            />
-            <p className="text-center text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em] animate-pulse">
-              System: Processing deep-reach optimization vectors...
-            </p>
-          </div>
-        </div>
-      ) : (
-        <form onSubmit={handleStart} className="grid grid-cols-1 lg:grid-cols-3 gap-10">
-          <div className="lg:col-span-2 space-y-10">
+      <ApiErrorToast error={apiError ?? hookError} onDismiss={() => setApiError(null)} />
+    </div>
+  );
+}
 
-            {/* Step 1: Identity */}
-            <section className="bg-white dark:bg-slate-900/50 rounded-[2.5rem] border border-slate-200 dark:border-white/5 p-8 md:p-10 shadow-sm space-y-8 animate-in slide-in-from-left-4 duration-500">
-              <div className="flex items-center gap-4">
-                <div className="h-10 w-10 rounded-2xl bg-primary text-white flex items-center justify-center font-black italic shadow-lg shadow-primary/20">01</div>
-                <h3 className="text-xl font-black text-slate-900 dark:text-white tracking-tighter uppercase italic">Brand Intelligence</h3>
-              </div>
-              
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                <div className="space-y-3">
-                  <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em] px-1">Brand Name *</label>
-                  <input
-                    value={brandName} onChange={e => setBrandName(e.target.value)}
-                    placeholder="e.g. Notion" required
-                     className="w-full h-14 bg-slate-50 dark:bg-black/20 border border-slate-100 dark:border-white/10 rounded-2xl px-6 font-medium text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all placeholder:text-slate-400" />
-                </div>
-                <div className="space-y-3">
-                  <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em] px-1">Product Category *</label>
-                  <input
-                    value={category} onChange={e => setCategory(e.target.value)}
-                    placeholder="e.g. AI Content Platform" required
-                     className="w-full h-14 bg-slate-50 dark:bg-black/20 border border-slate-100 dark:border-white/10 rounded-2xl px-6 font-medium text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all placeholder:text-slate-400" />
-                </div>
-                <div className="space-y-3">
-                  <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em] px-1">Top Competitors</label>
-                  <input
-                    value={competitors} onChange={e => setCompetitors(e.target.value)}
-                    placeholder="e.g. Asana, Trello, Monday"
-                     className="w-full h-14 bg-slate-50 dark:bg-black/20 border border-slate-100 dark:border-white/10 rounded-2xl px-6 font-medium text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all placeholder:text-slate-400" />
-                </div>
-                <div className="space-y-3">
-                  <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em] px-1">Target Audience</label>
-                  <input
-                    value={targetAudience} onChange={e => setTargetAudience(e.target.value)}
-                    placeholder="e.g. SMB Owners, CEOs"
-                     className="w-full h-14 bg-slate-50 dark:bg-black/20 border border-slate-100 dark:border-white/10 rounded-2xl px-6 font-medium text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all placeholder:text-slate-400" />
-                </div>
-              </div>
-            </section>
-
-            {/* Step 2: Protocol */}
-            <section className="bg-white dark:bg-slate-900/50 rounded-[2.5rem] border border-slate-200 dark:border-white/5 p-8 md:p-10 shadow-sm space-y-8 animate-in slide-in-from-left-4 duration-500 delay-100">
-               <div className="flex items-center gap-4">
-                <div className="h-10 w-10 rounded-2xl bg-amber-500 text-white flex items-center justify-center font-black italic shadow-lg shadow-amber-500/20">02</div>
-                <h3 className="text-xl font-black text-slate-900 dark:text-white tracking-tighter uppercase italic">Discovery Protocol</h3>
-              </div>
-              
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                {MODES.map(m => (
-                  <button type="button" key={m.id} onClick={() => setMode(m.id)}
-                    className={`group p-6 rounded-[2rem] text-left border transition-all relative overflow-hidden ${
-                      mode === m.id 
-                      ? 'bg-amber-500 border-amber-600 shadow-xl shadow-amber-500/20' 
-                      : 'bg-slate-50 dark:bg-black/20 border-slate-100 dark:border-white/10 hover:border-amber-500/30'
-                    }`}>
-                    <div className={`mb-4 w-10 h-10 rounded-2xl flex items-center justify-center transition-all ${
-                      mode === m.id ? 'bg-white text-amber-500 shadow-lg' : 'bg-white dark:bg-slate-800 text-slate-400 group-hover:text-amber-500'
-                    }`}>
-                      {m.icon}
-                    </div>
-                    <p className={`font-black uppercase tracking-widest text-[10px] mb-1 ${mode === m.id ? 'text-white/80' : 'text-slate-400'}`}>Protocol</p>
-                    <h4 className={`text-lg font-black tracking-tight mb-1 ${mode === m.id ? 'text-white' : 'text-slate-900 dark:text-white'}`}>{m.label}</h4>
-                    <p className={`text-[10px] font-bold leading-relaxed pr-4 ${mode === m.id ? 'text-white/60' : 'text-slate-500 dark:text-slate-400'}`}>{m.desc}</p>
-                    
-                    {mode === m.id && (
-                      <div className="absolute top-4 right-4">
-                        <CheckCircle2 size={16} className="text-white" />
-                      </div>
-                    )}
-                  </button>
-                ))}
-              </div>
-            </section>
-
-            {/* Step 3: Synthesis */}
-            <section className="bg-white dark:bg-slate-900/50 rounded-[2.5rem] border border-slate-200 dark:border-white/5 p-8 md:p-10 shadow-sm space-y-8 animate-in slide-in-from-left-4 duration-500 delay-200">
-               <div className="flex items-center gap-4">
-                <div className="h-10 w-10 rounded-2xl bg-emerald-500 text-white flex items-center justify-center font-black italic shadow-lg shadow-emerald-500/20">03</div>
-                <h3 className="text-xl font-black text-slate-900 dark:text-white tracking-tighter uppercase italic">LLM Synthesis</h3>
-              </div>
-              
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {LLM_OPTIONS.map(llm => {
-                  const selected = selectedLLMs.includes(llm.id);
-                  return (
-                    <button type="button" key={llm.id} onClick={() => toggleLLM(llm.id)}
-                      className={`flex items-center gap-5 p-5 rounded-[2rem] border transition-all group ${
-                        selected 
-                        ? 'bg-emerald-500/5 border-emerald-500-20 shadow-lg shadow-emerald-500/5' 
-                        : 'bg-slate-50 dark:bg-black/20 border-slate-100 dark:border-white/10 hover:border-emerald-500/30'
-                      }`}>
-                      <div className={`h-14 w-14 rounded-2xl flex items-center justify-center flex-shrink-0 transition-all ${
-                        selected ? 'bg-white dark:bg-slate-800 shadow-md scale-110' : 'bg-white/50 dark:bg-white/5 grayscale opacity-50'
-                      }`}>
-                        {llm.icon}
-                      </div>
-                      <div className="text-left">
-                        <p className={`font-black uppercase tracking-widest text-[10px] mb-1 ${selected ? 'text-emerald-500' : 'text-slate-400'}`}>Model</p>
-                        <h4 className={`text-base font-black tracking-tight ${selected ? 'text-slate-900 dark:text-white' : 'text-slate-500'}`}>{llm.label}</h4>
-                        <p className="text-[10px] font-bold text-slate-500 dark:text-slate-400">{llm.desc}</p>
-                      </div>
-                      <div className={`ml-auto w-6 h-6 rounded-full flex items-center justify-center border-2 transition-all ${
-                        selected ? 'bg-emerald-500 border-emerald-500 text-white' : 'border-slate-200 dark:border-white/10'
-                      }`}>
-                        {selected && <CheckCircle2 size={12} />}
-                      </div>
-                    </button>
-                  );
-                })}
-              </div>
-            </section>
-
-            {error && (
-              <div className="rounded-[2rem] bg-red-500/5 border border-red-500/20 p-6 flex items-center gap-4 text-red-500 animate-bounce">
-                <AlertCircle size={24} />
-                <div>
-                   <p className="font-black uppercase tracking-widest text-[10px]">Engine Failure</p>
-                   <p className="text-sm font-bold">{error}</p>
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* Sticky summary sidebar */}
-          <div className="lg:col-span-1">
-            <div className="sticky top-10 space-y-6">
-              <div className="bg-slate-900 dark:bg-white rounded-[2.5rem] p-8 md:p-10 text-white dark:text-slate-900 shadow-2xl relative overflow-hidden">
-                <div className="absolute top-0 right-0 w-40 h-40 bg-primary/20 rounded-full -mr-20 -mt-20 blur-3xl"></div>
-                
-                <h3 className="text-2xl font-black tracking-tighter uppercase italic mb-10 relative z-10">Verification</h3>
-                
-                <div className="space-y-8 relative z-10">
-                  <div className="space-y-1">
-                    <p className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-500">Operation Mode</p>
-                    <p className="text-sm font-black uppercase tracking-widest italic">{mode} Protocol</p>
-                  </div>
-
-                  <div className="space-y-3">
-                    <p className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-500">Resource Allocation</p>
-                    <div className="flex flex-wrap gap-2">
-                       {selectedLLMs.map(llm => (
-                          <div key={llm} className="px-3 py-1.5 rounded-xl bg-white/10 dark:bg-slate-100 text-[9px] font-black uppercase tracking-widest flex items-center gap-1.5">
-                             <div className="h-1 w-1 rounded-full bg-primary animate-pulse"></div>
-                             {llm}
-                          </div>
-                       ))}
-                    </div>
-                  </div>
-
-                  <div className="pt-4 space-y-6 border-t border-white/10 dark:border-slate-100">
-                    <div className="flex justify-between items-end">
-                      <div className="space-y-1">
-                        <p className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-500">Time to Result</p>
-                        <p className="text-2xl font-black text-primary italic">{estimatedTime}</p>
-                      </div>
-                      <Bolt className="text-primary animate-pulse" size={24} />
-                    </div>
-
-                    <Button type="submit" disabled={!canSubmit}
-                      className="w-full h-16 rounded-2xl bg-primary hover:bg-blue-600 disabled:opacity-20 disabled:grayscale text-white font-black uppercase tracking-[0.2em] text-[11px] shadow-2xl shadow-primary/30 active:scale-95 transition-all">
-                      Deploy Engine
-                    </Button>
-                  </div>
-                </div>
-              </div>
-
-              <div className="bg-primary/5 dark:bg-primary/10 border border-primary/10 dark:border-primary/20 rounded-[2rem] p-6 flex gap-4">
-                <Info size={18} className="text-primary flex-shrink-0" />
-                <p className="text-[10px] font-bold text-slate-600 dark:text-slate-400 leading-relaxed uppercase tracking-wide">
-                  Analysis utilizes neural ranking vectors to determine your brand's presence across major AI search indexes.
-                </p>
-              </div>
-            </div>
-          </div>
-        </form>
-      )}
-
-      {/* Error toast for 413/422/429 per §8 */}
-      <ApiErrorToast error={apiError} onDismiss={() => setApiError(null)} />
+// ---------------------------------------------------------------------------
+// Small helper for sidebar rows
+// ---------------------------------------------------------------------------
+function SummaryRow({ label, value }: { label: string; value: string }) {
+  return (
+    <div>
+      <dt className="text-muted-foreground">{label}</dt>
+      <dd className="font-medium truncate" title={value}>
+        {value}
+      </dd>
     </div>
   );
 }

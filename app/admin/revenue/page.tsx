@@ -1,14 +1,10 @@
 import { 
-  TrendingUp, 
   TrendingDown, 
   Users, 
   DollarSign, 
   ArrowUpRight, 
   ArrowDownRight,
-  Filter,
   Download,
-  MoreHorizontal,
-  ChevronRight,
   Globe,
   PieChart,
   Calendar,
@@ -108,17 +104,17 @@ export default function AdminRevenuePage() {
                
                <div className="h-[350px] w-full flex items-end justify-between px-4 pb-8">
                   {[
-                     { m: 'May', n: 40, c: 5 },
-                     { m: 'Jun', n: 55, c: 8 },
-                     { m: 'Jul', n: 45, c: 6 },
-                     { m: 'Aug', n: 70, c: 10 },
-                     { m: 'Sep', n: 85, c: 7 },
-                     { m: 'Oct', n: 95, c: 4 }
+                     { m: 'May', n: 40, c: 5, nClass: 'h-[40%]', cClass: 'h-[5%]' },
+                     { m: 'Jun', n: 55, c: 8, nClass: 'h-[55%]', cClass: 'h-[8%]' },
+                     { m: 'Jul', n: 45, c: 6, nClass: 'h-[45%]', cClass: 'h-[6%]' },
+                     { m: 'Aug', n: 70, c: 10, nClass: 'h-[70%]', cClass: 'h-[10%]' },
+                     { m: 'Sep', n: 85, c: 7, nClass: 'h-[85%]', cClass: 'h-[7%]' },
+                     { m: 'Oct', n: 95, c: 4, nClass: 'h-[95%]', cClass: 'h-[4%]' }
                   ].map((d, i) => (
                      <div key={i} className="flex-grow flex flex-col items-center gap-2 group relative">
                         <div className="w-full max-w-[40px] flex items-end gap-1">
-                           <div className="flex-grow bg-primary/20 hover:bg-primary transition-all rounded-t-sm" style={{ height: `${d.n}%` }}></div>
-                           <div className="w-2 bg-slate-200 dark:bg-slate-800 rounded-t-sm" style={{ height: `${d.c}%` }}></div>
+                           <div className={`flex-grow bg-primary/20 hover:bg-primary transition-all rounded-t-sm ${d.nClass}`}></div>
+                           <div className={`w-2 bg-slate-200 dark:bg-slate-800 rounded-t-sm ${d.cClass}`}></div>
                         </div>
                         <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-2">{d.m}</span>
                      </div>

@@ -72,7 +72,7 @@ export async function signup(formData: FormData) {
 
 export async function loginWithGoogle() {
   const supabase = await createClient()
-  const { data, error } = await supabase.auth.signInWithOAuth({
+  const { data } = await supabase.auth.signInWithOAuth({
     provider: 'google',
     options: {
       redirectTo: `${getSiteUrl()}/auth/callback`,
@@ -85,7 +85,7 @@ export async function loginWithGoogle() {
 
 export async function loginWithGithub() {
   const supabase = await createClient()
-  const { data, error } = await supabase.auth.signInWithOAuth({
+  const { data } = await supabase.auth.signInWithOAuth({
     provider: 'github',
     options: {
       redirectTo: `${getSiteUrl()}/auth/callback`,
@@ -94,4 +94,11 @@ export async function loginWithGithub() {
   if (data.url) {
     redirect(data.url)
   }
+}
+
+export async function signOut() {
+  const supabase = await createClient()
+  await supabase.auth.signOut()
+  revalidatePath('/', 'layout')
+  redirect('/login')
 }

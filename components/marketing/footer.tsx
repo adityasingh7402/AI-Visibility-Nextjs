@@ -13,7 +13,7 @@ export function Footer() {
               <span className="text-lg font-black tracking-tight text-slate-900 dark:text-white">GEO</span>
             </div>
             <p className="text-slate-500 max-w-xs leading-relaxed dark:text-slate-400">
-              The world's first comprehensive platform for Generative Engine Optimization.
+              The world&apos;s first comprehensive platform for Generative Engine Optimization.
             </p>
           </div>
           <div>

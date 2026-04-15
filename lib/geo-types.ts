@@ -7,14 +7,14 @@
 export type RegionScope = 'global' | 'north_america' | 'europe' | 'asia_pacific' | 'latin_america' | 'middle_east' | 'country';
 export type DiscoveryMode = 'quick' | 'standard' | 'deep';
 // All 6 providers per BACKEND_HANDOFF_v2.0 §9 — added grok + digitalocean
-export type LLMProvider = 'chatgpt' | 'gemini' | 'perplexity' | 'claude' | 'grok' | 'digitalocean' | 'openai' | 'google';
+export type LLMProvider = 'chatgpt' | 'gemini' | 'perplexity' | 'claude' | 'grok' | 'digitalocean' | 'nvidia' | 'openai' | 'google';
 export type OpportunityPriority = 'high' | 'medium' | 'low';
 export type EffortLevel = 'easy' | 'medium' | 'hard' | 'moderate';
 export type TimeToImpact = 'days' | 'weeks' | 'months';
 export type FactorType = 'wikipedia' | 'reviews' | 'press' | 'community' | 'content' | 'technical' | 'comparison';
 export type ContentType = 'blog_post' | 'faq_page' | 'comparison_page' | 'landing_page' | 'listicle' | 'other' | 'live_test';
 export type AnalysisStatus = 'pending' | 'processing' | 'completed' | 'failed';
-export type AnalysisType = 'keyword_discovery' | 'keyword_test' | 'keyword_validate' | 'content_validation' | 'content_live_test' | 'progress_tracking';
+export type AnalysisType = 'keyword_discovery' | 'keyword_test' | 'keyword_validate' | 'content_validation' | 'content_live_test' | 'progress_tracking' | 'geo_analysis';
 export type TrendDirection = 'improving' | 'declining' | 'stable';
 export type Verdict = 'strong' | 'promising' | 'weak' | 'not_visible';
 export type ConfidenceLevel = 'HIGH' | 'MEDIUM' | 'LOW';
@@ -47,24 +47,35 @@ export interface VisibilityFactor {
 }
 
 export interface CompetitorPattern {
-  competitor_name: string;
-  visibility_score: number;   // 0-100
-  mention_rate: number;       // 0-1
-  average_position: number;
+  competitor: string;                    // Python field name
+  competitor_name?: string;              // backward compat alias
+  mention_rate: number;                  // 0-1
+  avg_position: number;
+  average_position?: number;             // backward compat alias
+  consistency_score?: number;
+  visibility_by_llm?: Record<string, number>;  // Python field: per-LLM scores
+  featured_in_llms?: string[];                 // backward compat alias
+  visibility_score?: number;                   // computed: mention_rate * 100
   visibility_factors: VisibilityFactor[];
-  featured_in_llms: string[];
-  key_differentiators: string[];
+  common_descriptors?: string[];
+  associated_features?: string[];
+  competitor_confidence?: number;
 }
 
 export interface KeywordOpportunity {
   keyword: string;
   priority: OpportunityPriority;
-  visibility_potential: 'high' | 'medium' | 'low' | 'none';
-  reason: string;
-  target_position: number;
+  gap_size?: number;                     // Python field name
+  visibility_potential?: 'high' | 'medium' | 'low' | 'none';  // backward compat alias
+  reason?: string;
+  difficulty?: EffortLevel;              // Python field name
+  effort_estimate?: EffortLevel;         // backward compat alias
   estimated_impact: string;
-  action_items: string[];
-  effort_estimate: EffortLevel;
+  specific_actions?: string[];           // Python field name
+  action_items?: string[];               // backward compat alias
+  recommended_action?: string;
+  competitors_visible?: string[];
+  your_visibility?: boolean;
   // Extended fields from handoff
   demand_estimate?: string;
   sentiment_signal?: string;
@@ -75,11 +86,11 @@ export interface KeywordOpportunity {
 //   'your_visibility_summary' (handoff spec) and 'visibility_summary' (legacy)
 export interface VisibilitySummary {
   overall_visibility_score?: number; // 0-100 — main metric (§10.1)
-  your_brand_mentions: number;
+  your_brand_mentions?: number;
   total_prompts_tested: number;
   mention_rate: number;         // 0-1
-  average_position: number;
-  avg_position?: number;        // alias used by some engine responses
+  average_position?: number;    // backward compat
+  avg_position?: number;        // Python field name
   base_model_visibility: number; // 0-100
   rag_model_visibility: number;  // 0-100
   actionable_gap: number;        // 0-100
@@ -107,13 +118,25 @@ export interface LLMProfile {
 }
 
 // Individual prompt test result (for Prompt Results detailed view)
+export interface LLMMention {
+  brand_name: string;
+  mentioned: boolean;
+  position: number;
+  strength?: string;
+  raw_response?: string;
+}
+
 export interface PromptResult {
   prompt: string;
   prompt_type: string;
   signal_weight?: number;
   brand_mentioned: boolean;
   mention_rate: number;
-  average_position: number;
+  average_position?: number;
+  avg_position?: number;
+  // Python field name: dict of LLMMention lists
+  llm_results?: Record<string, LLMMention[]>;
+  // backward compat alias
   per_llm_results?: Record<string, {
     mentioned: boolean;
     position?: number;
@@ -131,7 +154,8 @@ export interface ContentGapAnalysis {
 export interface KeywordDiscoveryResponse {
   brand_name: string;
   category: string;
-  discovery_mode: DiscoveryMode;
+  mode?: DiscoveryMode;                 // Python field name
+  discovery_mode?: DiscoveryMode;       // backward compat alias
   working_keywords: string[];
   gap_keywords: string[];
   your_winning_keywords: string[];
@@ -145,15 +169,16 @@ export interface KeywordDiscoveryResponse {
   // Both field names supported (engine may return either)
   your_visibility_summary?: VisibilitySummary;
   visibility_summary?: VisibilitySummary;
-  // Per-LLM breakdowns
-  visibility_by_llm?: Record<string, LLMVisibilityScore>;
+  // Per-LLM breakdowns — Python returns Record<string, number>
+  visibility_by_llm?: Record<string, LLMVisibilityScore | number>;
   confidence_by_llm?: Record<string, number>;
-  llm_profiles: Record<string, LLMProfile>;
+  llm_profiles?: Record<string, LLMProfile>;
   // Prompt-level results
   prompt_results?: PromptResult[];
   // Content gap analysis
   content_gap_analysis?: ContentGapAnalysis;
-  next_steps: string[];
+  recommended_next_steps?: string[];    // Python field name
+  next_steps?: string[];                // backward compat alias
   processing_time_seconds: number;
   timestamp: string;
   analysis_id: string;
@@ -315,6 +340,7 @@ export interface ContentLiveTestRequest {
   target_queries?: string[];
   providers: LLMProvider[];
   competitors?: string[];
+  content_type?: string;
 }
 
 export interface ContentLiveTestResponse extends ContentValidationResponse {
@@ -373,13 +399,14 @@ export interface VisibilityTrend {
 }
 
 export interface ProgressTrendResponse {
-  brand_name: string;
-  category: string;
-  source: 'local' | 'python';
-  trend: VisibilityTrend;
-  latest_snapshot?: Record<string, unknown>;
-  recommendation?: string;
-  timestamp: string;
+  data_points: {
+    timestamp: string;
+    overall_visibility: number;
+    report_type: string;
+    report_id: string;
+  }[];
+  trend_direction: 'up' | 'down' | 'stable';
+  total_analyses: number;
 }
 
 // ---- Supabase Table Types ----
@@ -439,13 +466,75 @@ export interface DBRecommendation {
   created_at: string;
 }
 
+// ---- Full Analysis (Async) ----
+
+export interface AnalyzeAsyncResponse {
+  analysis_id: string;
+  status: 'processing';
+  brand_name: string;
+  category: string;
+}
+
+export interface AnalyzeResultResponse {
+  url?: string;
+  brand_name: string;
+  executive_summary: string;
+  visibility_score: {
+    overall: number;
+    sub_scores: Record<string, number>;
+    grade: string;
+  };
+  visibility_score_v19?: {
+    overall: number;
+    sub_scores: Record<string, number>;
+    grade: string;
+    evidence?: Record<string, string>;
+    weights?: Record<string, number>;
+    methodology_version?: string;
+    overall_confidence?: number | null;
+    confidence_details?: Record<string, { confidence: number; source: string; verified: boolean }> | null;
+    verification_status?: Record<string, { verified: boolean; source: string; confidence: number }> | null;
+    consistency_alerts?: Array<{ dimension: string; alert: string; severity: string }> | null;
+    platform_readiness?: Record<string, number> | null;
+    eeat_breakdown?: { experience: number; expertise: number; authoritativeness: number; trustworthiness: number; total: number } | null;
+    schema_audit?: Record<string, unknown> | null;
+    citability_dimensions?: Record<string, number> | null;
+  };
+  recommendations: Array<Record<string, unknown>>;
+  generated_content?: Record<string, unknown>;
+  battle_cards?: Array<Record<string, unknown>>;
+  ai_ready_tips?: Record<string, unknown>;
+  llm_visibility?: Array<Record<string, unknown>>;
+  web_presence?: Record<string, unknown>;
+  image_analysis?: Record<string, unknown>;
+  page_audit?: Record<string, unknown>;
+  what_ai_sees?: string;
+  citation_sources?: Array<Record<string, unknown>>;
+  competitor_comparison?: Array<{ competitor_name: string; authority_score: number; llm_mention_rate: number; strengths: string[]; weaknesses: string[]; your_advantages: string[] }>;
+  improvement_roadmap?: Array<{ action: string; impact: string; timeframe: string; effort: string }>;
+  platform_recommendations?: Record<string, string[]>;
+  reflection_insights?: string[];
+  prediction_accuracy?: number | null;
+  absence_analysis?: Array<Record<string, unknown>>;
+  prompt_vulnerabilities?: Array<Record<string, unknown>>;
+  tested_providers?: string[];
+  untested_providers?: string[];
+  scan_coverage?: Record<string, unknown>;
+  processing_time_seconds: number;
+  quality_check_passed?: boolean;
+  methodology?: Record<string, unknown> | null;
+  previous_scores?: Array<{ date: string; overall: number; grade: string }> | null;
+  layers_completed?: string[];
+  analyzed_at?: string;
+}
+
 // ---- Score helpers ----
 
-export function getScoreGrade(score: number): { grade: string; color: string; label: string } {
-  if (score >= 80) return { grade: 'A', color: '#10B981', label: 'Excellent' };
-  if (score >= 60) return { grade: 'B', color: '#F59E0B', label: 'Good' };
-  if (score >= 40) return { grade: 'C', color: '#EF4444', label: 'Fair' };
-  return { grade: 'D', color: '#7C3AED', label: 'Poor' };
+export function getScoreGrade(score: number): { grade: string; color: string; label: string; textClass: string; badgeClass: string } {
+  if (score >= 80) return { grade: 'A', color: '#10B981', label: 'Excellent', textClass: 'text-emerald-500', badgeClass: 'bg-emerald-500/10 text-emerald-500' };
+  if (score >= 60) return { grade: 'B', color: '#F59E0B', label: 'Good', textClass: 'text-amber-500', badgeClass: 'bg-amber-500/10 text-amber-500' };
+  if (score >= 40) return { grade: 'C', color: '#EF4444', label: 'Fair', textClass: 'text-red-500', badgeClass: 'bg-red-500/10 text-red-500' };
+  return { grade: 'D', color: '#7C3AED', label: 'Poor', textClass: 'text-violet-600', badgeClass: 'bg-violet-600/10 text-violet-600' };
 }
 
 export const VISIBILITY_LEVELS = {
@@ -456,11 +545,15 @@ export const VISIBILITY_LEVELS = {
 } as const;
 
 // LLM provider display info — all 6 providers per handoff spec
-export const LLM_PROVIDER_INFO: Record<string, { label: string; icon: string; color: string }> = {
-  chatgpt:      { label: 'ChatGPT',          icon: '🤖', color: '#10A37F' },
-  gemini:       { label: 'Gemini',           icon: '✨', color: '#4285F4' },
-  perplexity:   { label: 'Perplexity',       icon: '🔍', color: '#20B2AA' },
-  claude:       { label: 'Claude',           icon: '🧠', color: '#CC785C' },
-  grok:         { label: 'Grok',             icon: '⚡', color: '#1DA1F2' },
-  digitalocean: { label: 'DigitalOcean AI',  icon: '🌊', color: '#0080FF' },
+export const LLM_PROVIDER_INFO: Record<string, { label: string; icon: string; color: string; textClass: string; barClass: string; iconBadgeClass: string }> = {
+  chatgpt:      { label: 'ChatGPT',          icon: '🤖', color: '#10A37F', textClass: 'text-emerald-600', barClass: 'bg-emerald-600', iconBadgeClass: 'bg-emerald-600/10 border border-emerald-600/20' },
+  gemini:       { label: 'Gemini',           icon: '✨', color: '#4285F4', textClass: 'text-blue-500',    barClass: 'bg-blue-500',    iconBadgeClass: 'bg-blue-500/10 border border-blue-500/20' },
+  perplexity:   { label: 'Perplexity',       icon: '🔍', color: '#20B2AA', textClass: 'text-teal-400',   barClass: 'bg-teal-400',    iconBadgeClass: 'bg-teal-400/10 border border-teal-400/20' },
+  claude:       { label: 'Claude',           icon: '🧠', color: '#CC785C', textClass: 'text-orange-400', barClass: 'bg-orange-400',  iconBadgeClass: 'bg-orange-400/10 border border-orange-400/20' },
+  grok:         { label: 'Grok',             icon: '⚡', color: '#1DA1F2', textClass: 'text-sky-400',    barClass: 'bg-sky-400',     iconBadgeClass: 'bg-sky-400/10 border border-sky-400/20' },
+  digitalocean: { label: 'DigitalOcean AI',  icon: '🌊', color: '#0080FF', textClass: 'text-blue-600',   barClass: 'bg-blue-600',    iconBadgeClass: 'bg-blue-600/10 border border-blue-600/20' },
+  nvidia:       { label: 'NVIDIA NIM',       icon: '🟢', color: '#76B900', textClass: 'text-lime-500',   barClass: 'bg-lime-500',    iconBadgeClass: 'bg-lime-500/10 border border-lime-500/20' },
+  // Aliases — backend normalizes openai→chatgpt, google→gemini; keep entries so UI lookups don't fail
+  openai:       { label: 'ChatGPT',          icon: '🤖', color: '#10A37F', textClass: 'text-emerald-600', barClass: 'bg-emerald-600', iconBadgeClass: 'bg-emerald-600/10 border border-emerald-600/20' },
+  google:       { label: 'Gemini',           icon: '✨', color: '#4285F4', textClass: 'text-blue-500',    barClass: 'bg-blue-500',    iconBadgeClass: 'bg-blue-500/10 border border-blue-500/20' },
 };

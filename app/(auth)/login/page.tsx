@@ -9,13 +9,24 @@ export const metadata = {
   description: "Access your Generative Engine Optimization dashboard and track your AI visibility.",
 };
 
-export default function LoginPage() {
+export default async function LoginPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ message?: string }>
+}) {
+  const { message } = await searchParams;
   return (
     <div className="space-y-8">
       <div>
         <h1 className="text-4xl font-black text-slate-900 dark:text-white mb-2 tracking-tight">Welcome back</h1>
         <p className="text-slate-500 dark:text-slate-400 font-medium">Access your Generative Engine Optimization dashboard.</p>
       </div>
+
+      {message && (
+        <div className="rounded-xl bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 p-4">
+          <p className="text-sm font-medium text-red-700 dark:text-red-400">{message}</p>
+        </div>
+      )}
 
       <div className="space-y-6">
         <form action={login} className="space-y-4">
@@ -64,7 +75,7 @@ export default function LoginPage() {
       </div>
 
       <p className="text-center text-slate-500 dark:text-slate-400 text-sm font-medium">
-        Don't have an account?{" "}
+        Don&apos;t have an account?{" "}
         <Link href="/signup" className="text-primary font-bold hover:underline">
           Sign up for a free trial
         </Link>

@@ -8,13 +8,10 @@ import {
   Settings,
   Bell,
   Search,
-  LogOut,
-  ShieldCheck,
-  ChevronDown
+  LogOut
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
 
 import { redirect } from "next/navigation";
 import { createClient } from "@/utils/supabase/server";

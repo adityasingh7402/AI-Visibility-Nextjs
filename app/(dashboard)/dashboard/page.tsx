@@ -1,251 +1,411 @@
 'use client';
 
-import { useEffect } from 'react';
-import { useAnalyses } from '@/hooks/useGeo';
-import { TrendingUp, BarChart3, MessageSquare, ArrowUpRight, Plus, MoreHorizontal, ChevronRight, RefreshCw, AlertCircle } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { TrendChart } from '@/components/geo/TrendChart';
+import { useEffect, useMemo } from 'react';
 import Link from 'next/link';
+import { useGeoAnalyses } from '@/hooks/useGeo';
+import { useBrands } from '@/hooks/useBrands';
+import { ScoreGauge } from '@/components/geo/ScoreGauge';
+import { TrendChart } from '@/components/geo/TrendChart';
+import { getMaturityLevel, getPublicReportLabel, getPublicReportVariant, type ReportVariant } from '@/lib/report-v2-types';
+import type { StoredGeoAnalysis } from '@/lib/report-types';
+import type { Brand } from '@/lib/brands-api';
+import type { VisibilityTrend } from '@/lib/geo-types';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { WelcomeState } from '@/components/ui/error-states';
+import {
+  TrendingUp, BarChart3, Search, FileText,
+  Plus, RefreshCw, ArrowRight, AlertCircle, ChevronRight, Building2,
+} from 'lucide-react';
 
-function ScoreBar({ score }: { score: number }) {
-  const color = score >= 80 ? 'bg-emerald-500' : score >= 60 ? 'bg-amber-500' : score >= 40 ? 'bg-blue-500' : 'bg-red-500';
+function relTime(dateStr: string): string {
+  const diff = Date.now() - new Date(dateStr).getTime();
+  const min = Math.floor(diff / 60000);
+  if (min < 1) return 'Just now';
+  if (min < 60) return `${min}m ago`;
+  const hrs = Math.floor(min / 60);
+  if (hrs < 24) return `${hrs}h ago`;
+  const days = Math.floor(hrs / 24);
+  if (days < 7) return `${days}d ago`;
+  return new Date(dateStr).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+}
+
+// ── Stat card ────────────────────────────────────────────────────────────────
+const STAT_META = [
+  { key: 'total', label: 'Total Analyses', icon: BarChart3, iconClass: 'text-primary' },
+  { key: 'latest', label: 'Latest Score', icon: TrendingUp, iconClass: 'text-emerald-500' },
+  { key: 'average', label: 'Average Score', icon: BarChart3, iconClass: 'text-blue-500' },
+  { key: 'best', label: 'Best Score', icon: ArrowRight, iconClass: 'text-amber-500' },
+] as const;
+
+// ── Quick actions ────────────────────────────────────────────────────────────
+const QUICK_ACTIONS = [
+  { label: 'AEO Scan', desc: 'Run the focused 5-node AI visibility workflow', href: '/dashboard/analysis?analysis_type=aeo_scan', icon: Search, color: 'text-emerald-600 bg-emerald-500/10' },
+  { label: 'GEO Audit', desc: 'Launch the full 17-dimension GEO workflow', href: '/dashboard/analysis?analysis_type=full', icon: BarChart3, color: 'text-blue-500 bg-blue-500/10' },
+  { label: 'Content Lab', desc: 'Validate & enhance content', href: '/dashboard/content', icon: FileText, color: 'text-emerald-500 bg-emerald-500/10' },
+];
+
+const ANALYSIS_VARIANT_BADGES: Record<ReportVariant, string> = {
+  geo: 'text-blue-600 bg-blue-500/10 border-blue-500/20',
+  aeo: 'text-emerald-600 bg-emerald-500/10 border-emerald-500/20',
+  combined: 'text-cyan-700 bg-cyan-500/10 border-cyan-500/20',
+  keywords: 'text-violet-600 bg-violet-500/10 border-violet-500/20',
+  content: 'text-amber-600 bg-amber-500/10 border-amber-500/20',
+};
+
+function resolveAnalysisVariant(analysis: StoredGeoAnalysis): ReportVariant {
+  if (analysis.variant) return analysis.variant;
+  if (analysis.report_type === 'aeo_scan') return 'aeo';
+  if (analysis.report_type === 'combined_analysis') return 'combined';
+  return 'geo';
+}
+
+// ── Analysis row ─────────────────────────────────────────────────────────────
+function AnalysisRow({ analysis }: { analysis: StoredGeoAnalysis }) {
+  const score = analysis.overall_score ?? 0;
+  const maturity = getMaturityLevel(score);
+  const color = maturity.color;
+  const variant = getPublicReportVariant(resolveAnalysisVariant(analysis));
+
   return (
-    <div className="h-1.5 w-24 bg-slate-100 dark:bg-white/10 rounded-full overflow-hidden">
-      <div className={`h-full ${color}`} style={{ width: `${score}%` }} />
+    <Link
+      href={`/dashboard/reports/${analysis.analysis_id || analysis.id}`}
+      className="flex items-center gap-4 p-3 rounded-lg border border-border hover:bg-accent transition-colors group"
+    >
+      <ScoreGauge score={score} size={48} showMaturity={false} />
+      <div className="min-w-0 flex-1">
+        <p className="text-sm font-bold text-foreground truncate group-hover:text-primary transition-colors">
+          {analysis.brand_name}
+        </p>
+        <div className="mt-1 flex items-center gap-2 text-xs text-muted-foreground">
+          <span className="truncate">{analysis.category}</span>
+          <Badge variant="outline" className={`hidden sm:inline-flex text-[10px] font-bold ${ANALYSIS_VARIANT_BADGES[variant]}`}>
+            {getPublicReportLabel(variant)}
+          </Badge>
+        </div>
+      </div>
+      <Badge variant="outline" className="shrink-0 font-bold" style={{ color, borderColor: color }}>
+        {maturity.label}
+      </Badge>
+      <span className="text-xs text-muted-foreground shrink-0 w-16 text-right">
+        {relTime(analysis.created_at)}
+      </span>
+      <ChevronRight className="h-4 w-4 text-muted-foreground group-hover:text-foreground transition-colors shrink-0" />
+    </Link>
+  );
+}
+
+// ── Skeleton row ─────────────────────────────────────────────────────────────
+function SkeletonRow() {
+  return <div className="h-16 rounded-lg bg-muted animate-pulse" />;
+}
+
+// ── Brand card ───────────────────────────────────────────────────────────────
+function BrandCard({ brand, latestScore }: { brand: Brand; latestScore: number | null }) {
+  const score = latestScore ?? 0;
+  const maturity = getMaturityLevel(score);
+
+  return (
+    <Link
+      href={`/dashboard/reports?brand=${encodeURIComponent(brand.brand_name)}`}
+      className="rounded-xl border border-border bg-card p-4 hover:bg-accent/50 transition-colors group"
+    >
+      <div className="flex items-start gap-3">
+        <ScoreGauge score={score} size={52} showMaturity={false} />
+        <div className="min-w-0 flex-1">
+          <p className="text-sm font-bold text-foreground truncate group-hover:text-primary transition-colors">
+            {brand.brand_name}
+          </p>
+          <p className="text-xs text-muted-foreground truncate">{brand.category || 'Uncategorized'}</p>
+          <div className="flex items-center gap-2 mt-2">
+            <Badge variant="outline" className="text-[10px] px-1.5 py-0 font-bold" style={{ color: maturity.color, borderColor: maturity.color }}>
+              {maturity.icon} {maturity.label}
+            </Badge>
+            {brand.region && (
+              <span className="text-[10px] text-muted-foreground">{brand.region}</span>
+            )}
+          </div>
+        </div>
+        <ChevronRight className="h-4 w-4 text-muted-foreground group-hover:text-foreground transition-colors shrink-0 mt-1" />
+      </div>
+    </Link>
+  );
+}
+
+// ── Trend section (shows when analyses have trend data) ─────────────────────
+function TrendSection({ analyses }: { analyses: StoredGeoAnalysis[] }) {
+  // Build a minimal VisibilityTrend from analyses for the overview chart
+  const trend = useMemo<VisibilityTrend | null>(() => {
+    const scored = analyses
+      .filter(a => a.overall_score != null && a.created_at)
+      .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+
+    if (scored.length < 2) return null;
+
+    const data_points = scored.map(a => ({
+      timestamp: a.created_at,
+      overall_visibility: a.overall_score ?? 0,
+      base_model_visibility: 0,
+      rag_model_visibility: 0,
+    }));
+
+    const first = data_points[0].overall_visibility;
+    const last = data_points[data_points.length - 1].overall_visibility;
+    const change = last - first;
+
+    return {
+      brand_name: 'All Brands',
+      category: '',
+      data_points,
+      total_snapshots: data_points.length,
+      overall_change: change,
+      trend_direction: change > 2 ? 'improving' : change < -2 ? 'declining' : 'stable',
+    };
+  }, [analyses]);
+
+  if (!trend) return null;
+
+  return (
+    <div className="glass-card rounded-2xl p-6 space-y-4 hover:-translate-y-1 transition-transform duration-300">
+      <div className="flex items-center justify-between">
+        <h3 className="text-lg font-bold text-foreground flex items-center gap-2">
+          <TrendingUp className="h-5 w-5 text-primary" />
+          Visibility Trend
+        </h3>
+        <Badge variant="outline" className="text-xs">
+          {trend.total_snapshots} data points
+        </Badge>
+      </div>
+      <TrendChart trend={trend} />
     </div>
   );
 }
 
+// ── Main page ────────────────────────────────────────────────────────────────
 export default function DashboardPage() {
-  const { data: analyses, loading, error, fetchAnalyses } = useAnalyses();
+  const { data: analyses, loading, error, fetchAnalyses } = useGeoAnalyses();
+  const { brands, loading: brandsLoading, fetchBrands } = useBrands();
 
-  useEffect(() => {
-    fetchAnalyses();
-  }, [fetchAnalyses]);
+  useEffect(() => { fetchAnalyses(); fetchBrands(); }, [fetchAnalyses, fetchBrands]);
 
-  // Aggregate stats from real data
-  const totalAnalyses = analyses.length;
-  const avgScore = analyses.length > 0
-    ? Math.round(analyses.reduce((sum, a) => sum + (a.visibility_score ?? a.overall_score ?? 0), 0) / analyses.length)
-    : 0;
-  const totalMentionRate = analyses.length > 0
-    ? (analyses.reduce((sum, a) => sum + (a.mention_rate ?? 0), 0) / analyses.length * 100).toFixed(0)
-    : '0';
+  const comparableAnalyses = useMemo(() => {
+    const nonAeoAnalyses = analyses.filter(analysis => resolveAnalysisVariant(analysis) !== 'aeo');
+    return nonAeoAnalyses.length > 0 ? nonAeoAnalyses : analyses;
+  }, [analyses]);
 
-  // Helper: safely extract visibility summary from JSONB payload (cast needed since type is Record<string,unknown>)
-  const getVisSummary = (a: typeof analyses[0]) => {
-    const p = a.response_payload as any;
-    return p?.your_visibility_summary ?? p?.visibility_summary ?? {};
-  };
+  const stats = useMemo(() => {
+    if (!comparableAnalyses.length) return null;
+    const scores = comparableAnalyses.filter(a => a.overall_score).map(a => a.overall_score!);
+    return {
+      total: comparableAnalyses.length,
+      latest: scores[0] ?? null,
+      average: scores.length ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length) : null,
+      best: scores.length ? Math.max(...scores) : null,
+    };
+  }, [comparableAnalyses]);
 
-  const avgBaseModel = analyses.length > 0
-    ? Math.round(analyses.reduce((sum, a) => sum + (getVisSummary(a).base_model_visibility ?? 0), 0) / analyses.length)
-    : 0;
-  const avgRag = analyses.length > 0
-    ? Math.round(analyses.reduce((sum, a) => sum + (getVisSummary(a).rag_model_visibility ?? 0), 0) / analyses.length)
-    : 0;
-  const avgGap = analyses.length > 0
-    ? Math.round(analyses.reduce((sum, a) => sum + (getVisSummary(a).actionable_gap ?? 0), 0) / analyses.length)
-    : 0;
+  // Build latest score per brand (from analyses)
+  const brandScoreMap = useMemo(() => {
+    const map: Record<string, number | null> = {};
+    for (const brand of brands) {
+      const match = comparableAnalyses.find(a =>
+        a.brand_name?.toLowerCase() === brand.brand_name.toLowerCase()
+      );
+      map[brand.id] = match?.overall_score ?? null;
+    }
+    return map;
+  }, [brands, comparableAnalyses]);
 
   const recentAnalyses = analyses.slice(0, 5);
 
-  const stats = [
-    {
-      label: 'Total Analyses',
-      value: loading ? '…' : totalAnalyses.toLocaleString(),
-      change: '+New',
-      icon: <BarChart3 className="text-primary" />,
-    },
-    {
-      label: 'RAG Visibility',
-      value: loading ? '…' : `${avgRag}%`,
-      change: '§10.1 RAG',
-      icon: <TrendingUp className="text-emerald-500" />,
-    },
-    {
-      label: 'Base Model',
-      value: loading ? '…' : `${avgBaseModel}%`,
-      change: 'baseline',
-      icon: <BarChart3 className="text-blue-500" />,
-    },
-    {
-      label: 'Avg Mention Rate',
-      value: loading ? '…' : `${totalMentionRate}%`,
-      change: 'across LLMs',
-      icon: <MessageSquare className="text-purple-500" />,
-    },
-    {
-      label: 'Opportunity Gap',
-      value: loading ? '…' : `${avgGap}pt`,
-      change: 'actionable',
-      icon: <ArrowUpRight className="text-amber-500" />,
-    },
-  ];
+  function statValue(key: (typeof STAT_META)[number]['key']) {
+    if (loading) return '…';
+    if (!stats) return '—';
+    const v = stats[key];
+    return v !== null ? String(Math.round(v)) : '—';
+  }
+
+  function statSub(key: (typeof STAT_META)[number]['key']) {
+    if (key === 'total') return 'all time';
+    if (!stats) return '';
+    const v = stats[key];
+    return v !== null ? `${getMaturityLevel(v).label}` : '';
+  }
+
+  // First-time user: show welcome state
+  if (!loading && !brandsLoading && analyses.length === 0 && brands.length === 0) {
+    return <WelcomeState />;
+  }
 
   return (
-    <div className="space-y-12">
-      {/* Welcome Header */}
-      <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
+    <div className="space-y-10">
+      {/* ── Welcome header ───────────────────────────────────────────── */}
+      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
         <div>
-          <h1 className="text-4xl font-black text-slate-900 dark:text-white tracking-tight mb-2">Dashboard</h1>
-          <p className="text-slate-500 dark:text-slate-400 font-medium">Your AI visibility performance at a glance.</p>
+          <h1 className="text-3xl font-black text-foreground tracking-tight mb-1">Dashboard</h1>
+          <p className="text-muted-foreground text-sm font-medium">
+            Your AI visibility performance at a glance.
+          </p>
         </div>
-        <div className="flex gap-3">
-          <Button variant="outline" onClick={() => fetchAnalyses()}
-            className="bg-white dark:bg-slate-900 rounded-xl font-bold h-11 border-slate-200 dark:border-white/10 dark:text-white gap-2 hover:bg-slate-50 dark:hover:bg-white/5 transition-all">
-            <RefreshCw className="h-4 w-4" /> Refresh
+        <Link href="/dashboard/analysis">
+          <Button size="sm" className="rounded-lg font-semibold gap-2 shadow-sm">
+            <Plus className="h-3.5 w-3.5" /> New Analysis
           </Button>
-          <Link href="/dashboard/analysis">
-            <Button className="bg-primary hover:bg-blue-600 text-white font-black rounded-xl h-11 px-8 shadow-xl shadow-primary/25 transition-all active:scale-95">
-              <Plus className="h-4 w-4 mr-2 stroke-[3px]" />
-              New Analysis
-            </Button>
-          </Link>
-        </div>
+        </Link>
       </div>
 
-      {/* Error state */}
+      {/* ── Error state ──────────────────────────────────────────────── */}
       {error && (
-        <div className="rounded-2xl bg-red-500/10 border border-red-500/20 p-4 flex items-center gap-3 text-red-600 dark:text-red-400 text-sm font-semibold">
-          <AlertCircle className="h-4 w-4 flex-shrink-0" />
-          {error} — <button onClick={() => fetchAnalyses()} className="underline decoration-2">retry</button>
+        <div className="rounded-xl bg-destructive/10 border border-destructive/20 p-3 flex items-center gap-3 text-destructive text-sm font-semibold">
+          <AlertCircle className="h-4 w-4 shrink-0" />
+          <span className="flex-1">{error}</span>
+          <button onClick={() => fetchAnalyses()} className="underline whitespace-nowrap">
+            Retry
+          </button>
         </div>
       )}
 
-      {/* Stats Grid — §10.1 visibility breakdown */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-6">
-        {stats.map((stat, i) => (
-          <div key={i} className="bg-white dark:bg-slate-900/50 p-8 rounded-[2.5rem] border border-slate-200 dark:border-white/5 shadow-sm hover:shadow-md transition-shadow relative overflow-hidden group">
-            <div className="absolute top-0 right-0 w-32 h-32 bg-primary/5 rounded-full -mr-16 -mt-16 blur-2xl group-hover:bg-primary/10 transition-colors"></div>
-            <div className="relative z-10">
-              <div className="flex items-center justify-between mb-8">
-                <div className="bg-slate-50 dark:bg-white/5 p-4 rounded-2xl group-hover:scale-110 transition-transform">
-                  {stat.icon}
-                </div>
-                <span className="flex items-center text-[10px] font-black text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-2.5 py-1 rounded-lg uppercase tracking-wider">
-                  <ArrowUpRight className="h-3 w-3 mr-1" />
-                  {stat.change}
-                </span>
+      {/* ── Stats row ────────────────────────────────────────────────── */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-5">
+        {STAT_META.map(({ key, label, icon: Icon, iconClass }) => (
+          <div key={key} className="glass-card rounded-2xl p-6 space-y-4 hover:-translate-y-1 transition-transform duration-300">
+            <div className="flex items-center justify-between">
+              <div className="p-2.5 rounded-xl bg-primary/10">
+                <Icon className={`h-[22px] w-[22px] ${iconClass}`} />
               </div>
-              <p className="text-slate-500 dark:text-slate-400 text-xs font-black uppercase tracking-[0.2em] mb-2">{stat.label}</p>
-              <p className="text-4xl font-black text-slate-900 dark:text-white tracking-tighter">{stat.value}</p>
+              <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
+                {statSub(key)}
+              </span>
+            </div>
+            <div>
+              <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-1">
+                {label}
+              </p>
+              <p className="text-3xl font-black text-foreground tracking-tight tabular-nums">
+                {statValue(key)}
+              </p>
             </div>
           </div>
         ))}
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* Quick actions */}
-        <div className="bg-white dark:bg-slate-900/50 p-8 rounded-[2.5rem] border border-slate-200 dark:border-white/5 shadow-sm">
-          <h3 className="text-xl font-black text-slate-900 dark:text-white mb-8">Quick Actions</h3>
-          <div className="space-y-4">
-            {[
-              { label: 'Keyword Discovery', desc: 'Find AI visibility gaps', href: '/dashboard/keywords', icon: '🔍', color: 'bg-blue-500/10 text-blue-600 dark:text-blue-400' },
-              { label: 'Content Validator', desc: 'Check RAG citability', href: '/dashboard/content', icon: '📝', color: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400' },
-              { label: 'Visibility Progress', desc: 'View trend over time', href: '/dashboard/progress', icon: '📈', color: 'bg-purple-500/10 text-purple-600 dark:text-purple-400' },
-              { label: 'Run Quick Analysis', desc: 'Full keyword discovery', href: '/dashboard/analysis', icon: '🚀', color: 'bg-amber-500/10 text-amber-600 dark:text-amber-400' },
-            ].map(item => (
-              <Link key={item.label} href={item.href}
-                className="flex items-center gap-4 p-5 rounded-[1.5rem] border border-slate-100 dark:border-white/5 hover:bg-slate-50 dark:hover:bg-white/5 transition-all group active:scale-[0.98]">
-                <div className={`h-12 w-12 rounded-2xl flex items-center justify-center text-xl flex-shrink-0 ${item.color} group-hover:scale-110 transition-transform`}>
-                  {item.icon}
-                </div>
-                <div className="flex-grow min-w-0">
-                  <p className="font-bold text-slate-900 dark:text-white text-sm mb-0.5">{item.label}</p>
-                  <p className="text-[11px] text-slate-500 font-medium truncate uppercase tracking-widest">{item.desc}</p>
-                </div>
-                <ChevronRight className="h-4 w-4 text-slate-300 group-hover:text-primary group-hover:translate-x-1 transition-all flex-shrink-0" />
-              </Link>
+      {/* ── Brand Tracking Cards ─────────────────────────────────────── */}
+      {!brandsLoading && brands.length > 0 && (
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <h3 className="text-lg font-bold text-foreground flex items-center gap-2">
+              <Building2 className="h-5 w-5 text-primary" />
+              Tracked Brands
+            </h3>
+            <Link href="/dashboard/brands" className="text-sm font-semibold text-primary hover:underline">
+              Manage
+            </Link>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {brands.slice(0, 6).map(brand => (
+              <BrandCard
+                key={brand.id}
+                brand={brand}
+                latestScore={brandScoreMap[brand.id]}
+              />
             ))}
           </div>
         </div>
+      )}
 
-        {/* Recent Reports */}
-        <div className="lg:col-span-2 bg-white dark:bg-slate-900/50 p-8 rounded-[2.5rem] border border-slate-200 dark:border-white/5 shadow-sm">
-          <div className="flex items-center justify-between mb-10">
-            <h3 className="text-xl font-black text-slate-900 dark:text-white">Recent Analyses</h3>
-            <Link href="/dashboard/reports">
-              <Button variant="link" className="text-primary font-black p-0 h-auto hover:no-underline hover:text-blue-600">View all reports</Button>
+      {!brandsLoading && brands.length === 0 && !loading && analyses.length > 0 && (
+        <div className="glass-card rounded-2xl p-6 flex flex-col items-center justify-center gap-4 text-center">
+          <div className="h-16 w-16 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+            <Building2 className="h-8 w-8 text-primary" />
+          </div>
+          <div className="max-w-md">
+            <p className="font-bold text-foreground text-lg mb-1">Track your brands</p>
+            <p className="text-sm text-muted-foreground mb-4">
+              Add brands to monitor their AI visibility over time with trend tracking and compare performance.
+            </p>
+            <Link href="/dashboard/brands">
+              <Button size="sm" className="rounded-lg font-semibold gap-1.5">
+                <Plus className="h-4 w-4" /> Add Brand
+              </Button>
             </Link>
+          </div>
+        </div>
+      )}
+
+      {/* ── Visibility Trend ──────────────────────────────────────────── */}
+      <TrendSection analyses={comparableAnalyses} />
+
+      {/* ── Two-column body ──────────────────────────────────────────── */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        {/* Recent analyses (8/12) */}
+        <div className="lg:col-span-8 glass-card rounded-2xl p-6 space-y-4">
+          <div className="flex items-center justify-between">
+            <h3 className="text-lg font-bold text-foreground">Recent Analyses</h3>
+            {recentAnalyses.length > 0 && (
+              <Link href="/dashboard/reports" className="text-sm font-semibold text-primary hover:underline">
+                View all
+              </Link>
+            )}
           </div>
 
           {loading && (
-            <div className="space-y-4">
-              {[1, 2, 3].map(i => (
-                <div key={i} className="h-20 rounded-3xl bg-slate-50 dark:bg-white/5 animate-pulse" />
-              ))}
+            <div className="space-y-3">
+              {Array.from({ length: 3 }, (_, i) => <SkeletonRow key={i} />)}
             </div>
           )}
 
           {!loading && recentAnalyses.length === 0 && (
-            <div className="text-center py-16 px-8 bg-slate-50/50 dark:bg-black/20 rounded-[2rem] border border-dashed border-slate-200 dark:border-white/10">
-              <div className="text-5xl mb-6">📊</div>
-              <p className="font-black text-slate-900 dark:text-white text-lg mb-2">No analyses yet</p>
-              <p className="text-sm text-slate-500 font-medium mb-8 max-w-xs mx-auto">Run your first keyword discovery to see visibility performance data here.</p>
-              <Link href="/dashboard/keywords">
-                <Button className="bg-primary hover:bg-blue-600 text-white font-black rounded-2xl h-12 px-8 shadow-lg shadow-primary/20">
-                  Start Discovery
+            <div className="text-center py-16 rounded-xl border border-dashed border-border/50 bg-muted/20">
+              <p className="text-4xl mb-4">📊</p>
+              <p className="font-bold text-foreground mb-2 text-lg">No analyses yet</p>
+              <p className="text-sm text-muted-foreground mb-6 max-w-sm mx-auto">
+                Run your first AEO or GEO analysis to evaluate your brand&apos;s standing across AI assistants.
+              </p>
+              <Link href="/dashboard/analysis">
+                <Button className="rounded-lg font-semibold shadow-sm hover:-translate-y-0.5 transition-transform">
+                  Start Analysis
                 </Button>
               </Link>
             </div>
           )}
 
           {!loading && recentAnalyses.length > 0 && (
-            <div className="space-y-4">
-              {recentAnalyses.map((analysis) => {
-                const score = analysis.visibility_score ?? analysis.overall_score ?? 0;
-                const typeColors: Record<string, string> = {
-                  keyword_discovery: 'bg-blue-500/10 text-blue-500 border-blue-500/20',
-                  content_validation: 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20',
-                  progress_tracking: 'bg-purple-500/10 text-purple-500 border-purple-500/20',
-                  keyword_test: 'bg-amber-500/10 text-amber-500 border-amber-500/20',
-                };
-                return (
-                  <div key={analysis.id}
-                    className="p-6 rounded-3xl border border-slate-100 dark:border-white/5 hover:bg-slate-50 dark:hover:bg-white/5 transition-all group cursor-pointer relative overflow-hidden">
-                    <div className="flex items-center justify-between mb-4">
-                      <div className="flex items-center gap-2">
-                        <span className={`text-[9px] font-black uppercase tracking-[0.15em] px-2 py-0.5 rounded-md border ${typeColors[analysis.analysis_type] ?? 'bg-slate-100 text-slate-500'}`}>
-                          {analysis.analysis_type.replace(/_/g, ' ')}
-                        </span>
-                        <span className={`text-[9px] font-black uppercase tracking-[0.15em] px-2 py-0.5 rounded-md ${analysis.status === 'completed' ? 'bg-emerald-500/10 text-emerald-500' : 'bg-blue-500/10 text-blue-500'}`}>
-                          {analysis.status}
-                        </span>
-                      </div>
-                      <span className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">{new Date(analysis.created_at).toLocaleDateString()}</span>
-                    </div>
-                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
-                      <div className="min-w-0">
-                        <h4 className="text-lg font-black text-slate-900 dark:text-white mb-1 group-hover:text-primary transition-colors truncate">
-                          {analysis.brand_name}
-                        </h4>
-                        <p className="text-xs text-slate-500 font-semibold truncate tracking-wide">{analysis.category}</p>
-                      </div>
-                      <div className="flex items-center gap-6 shrink-0 bg-white dark:bg-black/40 p-3 rounded-2xl border border-slate-100 dark:border-white/5">
-                        <div className="space-y-1">
-                          <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest leading-none">Visibility</p>
-                          <div className="flex items-center gap-3">
-                            <ScoreBar score={score} />
-                            <span className="text-base font-black text-slate-900 dark:text-white">{score.toFixed(0)}%</span>
-                          </div>
-                        </div>
-                        <ChevronRight className="h-5 w-5 text-slate-300 group-hover:text-primary transition-all group-hover:translate-x-1" />
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
+            <div className="space-y-2">
+              {recentAnalyses.map(a => <AnalysisRow key={a.id} analysis={a} />)}
             </div>
           )}
+        </div>
 
-          {!loading && recentAnalyses.length > 0 && (
-            <Link href="/dashboard/reports">
-              <Button className="w-full mt-8 bg-slate-50 dark:bg-white/5 border border-slate-100 dark:border-white/5 text-slate-900 dark:text-white hover:bg-slate-100 dark:hover:bg-white/10 font-black py-7 rounded-3xl text-sm transition-all active:scale-[0.99]">
-                View All Analysis Reports
-              </Button>
-            </Link>
-          )}
+        {/* Quick actions (4/12) */}
+        <div className="lg:col-span-4 glass-card rounded-2xl p-6 space-y-4 h-fit">
+          <h3 className="text-lg font-bold text-foreground">Quick Actions</h3>
+          <div className="space-y-2">
+            {QUICK_ACTIONS.map(item => (
+              <Link
+                key={item.label}
+                href={item.href}
+                className="flex items-center gap-3 p-3 rounded-xl border border-transparent bg-muted/50 hover:bg-card hover:border-border/60 hover:shadow-sm transition-all duration-300 group"
+              >
+                <div className={`h-10 w-10 rounded-xl flex items-center justify-center shrink-0 ${item.color}`}>
+                  <item.icon className="h-5 w-5" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-bold text-foreground">{item.label}</p>
+                  <p className="text-[11px] text-muted-foreground truncate font-medium mt-0.5">{item.desc}</p>
+                </div>
+                <ChevronRight className="h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors shrink-0 translate-x-0 group-hover:translate-x-1 duration-300" />
+              </Link>
+            ))}
+          </div>
+
+          <Button
+            variant="outline"
+            size="sm"
+            className="w-full rounded-xl font-semibold gap-2 mt-4 py-5 hover:bg-primary hover:text-primary-foreground hover:border-primary transition-colors"
+            onClick={() => { fetchAnalyses(); fetchBrands(); }}
+          >
+            <RefreshCw className="h-4 w-4" /> Refresh Data
+          </Button>
         </div>
       </div>
     </div>

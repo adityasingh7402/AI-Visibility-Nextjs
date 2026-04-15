@@ -2,7 +2,6 @@
 import { motion } from "framer-motion";
 import { Brain, Network, BarChart3, ShieldAlert, Globe } from "lucide-react";
 import { useMouseTilt } from "@/hooks/use-mouse-tilt";
-import SectionWatermark from "./SectionWatermark";
 
 const features = [
   { title: "Prompt Style Analysis", icon: Brain, text: "Reverse-engineer how LLMs interpret and respond to prompts about your industry. Understand query patterns to optimize your content structure.", isLarge: true, hasMockup: true },
@@ -13,7 +12,7 @@ const features = [
 ];
 
 const TiltFeatureCard = ({ feature, i }: { feature: typeof features[0]; i: number }) => {
-  const tilt = useMouseTilt(4);
+  const { ref: tiltRef, style: tiltStyle, handleMouseMove, handleMouseLeave } = useMouseTilt(4);
   return (
     <motion.div
       initial={{ opacity: 0, y: 16, filter: "blur(4px)" }}
@@ -23,10 +22,10 @@ const TiltFeatureCard = ({ feature, i }: { feature: typeof features[0]; i: numbe
       className={feature.isLarge ? "md:col-span-2 md:row-span-2" : ""}
     >
       <div
-        ref={tilt.ref}
-        onMouseMove={tilt.handleMouseMove}
-        onMouseLeave={tilt.handleMouseLeave}
-        style={tilt.style}
+        ref={tiltRef}
+        onMouseMove={handleMouseMove}
+        onMouseLeave={handleMouseLeave}
+        style={tiltStyle}
         className="rounded-2xl border bg-card p-7 shadow-sm group hover:shadow-lg transition-shadow h-full"
       >
         <div className="w-10 h-10 rounded-xl bg-foreground/[0.05] flex items-center justify-center mb-4 group-hover:bg-foreground/[0.08] transition-colors">
@@ -46,17 +45,17 @@ const TiltFeatureCard = ({ feature, i }: { feature: typeof features[0]; i: numbe
             </div>
             <div className="mt-4 grid grid-cols-2 gap-3">
               {[
-                { label: "Informational", pct: 92 },
-                { label: "Transactional", pct: 64 },
-                { label: "Navigational", pct: 88 },
-                { label: "Comparison", pct: 71 },
+                { label: "Informational", pct: 92, widthClass: "w-[92%]" },
+                { label: "Transactional", pct: 64, widthClass: "w-[64%]" },
+                { label: "Navigational", pct: 88, widthClass: "w-[88%]" },
+                { label: "Comparison", pct: 71, widthClass: "w-[71%]" },
               ].map((item) => (
                 <div key={item.label} className="text-xs">
                   <div className="flex justify-between text-muted-foreground mb-1">
                     <span>{item.label}</span><span>{item.pct}%</span>
                   </div>
                   <div className="h-1 rounded-full bg-border overflow-hidden">
-                    <div className="h-full rounded-full bg-foreground/50" style={{ width: `${item.pct}%` }} />
+                    <div className={`h-full rounded-full bg-foreground/50 ${item.widthClass}`} />
                   </div>
                 </div>
               ))}
@@ -71,7 +70,6 @@ const TiltFeatureCard = ({ feature, i }: { feature: typeof features[0]; i: numbe
 const FeaturesBentoGrid = () => {
   return (
     <section className="section-padding bg-secondary/40 relative overflow-hidden">
-      <SectionWatermark shape="hexagon" className="w-[500px] h-[500px] -right-32 top-20" />
 
       <div className="section-container relative z-10">
         <div className="text-center mb-16">

@@ -12,6 +12,13 @@ import {
   type CreateBrandRequest,
   type UpdateBrandRequest,
 } from '@/lib/brands-api';
+import type { Analysis } from '@/lib/geo-types';
+
+type ApiErr = { response?: { data?: { error?: string } }; message?: string };
+function apiMsg(e: unknown, fallback: string): string {
+  const err = e as ApiErr;
+  return err?.response?.data?.error || err?.message || fallback;
+}
 
 export function useBrands() {
   const [brands, setBrands] = useState<Brand[]>([]);
@@ -24,8 +31,8 @@ export function useBrands() {
     try {
       const data = await getBrands();
       setBrands(data);
-    } catch (err: any) {
-      setError(err.response?.data?.error || 'Failed to fetch brands');
+    } catch (err: unknown) {
+      setError(apiMsg(err, 'Failed to fetch brands'));
     } finally {
       setLoading(false);
     }
@@ -38,8 +45,8 @@ export function useBrands() {
       const newBrand = await createBrand(data);
       setBrands(prev => [newBrand, ...prev]);
       return newBrand;
-    } catch (err: any) {
-      setError(err.response?.data?.error || 'Failed to create brand');
+    } catch (err: unknown) {
+      setError(apiMsg(err, 'Failed to create brand'));
       throw err;
     } finally {
       setLoading(false);
@@ -53,8 +60,8 @@ export function useBrands() {
       const updated = await updateBrand(id, data);
       setBrands(prev => prev.map(b => b.id === id ? updated : b));
       return updated;
-    } catch (err: any) {
-      setError(err.response?.data?.error || 'Failed to update brand');
+    } catch (err: unknown) {
+      setError(apiMsg(err, 'Failed to update brand'));
       throw err;
     } finally {
       setLoading(false);
@@ -67,8 +74,8 @@ export function useBrands() {
     try {
       await deleteBrand(id);
       setBrands(prev => prev.filter(b => b.id !== id));
-    } catch (err: any) {
-      setError(err.response?.data?.error || 'Failed to delete brand');
+    } catch (err: unknown) {
+      setError(apiMsg(err, 'Failed to delete brand'));
       throw err;
     } finally {
       setLoading(false);
@@ -98,8 +105,8 @@ export function useBrand(id: string | null) {
     try {
       const data = await getBrand(id);
       setBrand(data);
-    } catch (err: any) {
-      setError(err.response?.data?.error || 'Failed to fetch brand');
+    } catch (err: unknown) {
+      setError(apiMsg(err, 'Failed to fetch brand'));
     } finally {
       setLoading(false);
     }
@@ -114,7 +121,7 @@ export function useBrand(id: string | null) {
 }
 
 export function useBrandAnalyses(brandId: string | null) {
-  const [analyses, setAnalyses] = useState<any[]>([]);
+  const [analyses, setAnalyses] = useState<Analysis[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -125,8 +132,8 @@ export function useBrandAnalyses(brandId: string | null) {
     try {
       const data = await getBrandAnalyses(brandId, limit);
       setAnalyses(data);
-    } catch (err: any) {
-      setError(err.response?.data?.error || 'Failed to fetch analyses');
+    } catch (err: unknown) {
+      setError(apiMsg(err, 'Failed to fetch analyses'));
     } finally {
       setLoading(false);
     }

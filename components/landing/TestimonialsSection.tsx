@@ -1,7 +1,7 @@
 "use client";
 import { motion } from "framer-motion";
 import { Star, Quote } from "lucide-react";
-import SectionWatermark from "./SectionWatermark";
+import Image, { type StaticImageData } from "next/image";
 import BackgroundHexagons from "./BackgroundHexagons";
 
 import sarahImg from "@/assets/testimonial-sarah.jpg";
@@ -97,7 +97,7 @@ const TestimonialCard = ({
         <h3 className="text-lg font-bold text-foreground mt-3 mb-2">{t.quote}</h3>
         <p className="text-sm text-muted-foreground leading-relaxed mb-4">{t.longQuote}</p>
         <div className="flex items-center gap-3">
-          <img src={((t.image as any).src || t.image) as any} alt={t.name} className="w-10 h-10 rounded-full object-cover" />
+          <Image src={t.image as StaticImageData} alt={t.name} width={40} height={40} className="w-10 h-10 rounded-full object-cover" />
           <div>
             <div className="text-sm font-semibold text-foreground">{t.name}</div>
             <div className="text-xs text-muted-foreground">{t.title}</div>
@@ -117,7 +117,7 @@ const TestimonialCard = ({
         className="bg-card rounded-2xl border p-6 shadow-sm hover:shadow-md transition-shadow"
       >
         <div className="flex items-center gap-3 mb-4">
-          <img src={((t.image as any).src || t.image) as any} alt={t.name} className="w-12 h-12 rounded-full object-cover" />
+          <Image src={t.image as StaticImageData} alt={t.name} width={48} height={48} className="w-12 h-12 rounded-full object-cover" />
           <div>
             <div className="text-sm font-semibold text-foreground">{t.name}</div>
             <div className="text-xs text-muted-foreground">{t.title}</div>
@@ -147,7 +147,7 @@ const TestimonialCard = ({
       >
         <p className="text-sm text-muted-foreground leading-relaxed mb-5">{t.quote}</p>
         <div className="flex items-center gap-3">
-          <img src={((t.image as any).src || t.image) as any} alt={t.name} className="w-14 h-14 rounded-full object-cover" />
+          <Image src={t.image as StaticImageData} alt={t.name} width={56} height={56} className="w-14 h-14 rounded-full object-cover" />
           <div>
             <div className="font-serif-italic text-xl text-foreground">{t.name}</div>
             <div className="text-xs text-muted-foreground">{t.title}</div>
@@ -168,10 +168,10 @@ const TestimonialCard = ({
       >
         <Quote className="w-6 h-6 text-foreground/10 mb-3" />
         <p className="text-sm text-muted-foreground leading-relaxed mb-4 font-medium">
-          "{t.quote}"
+          &ldquo;{t.quote}&rdquo;
         </p>
         <div className="flex items-center gap-3">
-          <img src={((t.image as any).src || t.image) as any} alt={t.name} className="w-10 h-10 rounded-full object-cover" />
+          <Image src={t.image as StaticImageData} alt={t.name} width={40} height={40} className="w-10 h-10 rounded-full object-cover" />
           <div>
             <div className="text-sm font-semibold text-foreground">{t.name}</div>
             <div className="text-xs text-geo-green">{t.title}</div>
@@ -193,7 +193,7 @@ const TestimonialCard = ({
       <h3 className="text-lg font-bold text-foreground mb-2">{t.quote}</h3>
       <p className="text-sm text-muted-foreground leading-relaxed mb-4">{t.longQuote}</p>
       <div className="flex items-center gap-3">
-        <img src={((t.image as any).src || t.image) as any} alt={t.name} className="w-10 h-10 rounded-full object-cover" />
+        <Image src={t.image as StaticImageData} alt={t.name} width={40} height={40} className="w-10 h-10 rounded-full object-cover" />
         <div>
           <div className="text-sm font-semibold text-foreground">{t.name}</div>
           <div className="text-xs text-muted-foreground">{t.title}</div>

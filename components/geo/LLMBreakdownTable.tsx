@@ -4,20 +4,28 @@ import type { LLMVisibilityScore } from '@/lib/geo-types';
 import { LLM_PROVIDER_INFO } from '@/lib/geo-types';
 
 interface LLMBreakdownTableProps {
-  visibilityByLLM: Record<string, LLMVisibilityScore>;
+  visibilityByLLM: Record<string, LLMVisibilityScore | number>;
   confidenceByLLM?: Record<string, number>;
 }
 
-function ScoreBar({ value, color }: { value: number; color: string }) {
+// Normalize: Python may return raw floats (0-1) or LLMVisibilityScore objects
+function normalizeScore(val: LLMVisibilityScore | number): LLMVisibilityScore {
+  if (typeof val === 'number') {
+    return { visibility_score: val * 100, mention_rate: val };
+  }
+  return val;
+}
+
+function ScoreBar({ value, barClass, textClass }: { value: number; barClass: string; textClass: string }) {
   return (
     <div className="flex items-center gap-3 flex-1">
       <div className="flex-1 h-2 bg-white/10 rounded-full overflow-hidden">
         <div
-          className="h-full rounded-full transition-all duration-700"
-          style={{ width: `${Math.min(value, 100)}%`, backgroundColor: color }}
+          className={`h-full rounded-full transition-all duration-700 ${barClass}`}
+          style={{ width: `${Math.min(value, 100)}%` }}
         />
       </div>
-      <span className="text-xs font-black w-10 text-right" style={{ color }}>
+      <span className={`text-xs font-black w-10 text-right ${textClass}`}>
         {Math.round(value)}%
       </span>
     </div>
@@ -25,9 +33,9 @@ function ScoreBar({ value, color }: { value: number; color: string }) {
 }
 
 export function LLMBreakdownTable({ visibilityByLLM, confidenceByLLM }: LLMBreakdownTableProps) {
-  const entries = Object.entries(visibilityByLLM).sort(
-    ([, a], [, b]) => b.visibility_score - a.visibility_score
-  );
+  const entries = Object.entries(visibilityByLLM)
+    .map(([k, v]) => [k, normalizeScore(v)] as [string, LLMVisibilityScore])
+    .sort(([, a], [, b]) => b.visibility_score - a.visibility_score);
 
   if (entries.length === 0) {
     return (
@@ -51,7 +59,7 @@ export function LLMBreakdownTable({ visibilityByLLM, confidenceByLLM }: LLMBreak
       {/* Rows */}
       <div className="divide-y divide-white/5">
         {entries.map(([provider, scores], idx) => {
-          const info = LLM_PROVIDER_INFO[provider] || { label: provider, icon: '🤖', color: '#6B7280' };
+          const info = LLM_PROVIDER_INFO[provider] || { label: provider, icon: '🤖', color: '#6B7280', textClass: 'text-slate-400', barClass: 'bg-slate-400', iconBadgeClass: 'bg-slate-400/10 border border-slate-400/20' };
           const confidence = confidenceByLLM?.[provider];
 
           return (
@@ -62,8 +70,7 @@ export function LLMBreakdownTable({ visibilityByLLM, confidenceByLLM }: LLMBreak
               {/* Provider */}
               <div className="col-span-3 flex items-center gap-3">
                 <div
-                  className="w-8 h-8 rounded-xl flex items-center justify-center text-sm flex-shrink-0"
-                  style={{ backgroundColor: `${info.color}20`, border: `1px solid ${info.color}30` }}
+                  className={`w-8 h-8 rounded-xl flex items-center justify-center text-sm flex-shrink-0 ${info.iconBadgeClass}`}
                 >
                   {info.icon}
                 </div>
@@ -77,7 +84,7 @@ export function LLMBreakdownTable({ visibilityByLLM, confidenceByLLM }: LLMBreak
 
               {/* Visibility score bar */}
               <div className="col-span-4">
-                <ScoreBar value={scores.visibility_score} color={info.color} />
+                <ScoreBar value={scores.visibility_score} barClass={info.barClass} textClass={info.textClass} />
               </div>
 
               {/* Mention rate */}
@@ -90,7 +97,7 @@ export function LLMBreakdownTable({ visibilityByLLM, confidenceByLLM }: LLMBreak
               {/* Avg position */}
               <div className="col-span-2">
                 <p className="text-xs font-bold text-slate-300">
-                  {scores.average_position !== undefined ? `#${scores.average_position.toFixed(1)}` : '—'}
+                  {scores.average_position != null ? `#${scores.average_position.toFixed(1)}` : '—'}
                 </p>
               </div>
 

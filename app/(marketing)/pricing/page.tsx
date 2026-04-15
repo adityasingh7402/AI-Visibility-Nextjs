@@ -147,7 +147,7 @@ export default function PricingPage() {
             <AccordionItem value="item-1" className="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-white/5 data-[state=open]:bg-white dark:data-[state=open]:bg-slate-800 transition-colors px-6 rounded-xl data-[state=open]:shadow-md">
               <AccordionTrigger className="text-left font-bold text-lg hover:no-underline py-6">What exactly is Generative Engine Optimization (GEO)?</AccordionTrigger>
               <AccordionContent className="text-slate-500 dark:text-slate-400 text-base leading-relaxed pb-6">
-                GEO stands for Generative Engine Optimization. It's the specialized process of improving your brand's visibility and positive attribution directly within Large Language Model answers (like ChatGPT or Perplexity), rather than traditional search engine result pages. 
+                GEO stands for Generative Engine Optimization. It&apos;s the specialized process of improving your brand&apos;s visibility and positive attribution directly within Large Language Model answers (like ChatGPT or Perplexity), rather than traditional search engine result pages. 
               </AccordionContent>
             </AccordionItem>
             <AccordionItem value="item-2" className="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-white/5 data-[state=open]:bg-white dark:data-[state=open]:bg-slate-800 transition-colors px-6 rounded-xl data-[state=open]:shadow-md">

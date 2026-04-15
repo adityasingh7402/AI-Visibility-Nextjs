@@ -2,7 +2,6 @@
 import { motion, useScroll, useTransform } from "framer-motion";
 import { useRef } from "react";
 import { useMouseTilt } from "@/hooks/use-mouse-tilt";
-import SectionWatermark from "./SectionWatermark";
 import BackgroundHexagons from "./BackgroundHexagons";
 
 const steps = [
@@ -95,7 +94,7 @@ const HowItWorksSection = () => {
         </div>
 
         {/* Timeline area */}
-        <div className="relative" style={{ height: 380 }}>
+        <div className="relative h-[380px]">
           {/* SVG with curve and dots */}
           <svg
             className="absolute inset-0 w-full h-full pointer-events-none"
@@ -171,15 +170,15 @@ const HowItWorksSection = () => {
           </svg>
 
           {/* Step cards positioned to align with dots */}
-          <div className="absolute" style={{ left: "5%", top: "82%" }}>
+          <div className="absolute left-[5%] top-[82%]">
             <StepCard step={steps[0]} delay={0.15} />
           </div>
 
-          <div className="absolute" style={{ left: "38%", top: "45%" }}>
+          <div className="absolute left-[38%] top-[45%]">
             <StepCard step={steps[1]} delay={0.3} />
           </div>
 
-          <div className="absolute" style={{ right: "0%", top: "12%" }}>
+          <div className="absolute right-0 top-[12%]">
             <StepCard step={steps[2]} delay={0.45} />
           </div>
         </div>

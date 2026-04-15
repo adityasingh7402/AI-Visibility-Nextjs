@@ -1,265 +1,609 @@
 'use client';
 
 import { useState } from 'react';
-import { useContentValidation } from '@/hooks/useGeo';
-import { ScoreCard } from '@/components/geo/ScoreCard';
+import { useContentValidation, useContentEnhancement } from '@/hooks/useGeo';
+import { ProviderSelector } from '@/components/geo/ProviderSelector';
+import type { ProviderSelection } from '@/lib/types/providers';
+import type { ContentType, ContentLiveTestResponse, LLMProvider } from '@/lib/geo-types';
 import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Badge } from '@/components/ui/badge';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { cn } from '@/lib/utils';
+import {
+  Loader2, Zap, Bot, Sparkles, CheckCircle, AlertTriangle,
+  AlertCircle, Copy, ArrowRight, ShieldAlert,
+} from 'lucide-react';
+import { toast } from 'sonner';
 
-export default function ContentPage() {
-  const { data, loading, error, validate, testLive, reset } = useContentValidation();
+/* ------------------------------------------------------------------ */
+/*  Constants                                                          */
+/* ------------------------------------------------------------------ */
 
+const CONTENT_TYPES: { value: ContentType; label: string }[] = [
+  { value: 'blog_post', label: 'Blog Post' },
+  { value: 'landing_page', label: 'Landing Page' },
+  { value: 'faq_page', label: 'FAQ Page' },
+  { value: 'comparison_page', label: 'Comparison' },
+  { value: 'listicle', label: 'Listicle' },
+];
+
+const SEVERITY_VARIANT: Record<string, 'destructive' | 'default' | 'secondary'> = {
+  high: 'destructive',
+  medium: 'default',
+  low: 'secondary',
+};
+
+/* ------------------------------------------------------------------ */
+/*  Helpers                                                            */
+/* ------------------------------------------------------------------ */
+
+function scoreBarColor(score: number) {
+  if (score >= 75) return 'bg-emerald-500';
+  if (score >= 50) return 'bg-amber-500';
+  return 'bg-red-500';
+}
+
+function scoreTextColor(score: number) {
+  if (score >= 75) return 'text-emerald-600 dark:text-emerald-400';
+  if (score >= 50) return 'text-amber-600 dark:text-amber-400';
+  return 'text-red-600 dark:text-red-400';
+}
+
+function verdictLabel(score: number) {
+  if (score >= 75) return 'High Citability';
+  if (score >= 50) return 'Moderate Potential';
+  return 'Low Visibility';
+}
+
+function verdictColorClass(score: number) {
+  if (score >= 75) return 'emerald';
+  if (score >= 50) return 'amber';
+  return 'red';
+}
+
+const parseList = (s: string) => s.split(',').map(v => v.trim()).filter(Boolean);
+
+/* ------------------------------------------------------------------ */
+/*  Small presentational components                                    */
+/* ------------------------------------------------------------------ */
+
+function ScoreBanner({ score }: { score: number }) {
+  const c = verdictColorClass(score);
+  const Icon = score >= 75 ? CheckCircle : score >= 50 ? AlertTriangle : AlertCircle;
+  return (
+    <Card className={cn(
+      c === 'emerald' && 'border-emerald-500/30 bg-emerald-500/5',
+      c === 'amber' && 'border-amber-500/30 bg-amber-500/5',
+      c === 'red' && 'border-red-500/30 bg-red-500/5',
+    )}>
+      <CardContent className="pt-6 flex items-center gap-4">
+        <div className={cn(
+          'flex h-12 w-12 shrink-0 items-center justify-center rounded-lg',
+          c === 'emerald' && 'bg-emerald-500/20',
+          c === 'amber' && 'bg-amber-500/20',
+          c === 'red' && 'bg-red-500/20',
+        )}>
+          <Icon className={cn(
+            'h-6 w-6',
+            c === 'emerald' && 'text-emerald-600',
+            c === 'amber' && 'text-amber-600',
+            c === 'red' && 'text-red-600',
+          )} />
+        </div>
+        <div>
+          <p className={cn(
+            'text-lg font-bold',
+            c === 'emerald' && 'text-emerald-700 dark:text-emerald-400',
+            c === 'amber' && 'text-amber-700 dark:text-amber-400',
+            c === 'red' && 'text-red-700 dark:text-red-400',
+          )}>{verdictLabel(score)}</p>
+          <p className="text-sm text-muted-foreground">
+            RAG Citability Score: <span className="font-bold">{Math.round(score)}%</span>
+          </p>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+function SubScoreCard({ label, score }: { label: string; score: number }) {
+  return (
+    <Card>
+      <CardContent className="pt-4 pb-3 text-center">
+        <p className={cn('text-2xl font-bold', scoreTextColor(score))}>{Math.round(score)}</p>
+        <p className="text-xs text-muted-foreground mt-1">{label}</p>
+      </CardContent>
+    </Card>
+  );
+}
+
+function ErrorBanner({ message }: { message: string }) {
+  return (
+    <div className="rounded-lg bg-destructive/10 border border-destructive/20 p-3 text-sm text-destructive flex items-center gap-2">
+      <ShieldAlert className="h-4 w-4 shrink-0" /> {message}
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/*  Page                                                               */
+/* ------------------------------------------------------------------ */
+
+export default function ContentLabPage() {
+  // ---- shared form state ----
   const [brandName, setBrandName] = useState('');
   const [content, setContent] = useState('');
   const [targetQueries, setTargetQueries] = useState('');
-  const [contentType, setContentType] = useState('blog_post');
   const [competitors, setCompetitors] = useState('');
-  const [mode, setMode] = useState<'structural' | 'live'>('structural');
+  const [contentType, setContentType] = useState<ContentType>('blog_post');
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const queries = targetQueries.split(',').map(q => q.trim()).filter(Boolean);
-    const comps = competitors.split(',').map(c => c.trim()).filter(Boolean);
+  // ---- provider selection (live test) ----
+  const [selectedProviders, setSelectedProviders] = useState<ProviderSelection>({});
 
-    if (mode === 'live') {
-      await testLive({ content, brand_name: brandName, target_queries: queries, providers: ['chatgpt', 'gemini'], competitors: comps });
-    } else {
-      await validate({ content, brand_name: brandName, target_queries: queries, content_type: contentType as any, competitors: comps });
+  // ---- copy feedback ----
+  const [copied, setCopied] = useState(false);
+
+  // ---- hooks (separate instances → independent loading/data/error) ----
+  const structural = useContentValidation();
+  const live = useContentValidation();
+  const enhancement = useContentEnhancement();
+
+  const canSubmit = !!brandName.trim() && content.trim().length >= 50;
+
+  // ---- handlers ----
+  const handleStructural = async () => {
+    if (!canSubmit) {
+      if (!brandName.trim()) toast.error('Brand name is required');
+      else if (content.trim().length < 50) toast.error('Content must be at least 50 characters');
+      return;
+    }
+    try {
+      await structural.validate({
+        content,
+        brand_name: brandName,
+        target_queries: parseList(targetQueries),
+        competitors: parseList(competitors),
+        content_type: contentType,
+      });
+      toast.success('Structural check complete!');
+    } catch {
+      toast.error('Structural check failed');
     }
   };
 
-  const isReadyToPublish = data && data.rag_citability_score >= 75;
+  const handleLiveTest = async () => {
+    if (!canSubmit) {
+      if (!brandName.trim()) toast.error('Brand name is required');
+      else if (content.trim().length < 50) toast.error('Content must be at least 50 characters');
+      return;
+    }
+    const providers = Object.keys(selectedProviders) as LLMProvider[];
+    if (providers.length === 0) {
+      toast.error('Select at least 1 AI provider for live testing');
+      return;
+    }
+    try {
+      await live.testLive({
+        content,
+        brand_name: brandName,
+        target_queries: parseList(targetQueries),
+        providers,
+        competitors: parseList(competitors),
+      });
+      toast.success('Live AI test complete!');
+    } catch {
+      toast.error('Live test failed');
+    }
+  };
 
+  const handleEnhance = async () => {
+    if (!canSubmit) {
+      if (!brandName.trim()) toast.error('Brand name is required');
+      else if (content.trim().length < 50) toast.error('Content must be at least 50 characters');
+      return;
+    }
+    try {
+      await enhancement.enhance({
+        content,
+        brand_name: brandName,
+        target_queries: parseList(targetQueries),
+        competitors: parseList(competitors),
+        content_type: contentType,
+      });
+      toast.success('Content enhanced! ✨');
+    } catch {
+      toast.error('Enhancement failed');
+    }
+  };
+
+  const handleCopy = async (text: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+    } catch {
+      // Fallback for non-HTTPS or restricted contexts
+      const ta = document.createElement('textarea');
+      ta.value = text;
+      ta.style.position = 'fixed';
+      ta.style.opacity = '0';
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand('copy');
+      document.body.removeChild(ta);
+    }
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  // ---- derived data ----
+  const liveData =
+    live.data && 'live_test_results' in live.data
+      ? (live.data as unknown as ContentLiveTestResponse)
+      : null;
+
+  const enhData = enhancement.data;
+  const enhancedContent = enhData?.enhanced_content as string | undefined;
+  const enhancedScore = enhData?.enhanced_score as number | undefined;
+  const originalScore = enhData?.original_score as number | undefined;
+  const changes = (enhData?.changes ?? enhData?.improvements) as
+    | Array<{ type?: string; description?: string }>
+    | string[]
+    | undefined;
+
+  // ---- render ----
   return (
-    <div className="space-y-10">
+    <div className="space-y-6">
       {/* Page header */}
       <div>
-        <h1 className="text-4xl font-black text-slate-900 dark:text-white tracking-tight mb-2">Content Validator</h1>
-        <p className="text-slate-500 dark:text-slate-400 font-medium tracking-tight max-w-2xl">
-          Check if your content will be cited by AI models before you publish. 
-          Optimize for RAG (Retrieval-Augmented Generation) visibility.
+        <h1 className="text-3xl font-bold tracking-tight">Content Lab</h1>
+        <p className="text-muted-foreground mt-1 max-w-2xl">
+          Validate, test, and enhance your content for AI citability.
         </p>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 items-start">
-        {/* Left: Input panel */}
-        <form onSubmit={handleSubmit} className="lg:col-span-7 space-y-8 h-full">
-          <div className="rounded-[2.5rem] border border-slate-200 dark:border-white/5 bg-white dark:bg-slate-900/50 p-8 md:p-10 shadow-sm space-y-8">
-            {/* Mode toggle */}
-            <div className="space-y-4">
-              <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em] px-1">Validation Mode</label>
-              <div className="flex gap-3 bg-slate-50 dark:bg-black/40 p-1.5 rounded-2xl border border-slate-100 dark:border-white/5">
-                <button type="button" onClick={() => setMode('structural')}
-                  className={`flex-1 py-3 rounded-xl text-xs font-black transition-all ${
-                    mode === 'structural' 
-                      ? 'bg-white dark:bg-slate-800 text-primary shadow-sm border border-slate-200 dark:border-white/10' 
-                      : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
-                  }`}>
-                  ⚙️ Structural
-                </button>
-                <button type="button" onClick={() => setMode('live')}
-                  className={`flex-1 py-3 rounded-xl text-xs font-black transition-all ${
-                    mode === 'live' 
-                      ? 'bg-white dark:bg-slate-800 text-primary shadow-sm border border-slate-200 dark:border-white/10' 
-                      : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
-                  }`}>
-                  🤖 Live Test
-                </button>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="space-y-2">
-                <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em] px-1">Brand Name *</label>
-                <input value={brandName} onChange={e => setBrandName(e.target.value)} required placeholder="e.g. Notion"
-                  className="w-full rounded-2xl bg-slate-50 dark:bg-black/20 border border-slate-100 dark:border-white/10 px-5 py-4 text-sm text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all font-medium" />
-              </div>
-
-              <div className="space-y-2">
-                <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em] px-1">Content Type</label>
-                <select value={contentType} onChange={e => setContentType(e.target.value)}
-                  className="w-full rounded-2xl bg-slate-50 dark:bg-black/20 border border-slate-100 dark:border-white/10 px-5 py-4 text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all font-medium appearance-none">
-                  <option value="blog_post">Blog Post</option>
-                  <option value="faq_page">FAQ Page</option>
-                  <option value="comparison_page">Comparison Page</option>
-                  <option value="landing_page">Landing Page</option>
-                  <option value="listicle">Listicle</option>
-                </select>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="space-y-2">
-                <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em] px-1">Target Queries (comma-separated)</label>
-                <input value={targetQueries} onChange={e => setTargetQueries(e.target.value)}
-                  placeholder="best project management tool, Notion alternative"
-                  className="w-full rounded-2xl bg-slate-50 dark:bg-black/20 border border-slate-100 dark:border-white/10 px-5 py-4 text-sm text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all font-medium" />
-              </div>
-
-              <div className="space-y-2">
-                <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em] px-1">Competitors (comma-separated)</label>
-                <input value={competitors} onChange={e => setCompetitors(e.target.value)}
-                  placeholder="e.g. Asana, Trello, Monday.com"
-                  className="w-full rounded-2xl bg-slate-50 dark:bg-black/20 border border-slate-100 dark:border-white/10 px-5 py-4 text-sm text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all font-medium" />
-              </div>
-            </div>
-
+      {/* ---- Shared form ---- */}
+      <Card>
+        <CardContent className="pt-6 space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
-              <div className="flex justify-between items-end px-1">
-                <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em]">Full Content *</label>
-                <span className="text-[10px] font-bold text-slate-400">{content.length.toLocaleString()} characters</span>
-              </div>
-              <textarea value={content} onChange={e => setContent(e.target.value)} required rows={12}
-                placeholder="Paste your draft blog post, FAQ page, or landing page content here..."
-                className="w-full rounded-2xl bg-slate-50 dark:bg-black/20 border border-slate-100 dark:border-white/10 px-5 py-4 text-sm text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all font-mono resize-none leading-relaxed" />
+              <Label htmlFor="brand-name">Brand Name *</Label>
+              <Input
+                id="brand-name"
+                value={brandName}
+                onChange={e => setBrandName(e.target.value)}
+                placeholder="e.g. Notion"
+              />
             </div>
-
-            {error && <div className="rounded-2xl bg-red-500/10 border border-red-500/20 p-4 text-sm text-red-600 dark:text-red-400 font-semibold">{error}</div>}
-
-            <div className="flex flex-col sm:flex-row gap-4">
-              <Button type="submit" disabled={loading || !content || !brandName}
-                className="flex-1 py-7 rounded-2xl bg-primary hover:bg-blue-600 disabled:opacity-40 disabled:cursor-not-allowed text-white font-black text-base shadow-xl shadow-primary/25 transition-all active:scale-[0.99]">
-                {loading ? 'Validating...' : mode === 'live' ? 'Run Live AI Test' : 'Validate Content'}
-              </Button>
-              {data && (
-                <Button type="button" onClick={reset} variant="outline"
-                  className="sm:px-8 py-7 rounded-2xl border-slate-200 dark:border-white/10 text-slate-600 dark:text-slate-300 font-bold hover:bg-slate-50 dark:hover:bg-white/5 transition-all">
-                  Reset
-                </Button>
-              )}
+            <div className="space-y-2">
+              <Label>Content Type</Label>
+              <Select value={contentType} onValueChange={v => setContentType(v as ContentType)}>
+                <SelectTrigger className="w-full">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {CONTENT_TYPES.map(ct => (
+                    <SelectItem key={ct.value} value={ct.value}>{ct.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
           </div>
-        </form>
 
-        {/* Right: Results panel */}
-        <div className="lg:col-span-5 flex flex-col h-full">
-          {!data && !loading && (
-            <div className="flex-1 rounded-[2.5rem] border-2 border-dashed border-slate-200 dark:border-white/10 flex items-center justify-center min-h-[500px] bg-slate-50/50 dark:bg-transparent transition-colors hover:bg-slate-50 dark:hover:bg-white/[0.02]">
-              <div className="text-center space-y-4 p-8 max-w-xs">
-                <div className="w-16 h-16 rounded-[2rem] bg-slate-100 dark:bg-white/5 flex items-center justify-center mx-auto mb-2">
-                  <span className="text-2xl">📝</span>
-                </div>
-                <p className="text-base font-black text-slate-900 dark:text-white uppercase tracking-tighter">Ready for Analysis</p>
-                <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed font-medium">Paste your content on the left to analyze its potential for AI visibility and citability.</p>
-              </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="target-queries">Target Queries</Label>
+              <Input
+                id="target-queries"
+                value={targetQueries}
+                onChange={e => setTargetQueries(e.target.value)}
+                placeholder="best project management tool, Notion alternative"
+              />
+              <p className="text-xs text-muted-foreground">Comma-separated</p>
             </div>
-          )}
-
-          {loading && (
-            <div className="flex-1 rounded-[2.5rem] border border-slate-200 dark:border-white/5 bg-white dark:bg-slate-900/50 p-12 flex flex-col items-center justify-center gap-8 shadow-sm">
-              <div className="relative">
-                <div className="w-20 h-20 rounded-full border-4 border-primary/10 border-t-primary animate-spin" />
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <span className="text-xl animate-pulse">🤖</span>
-                </div>
-              </div>
-              <div className="text-center space-y-2">
-                <p className="text-lg font-black text-slate-900 dark:text-white uppercase tracking-tighter">Analyzing Content</p>
-                <p className="text-sm text-slate-500 dark:text-slate-400 font-medium">{mode === 'live' ? 'Connecting to live LLM engines...' : 'Evaluating structure and semantics...'}</p>
-              </div>
+            <div className="space-y-2">
+              <Label htmlFor="competitors">Competitors</Label>
+              <Input
+                id="competitors"
+                value={competitors}
+                onChange={e => setCompetitors(e.target.value)}
+                placeholder="Asana, Trello, Monday.com"
+              />
+              <p className="text-xs text-muted-foreground">Optional, comma-separated</p>
             </div>
-          )}
+          </div>
 
-          {data && !loading && (
-            <div className="space-y-8 animate-in fade-in slide-in-from-right-4 duration-700">
-              {/* Verdict banner */}
-              <div className={`rounded-[2.5rem] border-2 p-8 shadow-sm text-center ${
-                isReadyToPublish 
-                  ? 'bg-emerald-500/5 border-emerald-500/20 dark:bg-emerald-500/10' 
-                  : 'bg-amber-500/5 border-amber-500/20 dark:bg-amber-500/10'
-              }`}>
-                <div className={`w-14 h-14 rounded-2xl mx-auto mb-4 flex items-center justify-center text-2xl ${
-                  isReadyToPublish ? 'bg-emerald-500/20 text-emerald-600' : 'bg-amber-500/20 text-amber-600'
-                }`}>
-                  {isReadyToPublish ? '⚡' : '⚠️'}
-                </div>
-                <h3 className={`font-black text-xl uppercase tracking-tighter mb-2 ${isReadyToPublish ? 'text-emerald-700 dark:text-emerald-400' : 'text-amber-700 dark:text-amber-400'}`}>
-                  {isReadyToPublish ? 'High Citability' : 'Low Visibility Potential'}
-                </h3>
-                <p className={`text-sm font-medium ${isReadyToPublish ? 'text-emerald-600/80 dark:text-emerald-500/60' : 'text-amber-600/80 dark:text-amber-500/60'}`}>
-                  RAG Citability Score: <span className="font-black">{Math.round(data.rag_citability_score)}%</span>
-                </p>
+          <div className="space-y-2">
+            <div className="flex justify-between items-center">
+              <Label htmlFor="content-input">Content *</Label>
+              <span className={cn(
+                'text-xs',
+                content.length > 0 && content.length < 50
+                  ? 'text-destructive'
+                  : content.length >= 50 && content.length < 500
+                  ? 'text-amber-500'
+                  : 'text-muted-foreground',
+              )}>
+                {content.length.toLocaleString()} chars
+                {content.length > 0 && content.length < 50 && ' — min 50 required'}
+                {content.length >= 50 && content.length < 500 && ' — min 500 recommended'}
+              </span>
+            </div>
+            <Textarea
+              id="content-input"
+              value={content}
+              onChange={e => setContent(e.target.value)}
+              rows={10}
+              placeholder="Paste your blog post, FAQ page, or landing page content here…"
+              className="font-mono resize-y"
+            />
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* ---- Tabs ---- */}
+      <Tabs defaultValue="structural">
+        <TabsList className="w-full">
+          <TabsTrigger value="structural" className="flex-1 gap-1.5">
+            <Zap className="h-3.5 w-3.5" /> Structural Check
+          </TabsTrigger>
+          <TabsTrigger value="live" className="flex-1 gap-1.5">
+            <Bot className="h-3.5 w-3.5" /> Live AI Test
+          </TabsTrigger>
+          <TabsTrigger value="enhance" className="flex-1 gap-1.5">
+            <Sparkles className="h-3.5 w-3.5" /> Enhance ✨
+          </TabsTrigger>
+        </TabsList>
+
+        {/* ============ Tab 1 — Structural Check ============ */}
+        <TabsContent value="structural" className="mt-4 space-y-4">
+          <div className="flex items-center gap-3">
+            <Button onClick={handleStructural} disabled={!canSubmit || structural.loading}>
+              {structural.loading
+                ? <><Loader2 className="h-4 w-4 animate-spin mr-2" /> Checking…</>
+                : <><Zap className="h-4 w-4 mr-2" /> Run Structural Check</>}
+            </Button>
+            {structural.data && (
+              <Button variant="outline" size="sm" onClick={structural.reset}>Reset</Button>
+            )}
+          </div>
+
+          {structural.error && <ErrorBanner message={structural.error} />}
+
+          {structural.data && (
+            <div className="space-y-4">
+              <ScoreBanner score={structural.data.rag_citability_score} />
+
+              <div className="grid grid-cols-3 gap-3">
+                <SubScoreCard label="Structure" score={structural.data.structure_score} />
+                <SubScoreCard label="Factual Density" score={structural.data.factual_density_score} />
+                <SubScoreCard label="Brand Authority" score={structural.data.brand_visibility_score} />
               </div>
 
-              {/* Score cards */}
-              <div className="grid grid-cols-2 gap-4">
-                <ScoreCard label="Structure" score={data.structure_score} size="sm" />
-                <ScoreCard label="Fact Density" score={data.factual_density_score} size="sm" />
-                <ScoreCard label="Brand Focus" score={data.brand_visibility_score} size="sm" />
-                <ScoreCard label="Readability" score={data.rag_citability_score} size="sm" />
-              </div>
-
-              {/* Improvements */}
-              {data.improvement_areas?.length > 0 && (
-                <div className="rounded-[2.5rem] border border-slate-200 dark:border-white/5 bg-white dark:bg-slate-900/50 p-8 space-y-6 shadow-sm">
-                  <h3 className="text-xs font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em] px-1">Action Items</h3>
-                  <div className="space-y-3">
-                    {data.improvement_areas.map((area, i) => (
-                      <div key={i} className={`rounded-2xl p-4 transition-all hover:scale-[1.02] border ${
-                        area.severity === 'high' ? 'bg-red-500/5 border-red-500/10 dark:bg-red-500/10 dark:border-red-500/20' :
-                        area.severity === 'medium' ? 'bg-amber-500/5 border-amber-500/10 dark:bg-amber-500/10 dark:border-amber-500/20' :
-                        'bg-slate-50 border-slate-100 dark:bg-white/5 dark:border-white/10'
-                      }`}>
-                        <div className="flex items-center justify-between mb-1">
-                          <p className="text-[10px] font-black text-slate-900 dark:text-white uppercase tracking-wider">{area.area.replace(/_/g, ' ')}</p>
-                          <span className={`text-[8px] font-black uppercase px-2 py-0.5 rounded-full ${
-                            area.severity === 'high' ? 'bg-red-500 text-white' : 
-                            area.severity === 'medium' ? 'bg-amber-500 text-white' : 
-                            'bg-slate-500 text-white'
-                          }`}>{area.severity}</span>
+              {/* Issues */}
+              {structural.data.improvement_areas?.length > 0 && (
+                <Card>
+                  <CardHeader><CardTitle className="text-sm">Issues</CardTitle></CardHeader>
+                  <CardContent className="space-y-2">
+                    {structural.data.improvement_areas.map((issue, i) => (
+                      <div key={i} className="flex items-start justify-between gap-3 rounded-lg border p-3">
+                        <div className="space-y-1 min-w-0">
+                          <p className="text-sm font-medium capitalize">{issue.area.replace(/_/g, ' ')}</p>
+                          <p className="text-xs text-muted-foreground">{issue.suggestion}</p>
                         </div>
-                        <p className="text-xs text-slate-600 dark:text-slate-400 font-medium leading-relaxed">{area.suggestion}</p>
+                        <Badge variant={SEVERITY_VARIANT[issue.severity] ?? 'secondary'} className="shrink-0">
+                          {issue.severity.toUpperCase()}
+                        </Badge>
                       </div>
                     ))}
-                  </div>
-                </div>
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* Query alignment */}
+              {structural.data.query_alignments?.length > 0 && (
+                <Card>
+                  <CardHeader><CardTitle className="text-sm">Query Alignment</CardTitle></CardHeader>
+                  <CardContent className="space-y-2">
+                    {structural.data.query_alignments.map((qa, i) => (
+                      <div key={i} className="flex items-center justify-between rounded-lg border p-3">
+                        <span className="text-sm truncate mr-4">{qa.query}</span>
+                        <div className="flex items-center gap-2 shrink-0">
+                          <div className="w-24 h-2 bg-muted rounded-full overflow-hidden">
+                            <div
+                              className={cn('h-full rounded-full', scoreBarColor(qa.alignment_score))}
+                              style={{ width: `${qa.alignment_score}%` }}
+                            />
+                          </div>
+                          <span className="text-xs font-medium w-8 text-right">{Math.round(qa.alignment_score)}%</span>
+                        </div>
+                      </div>
+                    ))}
+                  </CardContent>
+                </Card>
               )}
 
               {/* Recommendations */}
-              {data.recommendations?.length > 0 && (
-                <div className="rounded-[2.5rem] border border-primary/20 bg-primary/5 p-8 space-y-4 shadow-sm">
-                  <h3 className="text-xs font-black text-primary uppercase tracking-[0.2em] px-1">Expert Strategy</h3>
-                  <div className="space-y-3">
-                    {data.recommendations.map((rec, i) => (
-                      <div key={i} className="flex gap-4 items-start group">
-                        <span className="flex-shrink-0 w-6 h-6 rounded-lg bg-primary/10 text-primary flex items-center justify-center font-black text-[10px] group-hover:scale-110 transition-transform">✓</span>
-                        <p className="text-xs text-slate-700 dark:text-slate-300 font-medium leading-relaxed group-hover:text-primary transition-colors">{rec}</p>
+              {structural.data.recommendations?.length > 0 && (
+                <Card>
+                  <CardHeader><CardTitle className="text-sm">Recommendations</CardTitle></CardHeader>
+                  <CardContent className="space-y-2">
+                    {structural.data.recommendations.map((rec, i) => (
+                      <div key={i} className="flex gap-2 items-start">
+                        <CheckCircle className="h-4 w-4 text-primary shrink-0 mt-0.5" />
+                        <p className="text-sm text-muted-foreground">{rec}</p>
                       </div>
                     ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Warnings — non-fatal messages from engine (§10) */}
-              {data.warnings && data.warnings.length > 0 && (
-                <div className="rounded-[2.5rem] border border-amber-500/20 bg-amber-500/5 p-6 space-y-3">
-                  <h3 className="text-xs font-black text-amber-600 dark:text-amber-400 uppercase tracking-[0.2em] flex items-center gap-2">
-                    <span>⚠️</span> Warnings
-                  </h3>
-                  <ul className="space-y-1.5">
-                    {data.warnings.map((w, i) => (
-                      <li key={i} className="text-xs text-amber-700 dark:text-amber-300 font-medium">{w}</li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-
-              {/* Errors — engine-level errors (§10) */}
-              {data.errors && data.errors.length > 0 && (
-                <div className="rounded-[2.5rem] border border-red-500/20 bg-red-500/5 p-6 space-y-3">
-                  <h3 className="text-xs font-black text-red-600 dark:text-red-400 uppercase tracking-[0.2em] flex items-center gap-2">
-                    <span>🔴</span> Engine Errors
-                  </h3>
-                  <ul className="space-y-1.5">
-                    {data.errors.map((e, i) => (
-                      <li key={i} className="text-xs text-red-700 dark:text-red-300 font-medium">{e}</li>
-                    ))}
-                  </ul>
-                </div>
+                  </CardContent>
+                </Card>
               )}
             </div>
           )}
-        </div>
-      </div>
+        </TabsContent>
+
+        {/* ============ Tab 2 — Live AI Test ============ */}
+        <TabsContent value="live" className="mt-4 space-y-4">
+          <ProviderSelector selected={selectedProviders} onChange={setSelectedProviders} compact />
+
+          <div className="flex items-center gap-3">
+            <Button
+              onClick={handleLiveTest}
+              disabled={!canSubmit || live.loading || Object.keys(selectedProviders).length === 0}
+            >
+              {live.loading
+                ? <><Loader2 className="h-4 w-4 animate-spin mr-2" /> Testing…</>
+                : <><Bot className="h-4 w-4 mr-2" /> Test Against Real AI</>}
+            </Button>
+            {live.data && (
+              <Button variant="outline" size="sm" onClick={live.reset}>Reset</Button>
+            )}
+          </div>
+
+          {live.error && <ErrorBanner message={live.error} />}
+
+          {liveData && (
+            <div className="space-y-4">
+              <ScoreBanner score={liveData.rag_citability_score} />
+
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                {([
+                  { label: 'Queries Tested', value: liveData.live_test_results.total_queries },
+                  { label: 'LLM Calls', value: liveData.live_test_results.total_llm_calls },
+                  { label: 'Mentions Found', value: liveData.live_test_results.mentions_detected },
+                  { label: 'Mention Rate', value: `${Math.round(liveData.live_test_results.mention_rate * 100)}%` },
+                ] as const).map(item => (
+                  <Card key={item.label}>
+                    <CardContent className="pt-4 pb-3 text-center">
+                      <p className="text-xl font-bold">{item.value}</p>
+                      <p className="text-xs text-muted-foreground">{item.label}</p>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+
+              {liveData.verdict && (
+                <div className="flex items-center gap-2">
+                  <span className="text-sm font-medium">Verdict:</span>
+                  <Badge variant={
+                    liveData.verdict === 'strong' ? 'default'
+                    : liveData.verdict === 'promising' ? 'secondary'
+                    : 'destructive'
+                  }>
+                    {liveData.verdict.replace('_', ' ')}
+                  </Badge>
+                </div>
+              )}
+
+              {liveData.verdict_reasoning && (
+                <p className="text-sm text-muted-foreground leading-relaxed">{liveData.verdict_reasoning}</p>
+              )}
+
+              {liveData.next_steps?.length > 0 && (
+                <Card>
+                  <CardHeader><CardTitle className="text-sm">Next Steps</CardTitle></CardHeader>
+                  <CardContent className="space-y-2">
+                    {liveData.next_steps.map((step, i) => (
+                      <div key={i} className="flex gap-2 items-start">
+                        <ArrowRight className="h-4 w-4 text-primary shrink-0 mt-0.5" />
+                        <p className="text-sm text-muted-foreground">{step}</p>
+                      </div>
+                    ))}
+                  </CardContent>
+                </Card>
+              )}
+            </div>
+          )}
+        </TabsContent>
+
+        {/* ============ Tab 3 — Enhance ✨ ============ */}
+        <TabsContent value="enhance" className="mt-4 space-y-4">
+          <div className="flex items-center gap-3">
+            <Button onClick={handleEnhance} disabled={!canSubmit || enhancement.loading}>
+              {enhancement.loading
+                ? <><Loader2 className="h-4 w-4 animate-spin mr-2" /> Enhancing…</>
+                : <><Sparkles className="h-4 w-4 mr-2" /> Enhance for AI Citability</>}
+            </Button>
+            {enhData && (
+              <Button variant="outline" size="sm" onClick={enhancement.reset}>Reset</Button>
+            )}
+          </div>
+
+          {enhancement.error && <ErrorBanner message={enhancement.error} />}
+
+          {enhData && (
+            <div className="space-y-4">
+              {/* Before → After score comparison */}
+              {(originalScore != null || enhancedScore != null) && (
+                <Card>
+                  <CardContent className="pt-6">
+                    <div className="flex items-center justify-center gap-6">
+                      {originalScore != null && (
+                        <div className="text-center">
+                          <p className="text-xs text-muted-foreground mb-1">Original</p>
+                          <p className={cn('text-3xl font-bold', scoreTextColor(originalScore))}>
+                            {Math.round(originalScore)}
+                          </p>
+                        </div>
+                      )}
+                      <ArrowRight className="h-6 w-6 text-muted-foreground" />
+                      {enhancedScore != null && (
+                        <div className="text-center">
+                          <p className="text-xs text-muted-foreground mb-1">Enhanced</p>
+                          <p className={cn('text-3xl font-bold', scoreTextColor(enhancedScore))}>
+                            {Math.round(enhancedScore)}
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* Changes made */}
+              {changes && changes.length > 0 && (
+                <Card>
+                  <CardHeader><CardTitle className="text-sm">Changes Made</CardTitle></CardHeader>
+                  <CardContent className="space-y-2">
+                    {changes.map((change, i) => (
+                      <div key={i} className="flex gap-2 items-start">
+                        <CheckCircle className="h-4 w-4 text-emerald-500 shrink-0 mt-0.5" />
+                        <p className="text-sm text-muted-foreground">
+                          {typeof change === 'string'
+                            ? change
+                            : (change as { description?: string }).description ?? JSON.stringify(change)}
+                        </p>
+                      </div>
+                    ))}
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* Enhanced content with copy */}
+              {enhancedContent && (
+                <Card>
+                  <CardHeader>
+                    <div className="flex items-center justify-between">
+                      <CardTitle className="text-sm">Enhanced Content</CardTitle>
+                      <Button variant="outline" size="sm" onClick={() => handleCopy(enhancedContent)}>
+                        <Copy className="h-3.5 w-3.5 mr-1.5" />
+                        {copied ? 'Copied!' : 'Copy Enhanced Content'}
+                      </Button>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <pre className="text-sm whitespace-pre-wrap bg-muted rounded-lg p-4 max-h-[400px] overflow-y-auto">
+                      {enhancedContent}
+                    </pre>
+                  </CardContent>
+                </Card>
+              )}
+            </div>
+          )}
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }

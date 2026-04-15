@@ -1,21 +1,26 @@
 import { NextResponse } from 'next/server'
-// The client you created in Step 2.
 import { createClient } from '@/utils/supabase/server'
 
 export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url)
   const code = searchParams.get('code')
-  // if "next" is in param, use it as the redirect URL
   const next = searchParams.get('next') ?? '/dashboard'
+
+  // Handle OAuth/signup errors passed back from Supabase
+  const errorDescription = searchParams.get('error_description')
+  if (errorDescription) {
+    return NextResponse.redirect(
+      `${origin}/login?message=${encodeURIComponent(errorDescription)}`
+    )
+  }
 
   if (code) {
     const supabase = await createClient()
     const { error } = await supabase.auth.exchangeCodeForSession(code)
     if (!error) {
-      const forwardedHost = request.headers.get('x-forwarded-host') // [v15] Next.js includes x-forwarded-host
+      const forwardedHost = request.headers.get('x-forwarded-host')
       const isLocalEnv = process.env.NODE_ENV === 'development'
       if (isLocalEnv) {
-        // we can be sure that origin is http://localhost:300x
         return NextResponse.redirect(`${origin}${next}`)
       } else if (forwardedHost) {
         return NextResponse.redirect(`https://${forwardedHost}${next}`)
@@ -23,8 +28,11 @@ export async function GET(request: Request) {
         return NextResponse.redirect(`${origin}${next}`)
       }
     }
+    // Exchange failed — show the error
+    return NextResponse.redirect(
+      `${origin}/login?message=${encodeURIComponent(error.message)}`
+    )
   }
 
-  // return the user to an error page with instructions
-  return NextResponse.redirect(`${origin}/auth/auth-code-error`)
+  return NextResponse.redirect(`${origin}/login?message=${encodeURIComponent('Authentication failed. Please try again.')}`)
 }

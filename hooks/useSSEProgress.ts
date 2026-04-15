@@ -2,38 +2,20 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { createClient } from '@/utils/supabase/client';
-
-export interface AnalysisProgress {
-  analysis_id: string;
-  status: 'pending' | 'processing' | 'completed' | 'failed';
-  current_stage: string;
-  progress_percent: number;
-  stage_progress_percent: number;
-  completed_stages: string[];
-  error_message?: string;
-  estimated_seconds_remaining?: number;
-  timestamp: string;
-}
+import type { AnalysisProgress } from '@/lib/report-types';
+import { PHASE_DISPLAY } from '@/lib/report-types';
 
 const STAGE_LABELS: Record<string, string> = {
-  // BACKEND_HANDOFF_v2.0 §6 — spec-defined SSE phase names
-  'queued': 'Waiting in queue…',
-  'crawling': 'Crawling web content…',
-  'researching': 'Researching competitors…',
-  'testing_llms': 'Testing AI model visibility…',
-  'analyzing_images': 'Analyzing brand imagery…',
-  'optimizing': 'Generating GEO score…',
-  'verifying': 'Verifying results…',
-  'completed': 'Analysis complete!',
-  'failed': 'Analysis failed',
+  // Uses PHASE_DISPLAY from report-types.ts as source of truth
+  ...Object.fromEntries(Object.entries(PHASE_DISPLAY).map(([k, v]) => [k, v.description])),
   // Legacy agent-style names (backward compat)
   'Starting Analysis': 'Initializing agents…',
   'Running Crawler Agent': 'Crawling web content…',
-  'Running Researcher Agent': 'Researching competitors…',
+  'Running Researcher Agent': 'Researching market signals…',
   'Running LLM Tester Agent': 'Testing AI model visibility…',
   'Running Image Analyzer': 'Analyzing brand imagery…',
-  'Running Optimizer Agent': 'Generating GEO score…',
-  'Running Verifier Agent': 'Verifying results…',
+  'Running Optimizer Agent': 'Generating visibility score…',
+  'Running Verifier Agent': 'Validating results…',
 };
 
 /**
@@ -59,21 +41,50 @@ export function useSSEProgress(analysisId: string | null) {
     if (!analysisId) return;
 
     let cancelled = false;
+    let retryCount = 0;
+    const MAX_RETRIES = 3;
+
+    /**
+     * Fetch a valid Supabase JWT, refreshing the session if the current
+     * token is expired.  Returns null when no session exists.
+     */
+    const getToken = async (): Promise<string | null> => {
+      try {
+        const supabase = createClient();
+        const { data: { session } } = await supabase.auth.getSession();
+
+        if (!session?.access_token) return null;
+
+        const isExpired = session.expires_at
+          ? session.expires_at * 1000 <= Date.now()
+          : false;
+
+        if (isExpired) {
+          const { data: refreshed, error: refreshError } =
+            await supabase.auth.refreshSession();
+          if (refreshError || !refreshed.session) return null;
+          return refreshed.session.access_token;
+        }
+
+        return session.access_token;
+      } catch {
+        return null;
+      }
+    };
 
     const connect = async () => {
       const apiBase = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
 
-      // Fetch the JWT from Supabase to pass as a query param
-      let token = '';
-      try {
-        const supabase = createClient();
-        const { data: { session } } = await supabase.auth.getSession();
-        token = session?.access_token || '';
-      } catch {
-        // If we can't get a token, try connecting anyway — backend will reject
-      }
-
+      // Ensure we have a valid token before opening the SSE connection.
+      // EventSource doesn't support Authorization headers, so the JWT is
+      // passed as a query param.
+      const token = await getToken();
       if (cancelled) return;
+
+      if (!token) {
+        setError('Authentication required. Please log in to track progress.');
+        return;
+      }
 
       // BACKEND_HANDOFF_v2.0 §3.4 / §6 — Use the spec-defined SSE alias endpoint
       const url = `${apiBase}/api/v1/events/${analysisId}?token=${encodeURIComponent(token)}`;
@@ -89,12 +100,26 @@ export function useSSEProgress(analysisId: string | null) {
       es.addEventListener('connected', () => {
         setConnected(true);
         setError(null);
+        retryCount = 0; // Reset on successful connection
       });
 
       es.addEventListener('progress', (event: MessageEvent) => {
         try {
           const data = JSON.parse(event.data) as AnalysisProgress;
-          setProgress(data);
+          // Only update if progress moves forward (guard against server-side regression)
+          setProgress(prev => {
+            if (!prev) return data;
+            if (data.progress_percent >= prev.progress_percent) return data;
+            // Keep higher progress and stage_progress_percent but update other fields
+            return {
+              ...data,
+              progress_percent: prev.progress_percent,
+              stage_progress_percent: Math.max(
+                data.stage_progress_percent ?? 0,
+                prev.stage_progress_percent ?? 0,
+              ),
+            };
+          });
         } catch {
           console.error('[SSE] Failed to parse progress event');
         }
@@ -103,7 +128,13 @@ export function useSSEProgress(analysisId: string | null) {
       es.addEventListener('complete', (event: MessageEvent) => {
         try {
           const data = JSON.parse(event.data);
-          setProgress(prev => prev ? { ...prev, status: data.status } : null);
+          setProgress(prev => prev ? {
+            ...prev,
+            status: data.status,
+            progress_percent: 100,
+            current_stage: 'completed',
+            report_id: data.report_id || null,
+          } : null);
         } catch { /* ignore */ }
         es.close();
         setConnected(false);
@@ -119,10 +150,44 @@ export function useSSEProgress(analysisId: string | null) {
         setConnected(false);
       });
 
+      // Listen for backend-sent error events (e.g. consecutive poll failures)
+      es.addEventListener('error', (event: MessageEvent) => {
+        try {
+          const data = JSON.parse(event.data);
+          const msg = data.message || data.error || 'Stream error from server';
+          if (data.retrying) {
+            // Transient error — backend is retrying, just log
+            console.warn('[SSE] Server-side poll error (retrying):', msg);
+          } else {
+            // Fatal error — close and surface
+            setError(msg);
+            es.close();
+            setConnected(false);
+            eventSourceRef.current = null;
+          }
+        } catch {
+          // Non-JSON error event — treat as fatal
+          setError('Stream error from server');
+          es.close();
+          setConnected(false);
+          eventSourceRef.current = null;
+        }
+      });
+
+      // Network-level errors (connection dropped, 401, etc)
       es.onerror = () => {
-        // Only close on CLOSED state; EventSource auto-reconnects on transient errors
         if (es.readyState === EventSource.CLOSED) {
-          setError('Connection lost. Progress tracking stopped.');
+          retryCount++;
+          if (retryCount <= MAX_RETRIES && !cancelled) {
+            console.warn(`[SSE] Connection lost, retrying (${retryCount}/${MAX_RETRIES})...`);
+            es.close();
+            eventSourceRef.current = null;
+            setConnected(false);
+            connect();
+            return;
+          }
+
+          setError('Connection lost after multiple retries. Please refresh the page.');
           setConnected(false);
           eventSourceRef.current = null;
         }

@@ -2,22 +2,16 @@ import {
   TrendingUp, 
   Users, 
   Zap, 
-  AlertTriangle, 
   ArrowUpRight, 
   ArrowDownRight,
-  MoreHorizontal,
   Plus,
-  LayoutGrid,
   ExternalLink,
-  ChevronRight,
   ShieldCheck,
-  ShieldAlert,
   CreditCard,
   Clock,
   Activity
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 
 import { createClient } from "@/utils/supabase/server";
@@ -154,14 +148,27 @@ export default async function AdminOverviewPage() {
             <Card className="p-10 bg-white dark:bg-slate-900 border-none shadow-[0_8px_30px_rgb(0,0,0,0.04)] dark:shadow-none rounded-[2.5rem]">
                <div className="h-[400px] w-full flex items-end justify-between gap-4">
                   {/* High quality faked chart area */}
-                  {[65, 80, 45, 90, 75, 55, 100, 85, 70, 95, 60, 88].map((v, i) => (
+                  {[
+                     { v: 65, h1: 'h-[26%]', h2: 'h-[39%]' },
+                     { v: 80, h1: 'h-[32%]', h2: 'h-[48%]' },
+                     { v: 45, h1: 'h-[18%]', h2: 'h-[27%]' },
+                     { v: 90, h1: 'h-[36%]', h2: 'h-[54%]' },
+                     { v: 75, h1: 'h-[30%]', h2: 'h-[45%]' },
+                     { v: 55, h1: 'h-[22%]', h2: 'h-[33%]' },
+                     { v: 100, h1: 'h-[40%]', h2: 'h-[60%]' },
+                     { v: 85, h1: 'h-[34%]', h2: 'h-[51%]' },
+                     { v: 70, h1: 'h-[28%]', h2: 'h-[42%]' },
+                     { v: 95, h1: 'h-[38%]', h2: 'h-[57%]' },
+                     { v: 60, h1: 'h-[24%]', h2: 'h-[36%]' },
+                     { v: 88, h1: 'h-[35%]', h2: 'h-[53%]' },
+                  ].map((bar, i) => (
                      <div key={i} className="flex-grow group relative flex flex-col justify-end gap-1">
                         <div className="absolute -top-12 left-1/2 -translate-x-1/2 bg-slate-900 text-white text-[10px] font-black px-2 py-1.5 rounded-lg opacity-0 group-hover:opacity-100 transition-all pointer-events-none z-10 whitespace-nowrap shadow-xl">
-                           Day {i+1}: {(v * 10).toLocaleString()} reqs
+                           Day {i+1}: {(bar.v * 10).toLocaleString()} reqs
                         </div>
                         {/* Multiple stacks for multi-pass visualization */}
-                        <div className="w-full bg-blue-500/20 hover:bg-blue-500/40 transition-all rounded-t-sm" style={{ height: `${v * 0.4}%` }}></div>
-                        <div className="w-full bg-primary/40 hover:bg-primary transition-all rounded-t-sm" style={{ height: `${v * 0.6}%` }}></div>
+                        <div className={`w-full bg-blue-500/20 hover:bg-blue-500/40 transition-all rounded-t-sm ${bar.h1}`}></div>
+                        <div className={`w-full bg-primary/40 hover:bg-primary transition-all rounded-t-sm ${bar.h2}`}></div>
                      </div>
                   ))}
                </div>

@@ -1,5 +1,5 @@
 "use client";
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { motion } from "framer-motion";
 
 const BackgroundHexagons = ({ className = "" }: { className?: string }) => {
@@ -13,8 +13,6 @@ const BackgroundHexagons = ({ className = "" }: { className?: string }) => {
   const s = 45; 
   const h = Math.sqrt(3) * s;
 
-  if (!mounted) return null;
-
   const getPoints = (x: number, y: number) => {
     return [
       [x + s / 2, y],
@@ -26,7 +24,7 @@ const BackgroundHexagons = ({ className = "" }: { className?: string }) => {
     ].map(p => p.join(",")).join(" ");
   };
 
-  const renderCluster = (clusterIndex: number) => {
+  const renderCluster = () => {
     const hexagons = [];
     const rows = 5;
     const cols = 5;
@@ -40,11 +38,26 @@ const BackgroundHexagons = ({ className = "" }: { className?: string }) => {
           const y = r * h + (c % 2 === 0 ? 0 : h / 2);
           const isGlow = Math.random() > 0.7;
           
-          hexagons.push({ x, y, isGlow, r, c });
+          hexagons.push({ x, y, isGlow, glowDelay: Math.random() * 2, r, c });
         }
       }
     }
 
+    return hexagons;
+  };
+
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const cluster0 = useMemo(() => renderCluster(), []);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const cluster1 = useMemo(() => renderCluster(), []);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const cluster2 = useMemo(() => renderCluster(), []);
+
+  const clusterData = [cluster0, cluster1, cluster2];
+
+  if (!mounted) return null;
+
+  const renderClusterFromData = (hexagons: { x: number; y: number; isGlow: boolean; glowDelay: number; r: number; c: number; }[], clusterIndex: number) => {
     return (
       <g key={clusterIndex}>
         {hexagons.map((hex, i) => (
@@ -76,7 +89,7 @@ const BackgroundHexagons = ({ className = "" }: { className?: string }) => {
                 transition={{ 
                   duration: 3, 
                   repeat: Infinity,
-                  delay: Math.random() * 2
+                  delay: hex.glowDelay
                 }}
               >
                 {/* Glow Ring */}
@@ -102,7 +115,7 @@ const BackgroundHexagons = ({ className = "" }: { className?: string }) => {
   };
 
   return (
-    <div className={`absolute pointer-events-none select-none overflow-hidden ${className}`} aria-hidden="true" style={{ zIndex: 0 }}>
+    <div className={`absolute pointer-events-none select-none overflow-hidden z-0 ${className}`} aria-hidden="true">
       {/* Increased contrast background pulse */}
       <div className="absolute inset-0 bg-cyan-400/5 blur-[120px] rounded-full" />
       
@@ -140,12 +153,12 @@ const BackgroundHexagons = ({ className = "" }: { className?: string }) => {
 
         {/* Top Left Cluster */}
         <g transform="translate(30,30)">
-          {renderCluster(0)}
+          {renderClusterFromData(clusterData[0], 0)}
         </g>
 
         {/* Bottom Right Cluster */}
         <g transform="translate(350,350) rotate(180, 100, 100)">
-          {renderCluster(1)}
+          {renderClusterFromData(clusterData[1], 1)}
         </g>
       </svg>
     </div>

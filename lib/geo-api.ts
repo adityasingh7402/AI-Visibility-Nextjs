@@ -17,8 +17,41 @@ import type {
   BatchKeywordDiscoveryRequest,
   BatchKeywordDiscoveryResponse,
 } from './geo-types';
+import type {
+  GeoAnalysisRequest,
+  GeoAnalysisAsyncResponse,
+  GeoAnalysisResponse,
+  StoredGeoAnalysis,
+  AnalysisProgress,
+  ActivePipeline,
+} from './report-types';
+import type { ReportFamily, ReportVariant, StructuredReport } from './report-v2-types';
+import type { ProviderRegistry } from './types/providers';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+
+// ---- Unified Reports types ----
+
+export interface UnifiedReport {
+  id: string;
+  type: ReportFamily;
+  variant: ReportVariant;
+  report_type: string;
+  display_label: string;
+  brand_name: string;
+  score: number | null;
+  grade: string;
+  status: string;
+  created_at: string;
+  summary: string;
+}
+
+export interface ReportsListResponse {
+  reports: UnifiedReport[];
+  total: number;
+  limit: number;
+  offset: number;
+}
 
 // ---- Error types per BACKEND_HANDOFF_v2.0 §8 ----
 
@@ -140,16 +173,33 @@ class GEOApi {
       timeout: 120000, // 2 min — keyword discovery can take up to 90s
     });
 
-    // Attach Supabase auth token on every request
+    // Attach Supabase auth token on every request, refreshing if expired
     this.client.interceptors.request.use(async (config) => {
       try {
         const supabase = createClient();
         const { data: { session } } = await supabase.auth.getSession();
-        if (session?.access_token) {
-          config.headers.Authorization = `Bearer ${session.access_token}`;
+
+        if (session) {
+          const isExpired = session.expires_at
+            ? session.expires_at * 1000 <= Date.now()
+            : false;
+
+          if (isExpired) {
+            const { data: refreshed, error: refreshError } =
+              await supabase.auth.refreshSession();
+            if (refreshError || !refreshed.session) {
+              if (typeof window !== 'undefined') {
+                window.location.href = '/login';
+              }
+              return config;
+            }
+            config.headers.Authorization = `Bearer ${refreshed.session.access_token}`;
+          } else {
+            config.headers.Authorization = `Bearer ${session.access_token}`;
+          }
         }
-      } catch (e) {
-        // no-op if supabase not available
+      } catch {
+        // no-op if supabase not available (e.g. SSR)
       }
       return config;
     });
@@ -205,11 +255,42 @@ class GEOApi {
     return data;
   }
 
-  // ---- Full Analyze (legacy) ----
+  // ---- Full Analyze (async pipeline) ----
 
-  async runAnalyze(request: KeywordDiscoveryRequest & { url?: string; scan_mode?: string }): Promise<KeywordDiscoveryResponse> {
+  /** Submit a full GEO analysis — returns immediately with {analysis_id, status: "processing"} */
+  async runAnalyzeAsync(request: GeoAnalysisRequest): Promise<GeoAnalysisAsyncResponse> {
     const { data } = await this.client.post('/api/v1/analyze', request);
     return data;
+  }
+
+  /** Fetch completed analysis result by job ID */
+  async getAnalyzeResult(analysisId: string): Promise<GeoAnalysisResponse> {
+    // Full pipeline can take up to 420s — use extended timeout
+    const { data } = await this.client.get(`/api/v1/analyze/${analysisId}/result`, { timeout: 480000 });
+    return data;
+  }
+
+  /** Poll analysis progress */
+  async pollProgress(analysisId: string): Promise<AnalysisProgress> {
+    const { data } = await this.client.get(`/api/v1/progress/poll/${analysisId}`, {
+      timeout: 10000,
+      headers: { 'Cache-Control': 'no-store, no-cache', 'Pragma': 'no-cache' },
+    });
+    return data;
+  }
+
+  /**
+   * Get SSE stream URL with auth token embedded as a query param.
+   * The token is passed in the URL because the EventSource API does not
+   * support custom Authorization headers.
+   */
+  async getSSEStreamUrl(analysisId: string): Promise<string> {
+    const supabase = createClient();
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session?.access_token) {
+      throw new Error('No active session. Please log in to stream analysis progress.');
+    }
+    return `${API_BASE_URL}/api/v1/progress/stream/${analysisId}?token=${encodeURIComponent(session.access_token)}`;
   }
 
   // ---- Progress ----
@@ -221,12 +302,29 @@ class GEOApi {
 
   // ---- Analyses (from Supabase via Express) ----
 
-  async getAnalyses(brand?: string, type?: string, limit?: number): Promise<Analysis[]> {
+  async getAnalyses(brand?: string, type?: string, limit?: number, variant?: string): Promise<Analysis[]> {
     const params = new URLSearchParams();
     if (brand) params.set('brand', brand);
     if (type) params.set('type', type);
+    if (variant) params.set('variant', variant);
     if (limit) params.set('limit', String(limit));
     const { data } = await this.client.get(`/api/v1/progress/analyses?${params.toString()}`);
+    return data;
+  }
+
+  /** Get all GEO analyses for the user */
+  async getGeoAnalyses(brand?: string, limit?: number, variant?: string): Promise<StoredGeoAnalysis[]> {
+    const params = new URLSearchParams();
+    if (brand) params.set('brand', brand);
+    if (variant) params.set('variant', variant);
+    if (limit) params.set('limit', String(limit));
+    const { data } = await this.client.get(`/api/v1/progress/geo-analyses?${params.toString()}`);
+    return data;
+  }
+
+  /** Get a single GEO analysis by ID (includes full response_payload) */
+  async getGeoAnalysis(id: string): Promise<StoredGeoAnalysis> {
+    const { data } = await this.client.get(`/api/v1/progress/geo-analyses/${id}`);
     return data;
   }
 
@@ -270,6 +368,104 @@ class GEOApi {
   async getBrandAnalyses(id: string, limit = 20) {
     const { data } = await this.client.get(`/api/brands/${id}/analyses?limit=${limit}`);
     return data;
+  }
+
+  // ---- Unified Reports ----
+
+  async getReports(params?: {
+    type?: string;
+    variant?: string;
+    brand?: string;
+    sort?: string;
+    limit?: number;
+    offset?: number;
+  }): Promise<ReportsListResponse> {
+    const { data } = await this.client.get('/api/v1/reports', { params });
+    return data;
+  }
+
+  async getReport(id: string): Promise<Record<string, unknown>> {
+    const { data } = await this.client.get(`/api/v1/reports/${id}`);
+    return data as Record<string, unknown>;
+  }
+
+  async getReportFull(id: string): Promise<StructuredReport> {
+    const { data } = await this.client.get(`/api/v1/reports/${id}/full`);
+    return data as StructuredReport;
+  }
+
+  getReportMarkdownUrl(id: string): string {
+    return `${this.client.defaults.baseURL || ''}/api/v1/reports/${id}/markdown`;
+  }
+
+  async downloadReportMarkdown(id: string): Promise<string> {
+    const { data } = await this.client.get(`/api/v1/reports/${id}/markdown`, {
+      responseType: 'text',
+    });
+    return data as string;
+  }
+
+  // ---- Active Pipelines (running analyses) ----
+
+  async getActivePipelines(): Promise<ActivePipeline[]> {
+    const { data } = await this.client.get('/api/v1/progress/active', {
+      headers: { 'Cache-Control': 'no-store, no-cache', 'Pragma': 'no-cache' },
+    });
+    return data as ActivePipeline[];
+  }
+
+  // ---- Provider Registry ----
+
+  async getProviders(): Promise<ProviderRegistry> {
+    const { data } = await this.client.get('/api/v1/providers');
+    return data as ProviderRegistry;
+  }
+
+  // ---- Keyword Generation (Phase 2) ----
+
+  async generateKeywords(request: {
+    brand_name: string;
+    category: string;
+    competitors?: string[];
+    target_audience?: string;
+    url?: string;
+    discovery_results?: Record<string, unknown>;
+    llm_providers?: string[];
+    keyword_style?: string;
+  }): Promise<Record<string, unknown>> {
+    const { data } = await this.client.post('/api/v1/keywords/generate', request);
+    return data as Record<string, unknown>;
+  }
+
+  // ---- Content Enhancement (Phase 2) ----
+
+  async enhanceContent(request: {
+    content: string;
+    brand_name: string;
+    target_queries?: string[];
+    competitors?: string[];
+    content_type?: string;
+    validation_results?: Record<string, unknown>;
+    enhancement_mode?: string;
+    llm_provider?: string;
+  }): Promise<Record<string, unknown>> {
+    const { data } = await this.client.post('/api/v1/content/enhance', request);
+    return data as Record<string, unknown>;
+  }
+
+  // ---- Prompt Check (wraps existing validate) ----
+
+  async checkPrompt(request: {
+    brand_name: string;
+    prompt: string;
+    llm_providers?: string[];
+  }): Promise<KeywordValidateResponse> {
+    const { data } = await this.client.post('/api/v1/keywords/validate', {
+      brand_name: request.brand_name,
+      prompt: request.prompt,
+      llm_providers: request.llm_providers,
+    });
+    return data as KeywordValidateResponse;
   }
 }
 

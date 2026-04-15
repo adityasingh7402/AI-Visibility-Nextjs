@@ -52,24 +52,24 @@
 }
 
 :root {
-  --background: oklch(1 0 0);
+  --background: oklch(0.985 0.005 276);
   --foreground: oklch(0.145 0 0);
   --card: oklch(1 0 0);
   --card-foreground: oklch(0.145 0 0);
   --popover: oklch(1 0 0);
   --popover-foreground: oklch(0.145 0 0);
-  --primary: #2877f6;
-  --primary-foreground: #ffffff;
-  --secondary: oklch(0.97 0 0);
+  --primary: oklch(0.511 0.262 276.966); /* Indigo-600 */
+  --primary-foreground: oklch(1 0 0);
+  --secondary: oklch(0.96 0.01 276);
   --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
+  --muted: oklch(0.96 0.01 276);
   --muted-foreground: oklch(0.556 0 0);
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
+  --accent: oklch(0.96 0.01 276);
+  --accent-foreground: oklch(0.511 0.262 276.966);
   --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
+  --border: oklch(0.92 0.01 276);
+  --input: oklch(0.92 0.01 276);
+  --ring: oklch(0.511 0.262 276.966);
   --chart-1: oklch(0.809 0.105 251.813);
   --chart-2: oklch(0.623 0.214 259.815);
   --chart-3: oklch(0.546 0.245 262.881);
@@ -92,24 +92,24 @@
 }
 
 .dark {
-  --background: oklch(0.145 0 0);
+  --background: oklch(0.13 0.01 276);
   --foreground: oklch(0.985 0 0);
-  --card: oklch(0.205 0 0);
+  --card: oklch(0.18 0.01 276);
   --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.205 0 0);
+  --popover: oklch(0.18 0.01 276);
   --popover-foreground: oklch(0.985 0 0);
-  --primary: #2877f6;
-  --primary-foreground: #ffffff;
-  --secondary: oklch(0.269 0 0);
+  --primary: oklch(0.58 0.25 276.966); /* Indigo-500 */
+  --primary-foreground: oklch(1 0 0);
+  --secondary: oklch(0.25 0.01 276);
   --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
+  --muted: oklch(0.22 0.01 276);
   --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
+  --accent: oklch(0.25 0.01 276);
+  --accent-foreground: oklch(0.58 0.25 276.966);
   --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.556 0 0);
+  --border: oklch(0.28 0.01 276);
+  --input: oklch(0.28 0.01 276);
+  --ring: oklch(0.58 0.25 276.966);
   --chart-1: oklch(0.809 0.105 251.813);
   --chart-2: oklch(0.623 0.214 259.815);
   --chart-3: oklch(0.546 0.245 262.881);
@@ -160,5 +160,81 @@
 
   .font-serif-italic {
     @apply italic font-serif;
+  }
+
+  .glass-panel {
+    @apply bg-background/60 backdrop-blur-md border border-border/50 shadow-sm;
+  }
+  
+  .glass-card {
+    @apply bg-card/60 backdrop-blur-xl border border-white/10 dark:border-white/5 shadow-xl;
+  }
+}
+
+/* Print Optimization for PDF Export */
+@media print {
+  @page {
+    size: A4;
+    margin: 1cm;
+  }
+  
+  body {
+    background: transparent !important;
+    background-color: white !important;
+    color: black !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  /* Hide navigation, sidebars and actionable UI */
+  aside, header, nav, button, .sidebar, [role="navigation"], [data-state="closed"] + div > #sidebar, [data-radix-popper-content-wrapper] {
+    display: none !important;
+  }
+
+  /* Ensure main content takes full width */
+  main, .flex-1, .mx-auto {
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    box-shadow: none !important;
+  }
+
+  /* Optimize cards for print */
+  .border, .border-border, [class*="border-"] {
+    border-color: #e5e7eb !important;
+  }
+  
+  .bg-card {
+    background-color: white !important;
+    box-shadow: none !important;
+    border: 1px solid #e5e7eb !important;
+    break-inside: avoid;
+  }
+
+  .bg-muted, .bg-muted\/10, .bg-muted\/20, .bg-muted\/50 {
+    background-color: #f3f4f6 !important;
+  }
+
+  /* Typography tweaks */
+  h1, h2, h3, h4, h5, h6 {
+    break-after: avoid;
+    break-inside: avoid;
+    color: black !important;
+  }
+
+  p, li, td, th {
+    color: #374151 !important;
+  }
+
+  /* Fix grids/flex */
+  .grid {
+    display: flex !important;
+    flex-wrap: wrap !important;
+    gap: 1rem !important;
+  }
+  
+  .grid > * {
+    flex: 1 1 300px !important;
   }
 }

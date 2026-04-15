@@ -1,20 +1,32 @@
 "use client";
 import { motion, useScroll, useTransform } from "framer-motion";
-import { ArrowRight, Star } from "lucide-react";
+import { Star } from "lucide-react";
 import { useRef } from "react";
 import { useMouseTilt } from "@/hooks/use-mouse-tilt";
-import SectionWatermark from "./SectionWatermark";
 
 const DashboardPreview = () => {
-  const tilt = useMouseTilt(6);
-  const barData = [35, 42, 38, 55, 62, 70, 68, 78, 84, 80, 88, 92];
+  const { ref: tiltRef, style: tiltStyle, handleMouseMove, handleMouseLeave } = useMouseTilt(6);
+  const barData = [
+    { v: 35, hClass: 'h-[35%]' },
+    { v: 42, hClass: 'h-[42%]' },
+    { v: 38, hClass: 'h-[38%]' },
+    { v: 55, hClass: 'h-[55%]' },
+    { v: 62, hClass: 'h-[62%]' },
+    { v: 70, hClass: 'h-[70%]' },
+    { v: 68, hClass: 'h-[68%]' },
+    { v: 78, hClass: 'h-[78%]' },
+    { v: 84, hClass: 'h-[84%]' },
+    { v: 80, hClass: 'h-[80%]' },
+    { v: 88, hClass: 'h-[88%]' },
+    { v: 92, hClass: 'h-[92%]' },
+  ];
 
   return (
     <div
-      ref={tilt.ref}
-      onMouseMove={tilt.handleMouseMove}
-      onMouseLeave={tilt.handleMouseLeave}
-      style={tilt.style}
+      ref={tiltRef}
+      onMouseMove={handleMouseMove}
+      onMouseLeave={handleMouseLeave}
+      style={tiltStyle}
       className="rounded-2xl border bg-card shadow-xl shadow-foreground/5 overflow-hidden"
     >
       <div className="flex items-center gap-2 px-4 py-3 border-b bg-secondary/50">
@@ -42,9 +54,9 @@ const DashboardPreview = () => {
         <div className="rounded-xl border bg-card p-5 col-span-1">
           <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Visibility (30d)</span>
           <div className="flex items-end gap-1.5 mt-3 h-20">
-            {barData.map((v, i) => (
-              <div key={i} className="flex-1 rounded-sm bg-foreground/10" style={{ height: `${v}%` }}>
-                <div className="w-full rounded-sm bg-foreground/80 transition-all" style={{ height: `${v}%` }} />
+            {barData.map((item, i) => (
+              <div key={i} className={`flex-1 rounded-sm bg-foreground/10 ${item.hClass}`}>
+                <div className={`w-full rounded-sm bg-foreground/80 transition-all ${item.hClass}`} />
               </div>
             ))}
           </div>
@@ -76,7 +88,6 @@ const HeroSection = () => {
 
   return (
     <section ref={sectionRef} className="relative min-h-screen overflow-hidden">
-      <SectionWatermark shape="circle" className="w-[700px] h-[700px] -right-48 top-20" />
 
       <motion.div className="absolute inset-0 z-0" style={{ y: videoY }}>
         <video autoPlay loop muted playsInline className="w-full h-full object-cover [transform:scaleY(-1)]">

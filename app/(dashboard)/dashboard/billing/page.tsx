@@ -11,8 +11,6 @@ import {
   ChevronUp
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
-import { Progress } from "@/components/ui/progress";
 
 export default function BillingPage() {
   const invoices = [
@@ -26,8 +24,8 @@ export default function BillingPage() {
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
         <div>
-          <h1 className="text-4xl font-black text-slate-900 dark:text-white tracking-tight mb-2">Billing & Subscriptions</h1>
-          <p className="text-slate-500 dark:text-slate-400 font-medium tracking-tight">Manage your agency plan, credits, and view payment history.</p>
+          <h1 className="text-4xl font-black text-foreground tracking-tight mb-2">Billing & Subscriptions</h1>
+          <p className="text-muted-foreground font-medium tracking-tight">Manage your agency plan, credits, and view payment history.</p>
         </div>
         <div className="flex items-center gap-3">
            <Button variant="outline" className="rounded-2xl border-slate-200 dark:border-white/10 dark:text-white hover:bg-slate-50 dark:hover:bg-white/5 h-12 flex items-center gap-2 font-black uppercase tracking-widest text-[10px]">
@@ -40,7 +38,7 @@ export default function BillingPage() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
         <div className="lg:col-span-2 space-y-10">
           {/* Main Plan Card */}
-          <div className="rounded-[2.5rem] border border-slate-200 dark:border-white/5 bg-white dark:bg-slate-900/50 p-8 md:p-10 shadow-sm relative overflow-hidden">
+          <div className="rounded-[2.5rem] border border-border bg-card p-8 md:p-10 shadow-sm relative overflow-hidden">
              <div className="absolute top-0 right-0 w-80 h-80 bg-primary/10 rounded-full -mr-40 -mt-40 blur-[100px]"></div>
              
              <div className="relative z-10">
@@ -65,7 +63,7 @@ export default function BillingPage() {
                             <span className="text-sm font-black text-slate-900 dark:text-white tracking-tighter">7,500 / 10,000</span>
                          </div>
                          <div className="h-4 bg-slate-100 dark:bg-black/40 rounded-full overflow-hidden p-1 border border-slate-200/50 dark:border-white/5">
-                            <div className="h-full bg-primary rounded-full shadow-[0_0_10px_rgba(59,130,246,0.5)]" style={{ width: '75%' }}></div>
+                            <div className="h-full w-[75%] bg-primary rounded-full shadow-[0_0_10px_rgba(59,130,246,0.5)]"></div>
                          </div>
                          <p className="text-[10px] text-slate-400 dark:text-slate-500 font-bold uppercase tracking-wider px-1">Total GEO optimization capacity</p>
                       </div>
@@ -107,7 +105,7 @@ export default function BillingPage() {
                 <h3 className="text-2xl font-black text-slate-900 dark:text-white tracking-tighter">Payment Records</h3>
              </div>
              
-             <div className="rounded-[2.5rem] border border-slate-200 dark:border-white/5 bg-white dark:bg-slate-900/50 shadow-sm overflow-hidden">
+             <div className="rounded-[2.5rem] border border-border bg-card shadow-sm overflow-hidden">
                 <div className="overflow-x-auto">
                    <table className="w-full text-left border-collapse">
                       <thead>
