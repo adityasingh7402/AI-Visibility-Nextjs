@@ -1,5 +1,3 @@
-import { MarketingNavbar } from "@/components/marketing/navbar";
-
 export default function MarketingLayout({
   children,
 }: {
@@ -7,7 +5,6 @@ export default function MarketingLayout({
 }) {
   return (
     <div className="flex flex-col min-h-screen">
-      <MarketingNavbar />
       <div className="flex-1">{children}</div>
     </div>
   );
