@@ -28,8 +28,7 @@ export const Paragraph = <T extends React.ElementType = "p">({
       "text-sm sm:text-base md:text-lg text-neutral-900 font-schibsted font-regular leading-relaxed",
     muted:
       "text-xs sm:text-sm md:text-base text-neutral-900 font-schibsted font-regular mb-8 leading-relaxed",
-    small:
-      "text-xs sm:text-sm text-neutral-900 font-schibsted font-regular tracking-tighter text-sm leading-relaxed",
+    small: "text-2xl sm:text-3xl md:text-[20px] lg:text-[15px] font-schibsted",
     "docs-par":
       "text-sm sm:text-[16px] text-neutral-900 font-schibsted font-regular mb-4 text-neutral-700 tracking-tighter leading-relaxed",
     "docs-subPar":

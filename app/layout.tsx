@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Poppins, Schibsted_Grotesk } from "next/font/google";
 import { Toaster } from "sonner";
+import { UserStoreProvider } from "@/components/providers/UserStoreProvider";
 import "./globals.css";
 
 const poppins = Poppins({
@@ -53,7 +54,9 @@ export default function RootLayout({
         className={`${poppins.variable} ${schibstedGrotesk.variable} antialiased`}
         suppressHydrationWarning
       >
-        {children}
+        <UserStoreProvider>
+          {children}
+        </UserStoreProvider>
         <Toaster
           position="bottom-right"
           richColors

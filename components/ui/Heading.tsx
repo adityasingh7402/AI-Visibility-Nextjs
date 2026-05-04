@@ -6,7 +6,13 @@ type HeadingProps<T extends React.ElementType = "h1"> = {
   children: React.ReactNode;
   as?: T;
   id?: string;
-  variant?: "default" | "muted" | "small" | "blogHeader" | "dashboardHeader";
+  variant?:
+    | "default"
+    | "muted"
+    | "small"
+    | "blogHeader"
+    | "dashboardHeader"
+    | "sectionHeader";
 };
 
 export const Heading = <T extends React.ElementType = "h1">({
@@ -29,6 +35,8 @@ export const Heading = <T extends React.ElementType = "h1">({
       "text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-semibold leading-tight text-neutral-100",
     dashboardHeader:
       "font-schibsted text-4xl font-semibold tracking-[0.07em] text-neutral-800",
+    sectionHeader:
+      "font-schibsted text-4xl md:text-5xl font-light tracking-tighter leading-tight text-neutral-700 text-center",
   };
 
   return (
