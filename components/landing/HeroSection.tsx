@@ -226,7 +226,8 @@ import { Subheading } from "../ui/Subheading";
 import { Container } from "../ui/Container";
 import { HeroDashboard } from "./HeroDashboard";
 import { LandingNavbar } from "./LandingNavbar";
-import { Button } from "../ui/button";
+import { IconCalendarEvent, IconArrowRight } from "@tabler/icons-react";
+import { CTAButton } from "../ui/CTAButton";
 
 const HeroSection = () => {
   const shouldReduceMotion = useReducedMotion();
@@ -265,7 +266,11 @@ const HeroSection = () => {
 
         <Container className="relative z-10 mx-auto mt-12">
           <motion.div
-            initial={shouldReduceMotion ? false : { opacity: 0, y: 16, filter: "blur(4px)" }}
+            initial={
+              shouldReduceMotion
+                ? false
+                : { opacity: 0, y: 16, filter: "blur(4px)" }
+            }
             animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
             transition={{ duration: 0.7, delay: 0, ease: [0.16, 1, 0.3, 1] }}
           >
@@ -281,7 +286,11 @@ const HeroSection = () => {
           </motion.div>
 
           <motion.div
-            initial={shouldReduceMotion ? false : { opacity: 0, y: 16, filter: "blur(4px)" }}
+            initial={
+              shouldReduceMotion
+                ? false
+                : { opacity: 0, y: 16, filter: "blur(4px)" }
+            }
             animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
             transition={{ duration: 0.7, delay: 0.1, ease: [0.16, 1, 0.3, 1] }}
             className="mt-6 max-w-3xl mx-auto"
@@ -297,23 +306,31 @@ const HeroSection = () => {
           </motion.div>
 
           <motion.div
-            initial={shouldReduceMotion ? false : { opacity: 0, y: 16, filter: "blur(4px)" }}
+            initial={
+              shouldReduceMotion
+                ? false
+                : { opacity: 0, y: 16, filter: "blur(4px)" }
+            }
             animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
             transition={{ duration: 0.7, delay: 0.2, ease: [0.16, 1, 0.3, 1] }}
             className="mt-8 flex items-center justify-center gap-4"
           >
-            <Button
-              size="lg"
-              className="font-schibsted bg-neutral-900 text-white hover:bg-neutral-800 px-6 gap-2 rounded-md"
+            <CTAButton
+              loggedInHref="/dashboard"
+              loggedOutHref="/signup"
+              icon={IconCalendarEvent}
+              className="font-schibsted rounded-md"
             >
-              <span className="text-[10px]">▪</span> Request a demo
-            </Button>
-            <Button
-              size="lg"
-              className="font-schibsted bg-neutral-900 text-white hover:bg-neutral-800 px-6 gap-2 rounded-md"
+              Request a demo
+            </CTAButton>
+            <CTAButton
+              loggedInHref="/dashboard/analysis"
+              loggedOutHref="/login"
+              icon={IconArrowRight}
+              className="font-schibsted rounded-md"
             >
-              <span className="text-[10px]">▪</span> Explore the platform
-            </Button>
+              Explore the platform
+            </CTAButton>
           </motion.div>
         </Container>
       </section>
