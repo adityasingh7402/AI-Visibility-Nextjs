@@ -467,6 +467,45 @@ class GEOApi {
     });
     return data as KeywordValidateResponse;
   }
+
+  // ---- SEO/GEO Page Analysis ----
+
+  /** Crawl a single page, auto-detect keyword, compare with competitors, generate SEO content */
+  async seoGeoAnalyzePage(request: {
+    url: string;
+    target_keyword?: string;
+    brand_name?: string;
+    generate_content?: boolean;
+    language?: string;
+    competitors_count?: number;
+  }): Promise<Record<string, unknown>> {
+    const { data } = await this.client.post('/api/v1/seo-geo/analyze', request, {
+      timeout: 180000, // 3-min timeout — crawling + LLM generation can take ~2 min
+    });
+    return data as Record<string, unknown>;
+  }
+
+  /** Fetch sitemap for a domain, return discovered page URLs for bulk analysis */
+  async seoGeoRegisterSite(request: {
+    url: string;
+    sitemap_url?: string;
+    brand_name?: string;
+  }): Promise<Record<string, unknown>> {
+    const { data } = await this.client.post('/api/v1/seo-geo/register-site', request, {
+      timeout: 20000,
+    });
+    return data as Record<string, unknown>;
+  }
+
+  /** Queue bulk async analysis for selected pages — returns {job_id, page_count, status} */
+  async seoGeoAnalyzeBulk(request: {
+    page_urls: string[];
+    brand_name?: string;
+    language?: string;
+  }): Promise<{ job_id: string; page_count: number; status: string; message: string }> {
+    const { data } = await this.client.post('/api/v1/seo-geo/analyze-bulk', request);
+    return data as { job_id: string; page_count: number; status: string; message: string };
+  }
 }
 
 // Export as singleton
