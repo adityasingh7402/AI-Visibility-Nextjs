@@ -1,41 +1,100 @@
 "use client";
-import { motion, useScroll, useTransform } from "framer-motion";
+import {
+  motion,
+  useReducedMotion,
+  useScroll,
+  useTransform,
+} from "motion/react";
 import { useRef } from "react";
-import { useMouseTilt } from "@/hooks/use-mouse-tilt";
+import { Heading } from "../ui/Heading";
+import { Subheading } from "../ui/Subheading";
+import { Paragraph } from "../ui/Paragraph";
 import BackgroundHexagons from "./BackgroundHexagons";
 
 const steps = [
-  { number: 1, title: "Analyze", description: "Crawl LLM knowledge graphs to map how AI models currently understand your brand, products, and competitive landscape." },
-  { number: 2, title: "Diagnose", description: "Identify visibility gaps, citation deficiencies, and hallucination risks across every major generative search engine." },
-  { number: 3, title: "Fix", description: "Deploy semantic structural changes to your content that directly influence how AI models reference and recommend your brand." },
+  {
+    number: "01",
+    title: "Analyze",
+    description:
+      "Crawl LLM knowledge graphs to map how AI models currently understand your brand, products, and competitive landscape.",
+  },
+  {
+    number: "02",
+    title: "Diagnose",
+    description:
+      "Identify visibility gaps, citation deficiencies, and hallucination risks across every major generative search engine.",
+  },
+  {
+    number: "03",
+    title: "Fix",
+    description:
+      "Deploy semantic structural changes to your content that directly influence how AI models reference and recommend your brand.",
+  },
 ];
 
-const StepCard = ({ step, delay }: { step: typeof steps[0]; delay: number }) => {
-  const { ref, style, handleMouseMove, handleMouseLeave } = useMouseTilt(6);
+const CARD_POSITIONS = [
+  "left-[2%] top-[4%]",
+  "left-[33%] top-[35%]",
+  "right-[1%] bottom-[6%]",
+] as const;
+
+const DOT_POSITIONS = [
+  { cx: 125, cy: 42 },
+  { cx: 500, cy: 252 },
+  { cx: 900, cy: 358 },
+] as const;
+
+const DOT_COLORS = ["#38bdf8", "#2563eb", "#1e40af"] as const;
+
+const StepCard = ({
+  step,
+  delay,
+  position,
+}: {
+  step: (typeof steps)[0];
+  delay: number;
+  position: string;
+}) => {
+  const shouldReduceMotion = useReducedMotion();
 
   return (
     <motion.div
-      ref={ref}
-      style={style}
-      onMouseMove={handleMouseMove}
-      onMouseLeave={handleMouseLeave}
-      initial={{ opacity: 0, y: 30, filter: "blur(4px)" }}
+      className={`absolute ${position} w-[260px]`}
+      initial={
+        shouldReduceMotion ? false : { opacity: 0, y: 20, filter: "blur(4px)" }
+      }
       whileInView={{ opacity: 1, y: 0, filter: "blur(0px)" }}
-      viewport={{ once: true, amount: 0.2 }}
-      transition={{ duration: 0.7, delay, ease: [0.16, 1, 0.3, 1] }}
-      className="relative cursor-default"
+      viewport={{ once: true }}
+      transition={{ duration: 0.6, delay, ease: [0.16, 1, 0.3, 1] as const }}
     >
-      <div className="absolute -top-6 -left-3 text-[110px] font-bold leading-none text-foreground/[0.04] select-none pointer-events-none">
-        {step.number}
+      <div className="rounded-2xl bg-white p-5 relative overflow-hidden border border-neutral-200/70 shadow-sm">
+        {/* Ghost number */}
+        <span className="absolute font-schibsted -top-3 -right-1 text-[80px] font-light leading-none select-none pointer-events-none text-black/[0.04]">
+          {step.number}
+        </span>
+
+        <Subheading
+          as="h3"
+          variant="small"
+          className="text-neutral-900 font-light uppercase tracking-wide text-base relative z-10 mb-8"
+        >
+          {step.title}
+        </Subheading>
+        <Paragraph
+          variant="small"
+          className="text-neutral-500 mt-2 tracking-tighter font-light leading-tight relative z-10"
+        >
+          {step.description}
+        </Paragraph>
       </div>
-      <h3 className="text-lg font-semibold text-foreground mb-1.5 relative z-10">{step.title}</h3>
-      <p className="text-sm text-muted-foreground leading-relaxed relative z-10 max-w-[260px]">{step.description}</p>
     </motion.div>
   );
 };
 
 const HowItWorksSection = () => {
   const sectionRef = useRef<HTMLDivElement>(null);
+  const shouldReduceMotion = useReducedMotion();
+
   const { scrollYProgress } = useScroll({
     target: sectionRef,
     offset: ["start end", "end start"],
@@ -44,142 +103,162 @@ const HowItWorksSection = () => {
   const pathLength = useTransform(scrollYProgress, [0.1, 0.55], [0, 1]);
 
   return (
-    <section ref={sectionRef} className="section-padding relative overflow-hidden">
-      <BackgroundHexagons className="w-[600px] h-[600px] -right-40 -bottom-20 opacity-20" />
+    <section
+      ref={sectionRef}
+      className="py-24 px-4 bg-white relative overflow-hidden"
+    >
+      {/* Right-side decorative hexagons */}
+      <BackgroundHexagons className="absolute w-[560px] h-[560px] -right-36 -bottom-16 opacity-[0.18] pointer-events-none" />
 
-      <div className="section-container relative z-10">
+      <div className="max-w-5xl mx-auto relative z-10">
         {/* Header */}
-        <div className="grid md:grid-cols-2 gap-12 mb-24">
-          <div>
-            <motion.p
-              initial={{ opacity: 0, y: 12 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true, amount: 0.2 }}
-              transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
-              className="text-xs font-semibold tracking-[0.2em] uppercase text-accent mb-4"
-            >
-              Our Process
-            </motion.p>
-            <motion.h2
-              initial={{ opacity: 0, y: 12 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true, amount: 0.2 }}
-              transition={{ duration: 0.6, delay: 0.06, ease: [0.16, 1, 0.3, 1] }}
-              className="section-title"
-            >
-              A systematic approach
-              <br />and proven process
-            </motion.h2>
-            <motion.p
-              initial={{ opacity: 0, y: 12 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true, amount: 0.2 }}
-              transition={{ duration: 0.6, delay: 0.12, ease: [0.16, 1, 0.3, 1] }}
-              className="section-subtitle mt-4"
-            >
-              Winning the generative search era requires precision, not guesswork.
-            </motion.p>
-            <motion.button
-              initial={{ opacity: 0, y: 12 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true, amount: 0.2 }}
-              transition={{ duration: 0.6, delay: 0.18, ease: [0.16, 1, 0.3, 1] }}
-              whileHover={{ scale: 1.03 }}
-              whileTap={{ scale: 0.97 }}
-              className="mt-6 px-6 py-3 rounded-full bg-accent text-accent-foreground text-sm font-medium"
-            >
-              Get Started
-            </motion.button>
-          </div>
-        </div>
-
-        {/* Timeline area */}
-        <div className="relative h-[380px]">
-          {/* SVG with curve and dots */}
-          <svg
-            className="absolute inset-0 w-full h-full pointer-events-none"
-            viewBox="0 0 1000 340"
-            preserveAspectRatio="xMidYMid meet"
-            fill="none"
+        <motion.div
+          className="text-center mb-12"
+          initial={
+            shouldReduceMotion
+              ? false
+              : { opacity: 0, y: 16, filter: "blur(4px)" }
+          }
+          whileInView={{ opacity: 1, y: 0, filter: "blur(0px)" }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] as const }}
+        >
+          <Heading
+            as="h2"
+            variant="sectionHeader"
+            className="text-neutral-600 font-light"
           >
-            {/* The curved line */}
-            <motion.path
-              d="M 50 290 C 150 290, 200 180, 350 180 C 500 180, 500 100, 650 100 C 800 100, 800 30, 950 30"
-              stroke="hsl(var(--accent))"
-              strokeWidth="3"
-              strokeLinecap="round"
-              fill="none"
-              style={{ pathLength }}
-            />
+            A systematic approach
+          </Heading>
+          <Heading
+            as="h2"
+            variant="sectionHeader"
+            className="text-neutral-900 font-bold"
+          >
+            and proven process.
+          </Heading>
+        </motion.div>
 
-            {/* Dot 1 - start of curve */}
-            <motion.circle
-              cx="100"
-              cy="280"
-              r="7"
-              fill="hsl(var(--background))"
-              stroke="hsl(var(--muted-foreground) / 0.35)"
-              strokeWidth="3"
-              initial={{ scale: 0 }}
-              whileInView={{ scale: 1 }}
-              viewport={{ once: true }}
-              transition={{ duration: 0.4, delay: 0.2 }}
-            />
-
-            {/* Dot 2 - middle of curve */}
-            <motion.circle
-              cx="500"
-              cy="140"
-              r="7"
-              fill="hsl(var(--background))"
-              stroke="hsl(var(--muted-foreground) / 0.35)"
-              strokeWidth="3"
-              initial={{ scale: 0 }}
-              whileInView={{ scale: 1 }}
-              viewport={{ once: true }}
-              transition={{ duration: 0.4, delay: 0.4 }}
-            />
-
-            {/* Dot 3 - end of curve */}
-            <motion.circle
-              cx="900"
-              cy="35"
-              r="7"
-              fill="hsl(var(--background))"
-              stroke="hsl(var(--accent))"
-              strokeWidth="3"
-              initial={{ scale: 0 }}
-              whileInView={{ scale: 1 }}
-              viewport={{ once: true }}
-              transition={{ duration: 0.4, delay: 0.6 }}
-            />
-
-            {/* Arrowhead at end */}
-            <motion.path
-              d="M 940 25 L 955 33 L 940 41"
-              stroke="hsl(var(--accent))"
-              strokeWidth="2.5"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              fill="none"
-              initial={{ opacity: 0 }}
-              whileInView={{ opacity: 1 }}
-              viewport={{ once: true }}
-              transition={{ duration: 0.4, delay: 0.7 }}
-            />
+        {/* Outer warm container */}
+        <div
+          className="relative rounded-[32px] p-4 overflow-hidden"
+          style={{ background: "#EDE5D8" }}
+        >
+          {/* Grain filter */}
+          <svg className="absolute w-0 h-0" aria-hidden="true">
+            <filter id="howItWorksGrain">
+              <feTurbulence
+                type="fractalNoise"
+                baseFrequency="0.65"
+                numOctaves="3"
+                stitchTiles="stitch"
+              />
+              <feColorMatrix type="saturate" values="0" />
+            </filter>
           </svg>
+          <div
+            className="absolute inset-0 pointer-events-none z-0 rounded-[32px]"
+            style={{
+              background: "#8C8C8C",
+              filter: "url(#howItWorksGrain)",
+              opacity: 0.8,
+            }}
+          />
 
-          {/* Step cards positioned to align with dots */}
-          <div className="absolute left-[5%] top-[82%]">
-            <StepCard step={steps[0]} delay={0.15} />
-          </div>
+          {/* Timeline area */}
+          <div className="relative z-10 h-[440px]">
+            {/* SVG connecting curve */}
+            <svg
+              className="absolute inset-0 w-full h-full pointer-events-none"
+              viewBox="0 0 1000 400"
+              preserveAspectRatio="xMidYMid meet"
+              fill="none"
+            >
+              <defs>
+                <linearGradient
+                  id="howItWorksCurveGrad"
+                  x1="0%"
+                  y1="0%"
+                  x2="100%"
+                  y2="0%"
+                >
+                  <stop offset="0%" stopColor="#38bdf8" />
+                  <stop offset="50%" stopColor="#2563eb" />
+                  <stop offset="100%" stopColor="#1e40af" />
+                </linearGradient>
 
-          <div className="absolute left-[38%] top-[45%]">
-            <StepCard step={steps[1]} delay={0.3} />
-          </div>
+                {/* Glow filter for dots */}
+                <filter
+                  id="dotGlow"
+                  x="-50%"
+                  y="-50%"
+                  width="200%"
+                  height="200%"
+                >
+                  <feGaussianBlur stdDeviation="3" result="blur" />
+                  <feMerge>
+                    <feMergeNode in="blur" />
+                    <feMergeNode in="SourceGraphic" />
+                  </feMerge>
+                </filter>
+              </defs>
 
-          <div className="absolute right-0 top-[12%]">
-            <StepCard step={steps[2]} delay={0.45} />
+              {/* Main animated curve */}
+              <motion.path
+                d="M 80 30 C 180 30, 260 180, 410 205 C 535 225, 590 315, 740 330 C 825 338, 875 350, 955 362"
+                stroke="url(#howItWorksCurveGrad)"
+                strokeWidth="3"
+                strokeLinecap="round"
+                fill="none"
+                style={{ pathLength }}
+              />
+
+              {/* Connection dots with glow */}
+              {DOT_POSITIONS.map(({ cx, cy }, i) => (
+                <motion.circle
+                  key={i}
+                  cx={cx}
+                  cy={cy}
+                  r="7"
+                  fill="white"
+                  stroke={DOT_COLORS[i]}
+                  strokeWidth="3"
+                  filter="url(#dotGlow)"
+                  initial={{ scale: 0, opacity: 0 }}
+                  whileInView={{ scale: 1, opacity: 1 }}
+                  viewport={{ once: true }}
+                  transition={{
+                    duration: 0.4,
+                    delay: 0.2 + i * 0.2,
+                    ease: [0.16, 1, 0.3, 1],
+                  }}
+                />
+              ))}
+
+              {/* Arrowhead at end */}
+              <motion.path
+                d="M 944 354 L 960 362 L 944 370"
+                stroke="#1e40af"
+                strokeWidth="2.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                fill="none"
+                initial={{ opacity: 0 }}
+                whileInView={{ opacity: 1 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.4, delay: 0.75 }}
+              />
+            </svg>
+
+            {/* Step cards */}
+            {steps.map((step, i) => (
+              <StepCard
+                key={step.number}
+                step={step}
+                delay={0.15 + i * 0.15}
+                position={CARD_POSITIONS[i]}
+              />
+            ))}
           </div>
         </div>
       </div>
