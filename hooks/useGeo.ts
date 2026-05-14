@@ -482,3 +482,96 @@ export function useActivePipelines() {
 
   return { pipelines, loading, refresh };
 }
+
+// ---- useSeoGeoAnalyzePage ----
+/** Crawl one page, detect keyword, compare competitors, generate optimised SEO content. */
+export function useSeoGeoAnalyzePage() {
+  const [data, setData] = useState<Record<string, unknown> | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const analyze = useCallback(async (request: {
+    url: string;
+    target_keyword?: string;
+    brand_name?: string;
+    generate_content?: boolean;
+    language?: string;
+    competitors_count?: number;
+  }) => {
+    setLoading(true);
+    setError(null);
+    try {
+      const result = await geoApi.seoGeoAnalyzePage(request);
+      setData(result);
+      return result;
+    } catch (e: unknown) {
+      setError(apiMsg(e, 'SEO/GEO page analysis failed'));
+      throw e;
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  const reset = useCallback(() => { setData(null); setError(null); }, []);
+  return { data, loading, error, analyze, reset };
+}
+
+// ---- useSeoGeoRegisterSite ----
+/** Fetch sitemap for a domain — returns a list of discovered page URLs for bulk analysis. */
+export function useSeoGeoRegisterSite() {
+  const [data, setData] = useState<Record<string, unknown> | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const registerSite = useCallback(async (request: {
+    url: string;
+    sitemap_url?: string;
+    brand_name?: string;
+  }) => {
+    setLoading(true);
+    setError(null);
+    try {
+      const result = await geoApi.seoGeoRegisterSite(request);
+      setData(result);
+      return result;
+    } catch (e: unknown) {
+      setError(apiMsg(e, 'Site registration failed'));
+      throw e;
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  const reset = useCallback(() => { setData(null); setError(null); }, []);
+  return { data, loading, error, registerSite, reset };
+}
+
+// ---- useSeoGeoAnalyzeBulk ----
+/** Queue bulk async analysis for multiple selected pages. Returns job_id for SSE tracking. */
+export function useSeoGeoAnalyzeBulk() {
+  const [jobId, setJobId] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const analyzeBulk = useCallback(async (request: {
+    page_urls: string[];
+    brand_name?: string;
+    language?: string;
+  }) => {
+    setLoading(true);
+    setError(null);
+    try {
+      const result = await geoApi.seoGeoAnalyzeBulk(request);
+      setJobId(result.job_id);
+      return result;
+    } catch (e: unknown) {
+      setError(apiMsg(e, 'Bulk SEO/GEO analysis failed to queue'));
+      throw e;
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  const reset = useCallback(() => { setJobId(null); setError(null); }, []);
+  return { jobId, loading, error, analyzeBulk, reset };
+}
