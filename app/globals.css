@@ -142,6 +142,12 @@
   }
 }
 
+@property --cta-angle {
+  syntax: "<angle>";
+  inherits: false;
+  initial-value: 0deg;
+}
+
 @layer components {
   .section-container {
     @apply max-w-7xl mx-auto px-6 md:px-12;
@@ -169,6 +175,22 @@
   
   .glass-card {
     @apply bg-card/60 backdrop-blur-xl border border-white/10 dark:border-white/5 shadow-xl;
+  }
+
+  .problem-cta-card {
+    --cta-angle: 0deg;
+    background: linear-gradient(
+      var(--cta-angle),
+      #38bdf8,
+      #0ea5e9,
+      #2563eb,
+      #1e40af
+    );
+    transition: --cta-angle 0.8s ease;
+  }
+
+  .problem-cta-card:hover {
+    --cta-angle: 45deg;
   }
 }
 
