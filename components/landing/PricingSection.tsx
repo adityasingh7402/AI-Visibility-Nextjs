@@ -1,189 +1,268 @@
 "use client";
-import { motion } from "framer-motion";
-import { Check } from "lucide-react";
 import { useState } from "react";
-import BackgroundHexagons from "./BackgroundHexagons";
+import { motion } from "framer-motion";
+import NumberFlow from "@number-flow/react";
+import { cn } from "@/lib/utils";
+import { Heading } from "../ui/Heading";
+import { Paragraph } from "../ui/Paragraph";
 
-const tiers = [
+const PLANS = [
   {
     name: "Starter",
-    description: "Unleash the power of GEO analytics.",
     monthlyPrice: 99,
     yearlyPrice: 79,
-    features: ["5,000 Prompt Analysis", "2 Search Engines", "Weekly Reports"],
-    ctaText: "Choose Plan",
+    description: "For teams just getting started with AI visibility.",
+    features: [
+      "5,000 prompt analyses / mo",
+      "2 AI engines monitored",
+      "Weekly citation reports",
+      "Basic hallucination alerts",
+      "Email support",
+    ],
+    featured: false,
   },
   {
     name: "Professional",
-    description: "Advanced tools to take your visibility to the next level.",
     monthlyPrice: 299,
     yearlyPrice: 239,
-    features: ["50,000 Prompt Analysis", "All Search Engines", "Real-time Alerts", "API Access"],
-    ctaText: "Choose Plan",
+    description: "Advanced tools to own your AI search presence.",
+    features: [
+      "50,000 prompt analyses / mo",
+      "All AI engines monitored",
+      "Real-time citation alerts",
+      "Hallucination detection",
+      "API access",
+      "Priority support",
+    ],
+    featured: true,
+  },
+  {
+    name: "Enterprise",
+    monthlyPrice: 599,
+    yearlyPrice: 479,
+    description: "Full-scale GEO with enterprise-grade controls.",
+    features: [
+      "Unlimited prompt analyses",
+      "Custom engine integrations",
+      "Dedicated GEO strategist",
+      "SLA guarantee",
+      "SSO & SAML",
+      "Custom contracts",
+    ],
+    featured: false,
   },
 ];
 
-const popularTier = {
-  name: "Enterprise",
-  description: "Full-scale GEO with enterprise-grade features.",
-  monthlyPrice: 599,
-  yearlyPrice: 479,
-  features: ["Unlimited Analysis", "Custom Integrations", "Dedicated Strategist", "SLA Guarantee", "SSO & SAML"],
-  ctaText: "Choose Plan",
-};
-
 const PricingSection = () => {
-  const [isYearly, setIsYearly] = useState(false);
+  const [billing, setBilling] = useState<"monthly" | "yearly">("monthly");
 
   return (
-    <section className="section-padding relative overflow-hidden">
-      <div className="absolute inset-0 bg-gradient-to-br from-accent/5 via-background to-accent/10 pointer-events-none" />
-      <BackgroundHexagons className="w-[800px] h-[800px] -right-40 -bottom-32 opacity-20" />
-
-      <div className="section-container relative z-10">
-        {/* Header row */}
-        <div className="flex flex-col md:flex-row md:items-end md:justify-between mb-14 gap-6">
-          <div>
-            <motion.h2
-              initial={{ opacity: 0, y: 12 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
-              className="section-title"
-            >
-              Plans & Pricing
-            </motion.h2>
-            <motion.p
-              initial={{ opacity: 0, y: 12 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ duration: 0.6, delay: 0.08, ease: [0.16, 1, 0.3, 1] }}
-              className="section-subtitle mt-3"
-            >
-              Whether your GEO optimization needs are large or small,<br className="hidden md:block" />
-              we&apos;re here to help you scale.
-            </motion.p>
-          </div>
-
-          <motion.div
-            initial={{ opacity: 0, y: 12 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.6, delay: 0.15, ease: [0.16, 1, 0.3, 1] }}
-            className="inline-flex items-center rounded-full bg-card border p-1 self-start md:self-auto"
+    <section className="py-24 px-4 md:px-10 bg-white">
+      <div className="max-w-5xl mx-auto">
+        {/* Centered header */}
+        <motion.div
+          className="text-center mb-8"
+          initial={{ opacity: 0, y: 16, filter: "blur(4px)" }}
+          whileInView={{ opacity: 1, y: 0, filter: "blur(0px)" }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
+        >
+          <Heading
+            as="h2"
+            variant="sectionHeader"
+            className="text-neutral-600 font-light"
           >
+            Simple, transparent
+          </Heading>
+          <Heading
+            as="h2"
+            variant="sectionHeader"
+            className="text-neutral-900 font-bold"
+          >
+            pricing.
+          </Heading>
+        </motion.div>
+
+        {/* Billing toggle — centered below heading */}
+        <motion.div
+          className="flex justify-center mb-14"
+          initial={{ opacity: 0, y: 12 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.5, delay: 0.15, ease: [0.16, 1, 0.3, 1] }}
+        >
+          <div className="bg-neutral-100 p-1 rounded-full flex gap-1 font-schibsted">
             <button
-              onClick={() => setIsYearly(false)}
-              className={`px-5 py-2 rounded-full text-sm font-medium transition-all ${
-                !isYearly ? "bg-accent text-accent-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
-              }`}
+              onClick={() => setBilling("monthly")}
+              className={cn(
+                "px-4 py-1.5 text-sm font-medium rounded-full transition-all",
+                billing === "monthly"
+                  ? "bg-white shadow-sm text-neutral-900"
+                  : "text-neutral-500 hover:text-neutral-900",
+              )}
             >
               Monthly
             </button>
             <button
-              onClick={() => setIsYearly(true)}
-              className={`px-5 py-2 rounded-full text-sm font-medium transition-all ${
-                isYearly ? "bg-accent text-accent-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
-              }`}
+              onClick={() => setBilling("yearly")}
+              className={cn(
+                "px-4 py-1.5 text-sm font-medium rounded-full transition-all",
+                billing === "yearly"
+                  ? "bg-white shadow-sm text-neutral-900"
+                  : "text-neutral-500 hover:text-neutral-900",
+              )}
             >
-              Yearly
-            </button>
-          </motion.div>
-        </div>
-
-        {/* Cards container — shared frosted panel with popular card alongside */}
-        <motion.div
-          initial={{ opacity: 0, y: 24 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true, amount: 0.2 }}
-          transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
-          className="grid grid-cols-1 md:grid-cols-[1fr_1fr_auto] gap-0 max-w-5xl mx-auto items-stretch"
-        >
-          {/* Shared card for Starter + Professional */}
-          <div className="md:col-span-2 rounded-2xl md:rounded-r-none border border-border/60 bg-card/60 backdrop-blur-md grid grid-cols-1 sm:grid-cols-2">
-            {tiers.map((tier, i) => {
-              const price = isYearly ? tier.yearlyPrice : tier.monthlyPrice;
-              return (
-                <div
-                  key={tier.name}
-                  className={`p-8 flex flex-col ${
-                    i === 0 ? "sm:border-r border-border/40" : ""
-                  }`}
-                >
-                  <div className="mb-4">
-                    <span className="text-4xl font-bold tracking-tight text-foreground">
-                      ${price}
-                    </span>
-                    <span className="text-sm text-muted-foreground ml-1">/month</span>
-                  </div>
-
-                  <h3 className="text-lg font-semibold text-foreground mb-1">{tier.name}</h3>
-                  <p className="text-sm text-muted-foreground mb-6">{tier.description}</p>
-
-                  <ul className="space-y-3 mb-8 flex-1">
-                    {tier.features.map((f) => (
-                      <li key={f} className="flex items-center gap-2.5 text-sm">
-                        <div className="w-5 h-5 rounded-full flex items-center justify-center shrink-0 bg-accent/10">
-                          <Check className="w-3 h-3 text-accent" />
-                        </div>
-                        <span className="text-muted-foreground">{f}</span>
-                      </li>
-                    ))}
-                  </ul>
-
-                  <button className="w-full py-3 rounded-xl text-sm font-medium transition-all active:scale-[0.97] bg-gradient-to-r from-foreground to-foreground/90 text-primary-foreground hover:opacity-90">
-                    {tier.ctaText}
-                  </button>
-                </div>
-              );
-            })}
-          </div>
-
-          {/* Popular / Enterprise card — dark, taller */}
-          <div className="relative rounded-2xl md:rounded-l-none border border-accent/20 bg-foreground text-primary-foreground p-8 flex flex-col min-w-[280px]">
-            {/* Badge */}
-            <div className="absolute -top-3 right-6">
-              <span className="inline-block rounded-full bg-accent px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-accent-foreground">
-                Most Popular
-              </span>
-            </div>
-
-            <div className="mb-4">
-              <span className="text-4xl font-bold tracking-tight text-accent">
-                ${isYearly ? popularTier.yearlyPrice : popularTier.monthlyPrice}
-              </span>
-              <span className="text-sm text-primary-foreground/50 ml-1">/month</span>
-            </div>
-
-            <h3 className="text-lg font-semibold mb-1">{popularTier.name}</h3>
-            <p className="text-sm text-primary-foreground/50 mb-6">{popularTier.description}</p>
-
-            <ul className="space-y-3 mb-8 flex-1">
-              {popularTier.features.map((f) => (
-                <li key={f} className="flex items-center gap-2.5 text-sm">
-                  <div className="w-5 h-5 rounded-full flex items-center justify-center shrink-0 bg-accent/20">
-                    <Check className="w-3 h-3 text-accent" />
-                  </div>
-                  <span className="text-primary-foreground/70">{f}</span>
-                </li>
-              ))}
-            </ul>
-
-            <button className="w-full py-3 rounded-xl text-sm font-medium transition-all active:scale-[0.97] bg-gradient-to-r from-accent to-accent/80 text-accent-foreground hover:opacity-90 shadow-lg shadow-accent/20">
-              {popularTier.ctaText}
+              Annual <span className="text-neutral-400">-20%</span>
             </button>
           </div>
         </motion.div>
 
-        <motion.p
+        {/* Plan cards */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
+          {PLANS.map((plan, idx) => {
+            const price =
+              billing === "monthly" ? plan.monthlyPrice : plan.yearlyPrice;
+            return (
+              <motion.div
+                key={plan.name}
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{
+                  duration: 0.5,
+                  delay: idx * 0.1,
+                  ease: [0.16, 1, 0.3, 1],
+                }}
+                className={cn(
+                  "relative rounded-2xl p-7 flex flex-col overflow-hidden",
+                  plan.featured
+                    ? "bg-neutral-950 text-white border-none shadow-2xl"
+                    : "bg-neutral-100 border-2 border-dashed border-neutral-300",
+                )}
+              >
+                {/* Featured gradient + badge */}
+                {plan.featured && (
+                  <>
+                    <div className="absolute inset-0 bg-gradient-to-br from-orange-500/20 via-pink-500/10 to-transparent blur-3xl opacity-60 pointer-events-none" />
+                    <div className="absolute font-schibsted top-4 right-4 bg-white/10 backdrop-blur-md px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider z-20">
+                      Most Popular
+                    </div>
+                  </>
+                )}
+
+                <div className="relative z-10 flex-1 flex flex-col">
+                  {/* Plan name */}
+                  <span
+                    className={cn(
+                      "font-schibsted text-sm block mb-4 text-neutral-400",
+                    )}
+                  >
+                    {plan.name}
+                  </span>
+
+                  {/* Price */}
+                  <div className="mb-4 font-schibsted">
+                    <span
+                      className={cn(
+                        "text-4xl font-bold",
+                        plan.featured ? "text-white" : "text-neutral-900",
+                      )}
+                    >
+                      $<NumberFlow value={price} />
+                    </span>
+                    <span
+                      className={cn(
+                        "text-sm ml-1",
+                        plan.featured ? "text-neutral-500" : "text-neutral-400",
+                      )}
+                    >
+                      /month
+                    </span>
+                  </div>
+
+                  {/* Description */}
+                  <Paragraph
+                    variant="small"
+                    className={cn(
+                      "font-schibsted text-base font-medium mb-6 leading-snug",
+                      plan.featured ? "text-white" : "text-neutral-800",
+                    )}
+                  >
+                    {plan.description}
+                  </Paragraph>
+
+                  {/* Features */}
+                  <div className="space-y-3 mb-8 flex-1">
+                    {plan.features.map((feature) => (
+                      <div key={feature} className="flex items-center gap-3">
+                        <div
+                          className={cn(
+                            "w-1.5 h-1.5 rounded-full shrink-0",
+                            plan.featured ? "bg-white/40" : "bg-neutral-400",
+                          )}
+                        />
+                        <span
+                          className={cn(
+                            "font-schibsted text-sm",
+                            plan.featured
+                              ? "text-neutral-300"
+                              : "text-neutral-600",
+                          )}
+                        >
+                          {feature}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* CTA */}
+                  <button
+                    className={cn(
+                      "font-schibsted w-full h-12 rounded-xl text-sm font-medium transition-all active:scale-[0.97] flex items-center justify-center gap-2 border mt-auto",
+                      plan.featured
+                        ? "bg-white text-neutral-900 border-transparent shadow-lg hover:bg-neutral-100"
+                        : "text-neutral-600 border-neutral-300 hover:bg-white active:scale-95",
+                    )}
+                  >
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      viewBox="0 0 24 24"
+                      width="18"
+                      height="18"
+                      className={cn(
+                        "stroke-current fill-none",
+                        plan.featured
+                          ? "stroke-neutral-900"
+                          : "stroke-neutral-600",
+                      )}
+                      strokeWidth="2"
+                    >
+                      <path d="M3.32352 13.0113C3.6739 10.009 4.18586 7.75784 4.66063 6.15851C5.04994 4.84711 5.24459 4.19141 6.04283 3.5957C6.84107 3 7.65697 3 9.28876 3H14.7113C16.3431 3 17.159 3 17.9572 3.5957C18.7554 4.19141 18.9501 4.84711 19.3394 6.15851C19.8142 7.75784 20.3261 10.009 20.6765 13.0113C21.0895 16.5497 21.2959 18.3189 20.1027 19.6594C18.9095 21 16.9758 21 13.1084 21H10.8916C7.02422 21 5.09052 21 3.89731 19.6594C2.70411 18.3189 2.91058 16.5497 3.32352 13.0113Z" />
+                      <path d="M9 7C9 8.65685 10.3431 10 12 10C13.6569 10 15 8.65685 15 7" />
+                    </svg>
+                    Subscribe
+                  </button>
+                </div>
+              </motion.div>
+            );
+          })}
+        </div>
+
+        {/* Footer note */}
+        <motion.div
           initial={{ opacity: 0 }}
           whileInView={{ opacity: 1 }}
           viewport={{ once: true }}
           transition={{ duration: 0.6, delay: 0.4 }}
-          className="text-center text-sm text-muted-foreground mt-10"
+          className="text-center mt-10"
         >
-          14-day free trial · No credit card required · Cancel anytime
-        </motion.p>
+          <Paragraph
+            variant="small"
+            className="font-schibsted text-neutral-400"
+          >
+            14-day free trial · No credit card required · Cancel anytime
+          </Paragraph>
+        </motion.div>
       </div>
     </section>
   );

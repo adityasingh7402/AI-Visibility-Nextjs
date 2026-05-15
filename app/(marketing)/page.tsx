@@ -9,23 +9,23 @@ import FeaturesBentoGrid from "@/components/landing/FeaturesBentoGrid";
 import TestimonialsSection from "@/components/landing/TestimonialsSection";
 import ComparisonTableSection from "@/components/landing/ComparisonTableSection";
 import PricingSection from "@/components/landing/PricingSection";
-import FooterCTASection from "@/components/landing/FooterCTASection";
+import { Footer } from "@/components/landing/FooterCTASection";
 
 export default function MarketingLandingPage() {
   return (
     <main className="overflow-x-hidden">
       <HeroSection />
       <FeatureOverviewSection />
-      <WhyDifferentSection />
-      <LogoSliderSection />
       <ProblemStatementSection />
       <StatsSection />
+      <WhyDifferentSection />
+      {/* <LogoSliderSection /> */}
       <HowItWorksSection />
       <FeaturesBentoGrid />
-      <TestimonialsSection />
+      {/* <TestimonialsSection /> */}
       <ComparisonTableSection />
       <PricingSection />
-      <FooterCTASection />
+      <Footer />
     </main>
   );
 }

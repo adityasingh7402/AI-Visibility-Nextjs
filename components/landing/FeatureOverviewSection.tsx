@@ -103,19 +103,12 @@ const FeatureOverviewSection = () => {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 lg:gap-16 items-stretch">
           {/* Left — hero-gradient panel + floating card */}
           <motion.div
-            className="relative rounded-3xl overflow-hidden flex items-center justify-center"
-            style={{
-              background: "linear-gradient(to bottom, #A8D3FF, #FFF4DF)",
-            }}
+            className="relative rounded-3xl overflow-hidden flex items-center justify-center bg-gradient-to-b from-sky-400 via-blue-600 to-blue-800"
           >
-            {/* Grain overlay — identical to hero */}
+            {/* Grain overlay */}
             <div
-              className="absolute inset-0 pointer-events-none"
-              style={{
-                background: "#8C8C8C",
-                filter: "url(#featureGrain)",
-                opacity: 0.8,
-              }}
+              className="absolute inset-0 pointer-events-none bg-neutral-500 opacity-80"
+              style={{ filter: "url(#featureGrain)" }}
             />
 
             {/* Floating GEO score card */}
