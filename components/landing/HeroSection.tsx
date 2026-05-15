@@ -13,7 +13,7 @@ const HeroSection = () => {
 
   return (
     // Outer wrapper: white background — chart section of card sits on this
-    <div className="relative min-h-screen bg-white">
+    <div className="relative bg-white flex flex-col min-h-screen">
       {/* Gradient section — ends at stat/chart boundary of the card */}
       <section
         // className="relative overflow-hidden bg-gradient-to-b from-[#A8D3FF] to-[#FFF4DF] flex flex-col items-center justify-start pt-0 px-4 text-center"
@@ -90,13 +90,13 @@ const HeroSection = () => {
             }
             animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
             transition={{ duration: 0.7, delay: 0.2, ease: [0.16, 1, 0.3, 1] }}
-            className="mt-8 flex items-center justify-center gap-4"
+            className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-4 w-full"
           >
             <CTAButton
               loggedInHref="/dashboard"
               loggedOutHref="/signup"
               icon={IconCalendarEvent}
-              className="font-schibsted rounded-md"
+              className="font-schibsted rounded-md w-full sm:w-auto justify-center"
             >
               Request a demo
             </CTAButton>
@@ -104,7 +104,7 @@ const HeroSection = () => {
               loggedInHref="/dashboard/analysis"
               loggedOutHref="/login"
               icon={IconArrowRight}
-              className="font-schibsted rounded-md"
+              className="font-schibsted rounded-md w-full sm:w-auto justify-center"
             >
               Explore the platform
             </CTAButton>
@@ -112,8 +112,8 @@ const HeroSection = () => {
         </Container>
       </section>
 
-      {/* Card — absolute to outer wrapper, bottom-0 = viewport bottom */}
-      <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-[88%] max-w-5xl">
+      {/* Card — relative to flow naturally but pulled up to overlap */}
+      <div className="relative w-[95%] md:w-[88%] max-w-5xl mx-auto -mt-40 z-20 mb-12">
         <HeroDashboard />
       </div>
     </div>

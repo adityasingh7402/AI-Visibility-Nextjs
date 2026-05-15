@@ -387,7 +387,7 @@ const AlertCard = () => (
 );
 
 const EnginesCard = () => (
-  <motion.div className="col-span-2" {...fadeIn(0.22)}>
+  <motion.div className="col-span-1 md:col-span-2" {...fadeIn(0.22)}>
     <Card className="rounded-2xl border border-neutral-200/70 shadow-sm h-full bg-white">
       <CardContent className="flex flex-col gap-5 p-5 h-full">
         {/* Text — bottom */}
