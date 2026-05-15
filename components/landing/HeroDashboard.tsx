@@ -53,7 +53,7 @@ export const HeroDashboard = () => {
       className="font-schibsted bg-white rounded-3xl border border-neutral-900 shadow-2xl shadow-neutral-900/10 overflow-hidden"
     >
       {/* Header */}
-      <div className="px-8 pt-7 pb-5 border-b border-neutral-100">
+      <div className="px-5 md:px-8 pt-7 pb-5 border-b border-neutral-100">
         <p className="font-schibsted font-semibold text-left text-[24px] text-neutral-900">
           Good morning, Acme Inc
         </p>
@@ -63,7 +63,7 @@ export const HeroDashboard = () => {
       </div>
 
       {/* Stat cards */}
-      <div className="px-8 py-5 grid grid-cols-3 gap-4 border-b border-neutral-100">
+      <div className="px-5 md:px-8 py-5 grid grid-cols-1 md:grid-cols-3 gap-4 border-b border-neutral-100">
         {/* Card 1 — Brand Mentions */}
         <motion.div
           initial={shouldReduceMotion ? false : { opacity: 0, y: 10 }}
@@ -143,12 +143,12 @@ export const HeroDashboard = () => {
       </div>
 
       {/* Chart */}
-      <div className="px-8 pt-5 pb-6">
-        <span className="text-[10px] font-medium text-neutral-400 uppercase tracking-widest">
+      <div className="px-5 md:px-8 pt-5 pb-6 overflow-x-auto">
+        <span className="text-[10px] font-medium text-neutral-400 uppercase tracking-widest sticky left-0">
           AI Visibility Trend
         </span>
 
-        <div className="mt-4 flex gap-3">
+        <div className="mt-4 flex gap-3 min-w-[500px]">
           {/* Y-axis labels */}
           <div
             className="flex flex-col justify-between text-[9px] font-light text-neutral-300 text-right pb-5"

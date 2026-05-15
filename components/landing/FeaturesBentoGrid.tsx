@@ -46,7 +46,7 @@ const fadeIn = (delay: number) => ({
 // ─── Large card ───────────────────────────────────────────────────────────────
 
 const LargeCard = () => (
-  <motion.div className="col-span-2 row-span-2" {...fadeIn(0.05)}>
+  <motion.div className="col-span-1 md:col-span-2 md:row-span-2" {...fadeIn(0.05)}>
     <Card className="rounded-2xl border border-neutral-200/70 shadow-sm h-full bg-white">
       <CardContent className="flex flex-col p-5 h-full">
         {/* Icon */}
@@ -212,7 +212,7 @@ const AlertCard = () => (
 );
 
 const EnginesCard = () => (
-  <motion.div className="col-span-2" {...fadeIn(0.22)}>
+  <motion.div className="col-span-1 md:col-span-2" {...fadeIn(0.22)}>
     <Card className="rounded-2xl border border-neutral-200/70 shadow-sm h-full bg-white">
       <CardContent className="flex flex-col p-5 h-full">
         <div className="w-10 h-10 rounded-xl bg-orange-50 flex items-center justify-center mb-4 shrink-0">
@@ -271,7 +271,7 @@ const FeaturesBentoGrid = () => {
         </motion.div>
 
         {/* Bento grid */}
-        <div className="grid grid-cols-3 gap-3 auto-rows-[220px]">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 md:auto-rows-[220px]">
           {/* Large card: col 1–2, row 1–2 */}
           <LargeCard />
 

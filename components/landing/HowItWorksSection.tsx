@@ -59,7 +59,7 @@ const StepCard = ({
 
   return (
     <motion.div
-      className={`absolute ${position} w-[260px]`}
+      className={`${position === 'relative' ? 'relative' : 'absolute ' + position} w-full max-w-[260px]`}
       initial={
         shouldReduceMotion ? false : { opacity: 0, y: 20, filter: "blur(4px)" }
       }
@@ -165,8 +165,8 @@ const HowItWorksSection = () => {
             }}
           />
 
-          {/* Timeline area */}
-          <div className="relative z-10 h-[440px]">
+          {/* Timeline area (Desktop) */}
+          <div className="relative z-10 h-[440px] hidden md:block">
             {/* SVG connecting curve */}
             <svg
               className="absolute inset-0 w-full h-full pointer-events-none"
@@ -257,6 +257,18 @@ const HowItWorksSection = () => {
                 step={step}
                 delay={0.15 + i * 0.15}
                 position={CARD_POSITIONS[i]}
+              />
+            ))}
+          </div>
+
+          {/* Mobile layout */}
+          <div className="relative z-10 flex flex-col gap-6 md:hidden py-4 items-center">
+            {steps.map((step, i) => (
+              <StepCard
+                key={step.number}
+                step={step}
+                delay={0.15 + i * 0.15}
+                position="relative"
               />
             ))}
           </div>
