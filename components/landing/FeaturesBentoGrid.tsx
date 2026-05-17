@@ -142,8 +142,8 @@ const LargeCard = () => {
   const inverseMask = useMotionTemplate`radial-gradient(circle 46px at calc(50% + ${lensX}px - 14px) calc(50% + ${lensY}px - 14px), transparent 100%, black 100%)`;
 
   return (
-    <motion.div className="col-span-2 row-span-2" {...fadeIn(0.05)}>
-      <Card className="rounded-2xl border border-neutral-200/70 shadow-sm h-full bg-white">
+    <motion.div className="col-span-1 md:col-span-2 row-span-2" {...fadeIn(0.05)}>
+      <Card className="rounded-2xl border border-neutral-200/70 shadow-sm h-full min-h-[400px] md:min-h-0 bg-white">
         <CardContent className="flex flex-col p-5 h-full">
           {/* Magnified tag scroll — top */}
           <div
@@ -447,7 +447,7 @@ const FeaturesBentoGrid = () => {
   const shouldReduceMotion = useReducedMotion();
 
   return (
-    <section className="py-24 px-4 bg-white">
+    <section className="py-24 px-6 md:px-8 bg-white">
       <div className="max-w-5xl mx-auto">
         <motion.div
           className="text-center mb-12"
@@ -476,7 +476,7 @@ const FeaturesBentoGrid = () => {
           </Heading>
         </motion.div>
 
-        <div className="grid grid-cols-3 gap-3 auto-rows-[220px]">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-3 auto-rows-auto md:auto-rows-[220px]">
           <LargeCard />
           <CitationCard />
           <RankCard />

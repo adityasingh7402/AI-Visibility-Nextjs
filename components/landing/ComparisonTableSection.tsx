@@ -82,108 +82,116 @@ const ComparisonTableSection = () => {
           transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
           className="rounded-[32px] p-6 bg-neutral-100"
         >
-          {/* Column header icons */}
-          <div className="grid grid-cols-[180px_1fr_1fr] mb-4">
-            <div />
-            <div className="px-6">
-              <div className="w-10 h-10 rounded-xl bg-neutral-100 flex items-center justify-center">
-                <HugeiconsIcon
-                  icon={Search01Icon}
-                  size={20}
-                  color="#9ca3af"
-                  strokeWidth={1.5}
-                />
-              </div>
-            </div>
-            <div className="px-6">
-              <div className="w-10 h-10 rounded-xl bg-orange-50 flex items-center justify-center">
-                <HugeiconsIcon
-                  icon={AiBrain01Icon}
-                  size={20}
-                  color={ORANGE}
-                  strokeWidth={1.5}
-                />
-              </div>
-            </div>
-          </div>
-
-          {/* Column header labels */}
-          <div className="grid grid-cols-[180px_1fr_1fr] pb-4 border-b border-neutral-900">
-            <span
-              style={schibsted}
-              className="text-[20px] text-neutral-400 font-schibsted self-end"
-            >
-              Feature
-            </span>
-            <div className="px-6">
-              <span
-                style={schibsted}
-                className="text-[20px] font-schibsted text-neutral-500"
-              >
-                Traditional SEO
-              </span>
-            </div>
-            <div className="px-6 flex items-center gap-2">
-              <span
-                style={schibsted}
-                className="text-[20px] font-schibsted text-neutral-900"
-              >
-                GEO Platform
-              </span>
-              <span
-                style={schibsted}
-                className="text-[9px] font-schibsted px-2 py-0.5 rounded-full border border-orange-200 text-orange-500 bg-orange-50"
-              >
-                AI-First
-              </span>
-            </div>
-          </div>
-
-          {/* Data rows */}
-          {rows.map((row, i) => (
-            <motion.div
-              key={i}
-              className="grid grid-cols-[180px_1fr_1fr] border-b border-neutral-300 py-5 items-start"
-              initial={{ opacity: 0, y: 10 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{
-                duration: 0.4,
-                delay: i * 0.07,
-                ease: [0.16, 1, 0.3, 1],
-              }}
-            >
-              {/* Feature name */}
-              <div className="pr-4 pt-0.5">
-                <Paragraph
-                  variant="small"
-                  className="text-neutral-600 leading-tight italic"
-                >
-                  {row.feature}
-                </Paragraph>
-              </div>
-
-              {/* Traditional SEO */}
+          <div>
+            {/* Column header icons - Hidden on mobile */}
+            <div className="hidden md:grid grid-cols-[180px_1fr_1fr] mb-4">
+              <div />
               <div className="px-6">
-                <Paragraph
-                  variant="small"
-                  className="text-neutral-400 leading-relaxed"
-                >
-                  {row.seo}
-                </Paragraph>
+                <div className="w-10 h-10 rounded-xl bg-neutral-100 flex items-center justify-center">
+                  <HugeiconsIcon
+                    icon={Search01Icon}
+                    size={20}
+                    color="#9ca3af"
+                    strokeWidth={1.5}
+                  />
+                </div>
               </div>
-
-              {/* GEO Platform */}
               <div className="px-6">
-                <Paragraph
-                  variant="small"
-                  className="text-neutral-900 font-semibold leading-relaxed"
-                >
-                  {row.geo}
-                </Paragraph>
+                <div className="w-10 h-10 rounded-xl bg-orange-50 flex items-center justify-center">
+                  <HugeiconsIcon
+                    icon={AiBrain01Icon}
+                    size={20}
+                    color={ORANGE}
+                    strokeWidth={1.5}
+                  />
+                </div>
               </div>
-            </motion.div>
-          ))}
+            </div>
+
+            {/* Column header labels - Hidden on mobile */}
+            <div className="hidden md:grid grid-cols-[180px_1fr_1fr] pb-4 border-b border-neutral-900">
+              <span
+                style={schibsted}
+                className="text-[20px] text-neutral-400 font-schibsted self-end"
+              >
+                Feature
+              </span>
+              <div className="px-6">
+                <span
+                  style={schibsted}
+                  className="text-[20px] font-schibsted text-neutral-500"
+                >
+                  Traditional SEO
+                </span>
+              </div>
+              <div className="px-6 flex items-center gap-2">
+                <span
+                  style={schibsted}
+                  className="text-[20px] font-schibsted text-neutral-900"
+                >
+                  GEO Platform
+                </span>
+                <span
+                  style={schibsted}
+                  className="text-[9px] font-schibsted px-2 py-0.5 rounded-full border border-orange-200 text-orange-500 bg-orange-50"
+                >
+                  AI-First
+                </span>
+              </div>
+            </div>
+
+            {/* Data rows */}
+            {rows.map((row, i) => (
+              <motion.div
+                key={i}
+                className="flex flex-col md:grid md:grid-cols-[180px_1fr_1fr] border-b border-neutral-300 py-6 md:py-5 gap-4 md:gap-0 items-start last:border-0"
+                initial={{ opacity: 0, y: 10 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{
+                  duration: 0.4,
+                  delay: i * 0.07,
+                  ease: [0.16, 1, 0.3, 1],
+                }}
+              >
+                {/* Feature name */}
+                <div className="md:pr-4 pt-0.5">
+                  <Paragraph
+                    variant="small"
+                    className="text-neutral-900 md:text-neutral-600 leading-tight italic font-semibold md:font-normal"
+                  >
+                    {row.feature}
+                  </Paragraph>
+                </div>
+
+                {/* Traditional SEO */}
+                <div className="md:px-6">
+                  <div className="text-[11px] text-neutral-400 mb-1 md:hidden uppercase tracking-wider font-schibsted font-semibold">
+                    Traditional SEO
+                  </div>
+                  <Paragraph
+                    variant="small"
+                    className="text-neutral-500 md:text-neutral-400 leading-relaxed"
+                  >
+                    {row.seo}
+                  </Paragraph>
+                </div>
+
+                {/* GEO Platform */}
+                <div className="md:px-6">
+                  <div className="text-[11px] text-orange-600 mb-1 md:hidden uppercase tracking-wider font-schibsted font-semibold">
+                    GEO Platform
+                  </div>
+                  <Paragraph
+                    variant="small"
+                    className="text-neutral-900 font-semibold leading-relaxed"
+                  >
+                    {row.geo}
+                  </Paragraph>
+                </div>
+              </motion.div>
+            ))}
+          </div>
         </motion.div>
       </div>
     </section>
