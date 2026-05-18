@@ -132,27 +132,23 @@ function BrandCard({ brand, latestScore }: { brand: Brand; latestScore: number |
   );
 }
 
-// ── Trend section (shows when analyses have trend data) ─────────────────────
+
+// ── Trend section ────────────────────────────────────────────────────────────
 function TrendSection({ analyses }: { analyses: StoredGeoAnalysis[] }) {
-  // Build a minimal VisibilityTrend from analyses for the overview chart
   const trend = useMemo<VisibilityTrend | null>(() => {
     const scored = analyses
       .filter(a => a.overall_score != null && a.created_at)
       .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
-
     if (scored.length < 2) return null;
-
     const data_points = scored.map(a => ({
       timestamp: a.created_at,
       overall_visibility: a.overall_score ?? 0,
       base_model_visibility: 0,
       rag_model_visibility: 0,
     }));
-
     const first = data_points[0].overall_visibility;
     const last = data_points[data_points.length - 1].overall_visibility;
     const change = last - first;
-
     return {
       brand_name: 'All Brands',
       category: '',
@@ -172,9 +168,7 @@ function TrendSection({ analyses }: { analyses: StoredGeoAnalysis[] }) {
           <TrendingUp className="h-5 w-5 text-primary" />
           Visibility Trend
         </h3>
-        <Badge variant="outline" className="text-xs">
-          {trend.total_snapshots} data points
-        </Badge>
+        <Badge variant="outline" className="text-xs">{trend.total_snapshots} data points</Badge>
       </div>
       <TrendChart trend={trend} />
     </div>

@@ -5,14 +5,7 @@ type ParagraphProps<T extends React.ElementType = "p"> = {
   className?: string;
   children: React.ReactNode;
   as?: T;
-  variant?:
-    | "default"
-    | "muted"
-    | "small"
-    | "docs-par"
-    | "home-par"
-    | "dashboard-subHeading"
-    | "docs-subPar";
+  variant?: "default" | "small" | "paragraphHeading" | "paragraphtext";
 };
 
 export const Paragraph = <T extends React.ElementType = "p">({
@@ -26,17 +19,12 @@ export const Paragraph = <T extends React.ElementType = "p">({
   const variants = {
     default:
       "text-sm sm:text-base md:text-lg text-neutral-900 font-schibsted font-regular leading-relaxed",
-    muted:
-      "text-xs sm:text-sm md:text-base text-neutral-900 font-schibsted font-regular mb-8 leading-relaxed",
-    small: "text-2xl sm:text-3xl md:text-[20px] lg:text-[15px] font-schibsted",
-    "docs-par":
-      "text-sm sm:text-[16px] text-neutral-900 font-schibsted font-regular mb-4 text-neutral-700 tracking-tighter leading-relaxed",
-    "docs-subPar":
-      "font-schibsted font-light text-neutral-700 tracking-tighter text-[16px]",
-    "home-par":
-      "text-base md:text-xl text-neutral-900 font-schibsted font-regular",
-    "dashboard-subHeading":
-      "text-lg font-schibsted text-neutral-700 tracking-tighter",
+    small:
+      "text-sm sm:text-[15px] md:text-[16px] lg:text-[17px] font-schibsted",
+    paragraphHeading:
+      "font-schibsted text-lg sm:text-xl md:text-2xl lg:text-2xl font-light text-neutral-900",
+    paragraphtext:
+      "text-sm sm:text-[15px] md:text-[16px] lg:text-[17px] font-schibsted text-neutral-700 font-light tracking-tighter leading-tight",
   };
 
   return (
