@@ -30,7 +30,6 @@ import {
 } from "@hugeicons/core-free-icons";
 import { Card, CardContent } from "../ui/card";
 import { Heading } from "../ui/Heading";
-import { Subheading } from "../ui/Subheading";
 import { Paragraph } from "../ui/Paragraph";
 
 const ORANGE = "#D97757";
@@ -142,7 +141,10 @@ const LargeCard = () => {
   const inverseMask = useMotionTemplate`radial-gradient(circle 46px at calc(50% + ${lensX}px - 14px) calc(50% + ${lensY}px - 14px), transparent 100%, black 100%)`;
 
   return (
-    <motion.div className="col-span-1 md:col-span-2 row-span-2" {...fadeIn(0.05)}>
+    <motion.div
+      className="col-span-1 md:col-span-2 row-span-2"
+      {...fadeIn(0.05)}
+    >
       <Card className="rounded-2xl border border-neutral-200/70 shadow-sm h-full min-h-[400px] md:min-h-0 bg-white">
         <CardContent className="flex flex-col p-5 h-full">
           {/* Magnified tag scroll — top */}
@@ -251,17 +253,15 @@ const LargeCard = () => {
                   strokeWidth={1.6}
                 />
               </div> */}
-              <Subheading
+              <Paragraph
                 as="h3"
-                variant="small"
-                className="text-neutral-900 font-light text-base"
+                variant="paragraphHeading"
               >
                 Prompt Intelligence
-              </Subheading>
+              </Paragraph>
             </div>
             <Paragraph
-              variant="small"
-              className="text-neutral-700 tracking-tighter font-light leading-tight"
+              variant="paragraphtext"
             >
               Discover how every AI engine interprets queries about your brand —
               across intent types, citation sources, and platforms. Drag the
@@ -288,21 +288,19 @@ const CitationCard = () => {
                 <HugeiconsIcon
                   icon={Link01Icon}
                   size={24}
-                  color={BLUE}
+                  color="#171717"
                   strokeWidth={1.8}
                 />
               </div>
-              <Subheading
+              <Paragraph
                 as="h3"
-                variant="small"
-                className="text-neutral-900 font-light text-base"
+                variant="paragraphHeading"
               >
                 Citation Mapping
-              </Subheading>
+              </Paragraph>
             </div>
             <Paragraph
-              variant="small"
-              className="text-neutral-700 tracking-tighter font-light leading-tight"
+              variant="paragraphtext"
             >
               Trace every source AI models cite when discussing your brand.
               Build authority where it matters.
@@ -325,21 +323,20 @@ const RankCard = () => (
               <HugeiconsIcon
                 icon={Analytics01Icon}
                 size={24}
-                color={ORANGE}
+                color="#171717"
                 strokeWidth={1.8}
               />
             </div>
-            <Subheading
+            <Paragraph
               as="h3"
-              variant="small"
-              className="text-neutral-900 font-light text-base"
+              variant="paragraphHeading"
             >
               Rank Tracking
-            </Subheading>
+            </Paragraph>
           </div>
           <Paragraph
-            variant="small"
-            className="text-neutral-700 tracking-tighter font-light leading-tight"
+            variant="paragraphtext"
+            className="text-neutral-800"
           >
             Monitor your brand's position across AI-generated answers in
             real-time with engine-specific breakdowns.
@@ -361,21 +358,20 @@ const AlertCard = () => (
               <HugeiconsIcon
                 icon={Alert01Icon}
                 size={24}
-                color={BLUE}
+                color="#171717"
                 strokeWidth={1.8}
               />
             </div>
-            <Subheading
+            <Paragraph
               as="h3"
-              variant="small"
-              className="text-neutral-900 font-light text-base"
+              variant="paragraphHeading"
             >
               Hallucination Alerts
-            </Subheading>
+            </Paragraph>
           </div>
           <Paragraph
-            variant="small"
-            className="text-neutral-700 tracking-tighter font-light leading-tight"
+            variant="paragraphtext"
+            className="text-neutral-800"
           >
             Get instant notifications when AI models misrepresent your brand,
             products, or key facts.
@@ -397,21 +393,20 @@ const EnginesCard = () => (
               <HugeiconsIcon
                 icon={GlobeIcon}
                 size={24}
-                color={ORANGE}
+                color="#171717"
                 strokeWidth={1.8}
               />
             </div>
-            <Subheading
+            <Paragraph
               as="h3"
-              variant="small"
-              className="text-neutral-900 font-light text-base"
+              variant="paragraphHeading"
             >
               Multi-Engine Support
-            </Subheading>
+            </Paragraph>
           </div>
           <Paragraph
-            variant="small"
-            className="text-neutral-500 tracking-tighter font-light leading-tight"
+            variant="paragraphtext"
+            className="text-neutral-800"
           >
             Track and optimize across ChatGPT, Perplexity, Gemini, Claude, and
             every emerging AI search platform — from one dashboard.

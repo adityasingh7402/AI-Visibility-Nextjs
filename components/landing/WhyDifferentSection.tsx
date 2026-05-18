@@ -4,7 +4,7 @@ import { IconTool, IconStack2, IconShieldCheck } from "@tabler/icons-react";
 import { Card, CardContent } from "../ui/card";
 import { Heading } from "../ui/Heading";
 import { Paragraph } from "../ui/Paragraph";
-import { Subheading } from "../ui/Subheading";
+import StatsSection from "./StatsSection";
 
 const differentiators = [
   {
@@ -84,37 +84,37 @@ const WhyDifferentSection = () => {
             return (
               <motion.div key={item.title} className="h-full">
                 <Card className="h-full bg-white rounded-2xl border-0 ring-0 shadow-none">
-                  <CardContent className="flex flex-col gap-6 pt-7 pb-9 px-6">
-                    {/* Icon in circular outline */}
-                    <div className="w-11 h-11 rounded-full border border-neutral-300 flex items-center justify-center shrink-0">
+                  <CardContent className="flex flex-col gap-4 pt-2 pb-9 px-6">
+                    {/* Icon + Title row */}
+                    <div className="flex items-start gap-2">
                       <Icon
-                        size={20}
-                        strokeWidth={1.5}
-                        className="text-neutral-700"
+                        size={24}
+                        strokeWidth={1.8}
+                        className="text-neutral-900 shrink-0 mt-1"
                       />
-                    </div>
-
-                    {/* Title + description */}
-                    <div className="flex flex-col gap-2">
-                      <Subheading
-                        as="h3"
-                        variant="small"
-                        className="text-neutral-900 font-light text-base"
-                      >
+                      <Paragraph as="h3" variant="paragraphHeading">
                         {item.title}
-                      </Subheading>
-                      <Paragraph
-                        variant="small"
-                        className="text-neutral-500 mt-2 tracking-tighter font-light leading-tight mx-auto"
-                      >
-                        {item.description}
                       </Paragraph>
                     </div>
+
+                    {/* Description */}
+                    <Paragraph
+                      as="p"
+                      variant="paragraphtext"
+                      className="text-neutral-800"
+                    >
+                      {item.description}
+                    </Paragraph>
                   </CardContent>
                 </Card>
               </motion.div>
             );
           })}
+        </div>
+
+        {/* Stats below cards */}
+        <div className="mt-12">
+          <StatsSection />
         </div>
       </div>
     </section>

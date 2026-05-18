@@ -3,7 +3,6 @@ import FeatureOverviewSection from "@/components/landing/FeatureOverviewSection"
 import WhyDifferentSection from "@/components/landing/WhyDifferentSection";
 import LogoSliderSection from "@/components/landing/LogoSliderSection";
 import ProblemStatementSection from "@/components/landing/ProblemStatementSection";
-import StatsSection from "@/components/landing/StatsSection";
 import HowItWorksSection from "@/components/landing/HowItWorksSection";
 import FeaturesBentoGrid from "@/components/landing/FeaturesBentoGrid";
 import TestimonialsSection from "@/components/landing/TestimonialsSection";
@@ -17,13 +16,13 @@ export default function MarketingLandingPage() {
       <HeroSection />
       <FeatureOverviewSection />
       <ProblemStatementSection />
-      <StatsSection />
-      <WhyDifferentSection />
+
       {/* <LogoSliderSection /> */}
       <HowItWorksSection />
       <FeaturesBentoGrid />
+      <WhyDifferentSection />
       {/* <TestimonialsSection /> */}
-      <ComparisonTableSection />
+      {/* <ComparisonTableSection /> */}
       <PricingSection />
       <Footer />
     </main>

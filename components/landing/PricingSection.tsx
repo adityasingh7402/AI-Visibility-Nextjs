@@ -182,9 +182,9 @@ const PricingSection = () => {
 
                   {/* Description */}
                   <Paragraph
-                    variant="small"
+                    variant="paragraphtext"
                     className={cn(
-                      "font-schibsted text-base font-medium mb-6 leading-snug",
+                      "font-medium leading-snug mb-6",
                       plan.featured ? "text-white" : "text-neutral-800",
                     )}
                   >
@@ -257,8 +257,8 @@ const PricingSection = () => {
           className="text-center mt-10"
         >
           <Paragraph
-            variant="small"
-            className="font-schibsted text-neutral-400"
+            variant="paragraphtext"
+            className="text-neutral-400"
           >
             14-day free trial · No credit card required · Cancel anytime
           </Paragraph>

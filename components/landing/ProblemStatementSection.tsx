@@ -22,7 +22,6 @@ import { ChartContainer, type ChartConfig } from "../ui/chart";
 import { Card, CardContent } from "../ui/card";
 import { Heading } from "../ui/Heading";
 import { CTAButton } from "../ui/CTAButton";
-import { Subheading } from "../ui/Subheading";
 import { Paragraph } from "../ui/Paragraph";
 import { TypingText, TypingTextCursor } from "../ui/typing-text";
 import { PointerHighlight } from "../ui/pointer-highlight";
@@ -384,7 +383,8 @@ const DroppingLineVisual = () => (
     <div
       className="absolute inset-0"
       style={{
-        backgroundImage: "radial-gradient(circle, #cbd5e1 1px, transparent 1px)",
+        backgroundImage:
+          "radial-gradient(circle, #cbd5e1 1px, transparent 1px)",
         backgroundSize: "16px 16px",
         opacity: 0.4,
       }}
@@ -433,7 +433,10 @@ const DroppingLineVisual = () => (
 
       {/* Vertical inflection marker */}
       <line
-        x1="122" y1="14" x2="122" y2="80"
+        x1="122"
+        y1="14"
+        x2="122"
+        y2="80"
         stroke="#94a3b8"
         strokeWidth="1"
         strokeDasharray="3 3"
@@ -441,7 +444,14 @@ const DroppingLineVisual = () => (
       />
 
       {/* Peak dot */}
-      <circle cx="122" cy="11" r="4.5" fill="white" stroke="#2563eb" strokeWidth="2.2" />
+      <circle
+        cx="122"
+        cy="11"
+        r="4.5"
+        fill="white"
+        stroke="#2563eb"
+        strokeWidth="2.2"
+      />
 
       {/* "model update" pill label */}
       <rect x="129" y="4" width="56" height="14" rx="4" fill="#1e40af" />
@@ -558,8 +568,8 @@ const UnknownScoreVisual = ({ isHovered }: { isHovered: boolean }) => {
 };
 
 const WHITE_CARD =
-  "rounded-2xl py-0 bg-white ring-0 border border-neutral-200/70 shadow-sm h-full";
-const DARK_CARD = "rounded-2xl py-0 ring-0 border-0 h-full";
+  "rounded-[10px] py-0 bg-white ring-0 border border-neutral-200/70 shadow-sm h-full";
+const DARK_CARD = "rounded-[10px] py-0 ring-0 border-0 h-full";
 
 // ─── Section ──────────────────────────────────────────────────────────────────
 
@@ -610,7 +620,7 @@ const ProblemStatementSection = () => {
         </motion.div>
 
         <div
-          className="relative rounded-[32px] p-4 overflow-hidden"
+          className="relative rounded-[18px] p-2 overflow-hidden"
           style={{ background: "#EDE5D8" }}
         >
           {/* SVG noise filter definition */}
@@ -651,17 +661,10 @@ const ProblemStatementSection = () => {
                       <AIChatVisual isHovered={card1Hovered} />
                     </div>
                     <div>
-                      <Subheading
-                        as="h3"
-                        variant="small"
-                        className="text-neutral-900 font-light text-base"
-                      >
+                      <Paragraph as="h3" variant="paragraphHeading">
                         AI picked its favorites. Was it you?
-                      </Subheading>
-                      <Paragraph
-                        variant="small"
-                        className="text-neutral-700 mt-2 tracking-tighter font-light leading-tight mx-auto"
-                      >
+                      </Paragraph>
+                      <Paragraph variant="paragraphtext" className="mt-2">
                         Every day, buyers ask ChatGPT what tool to use in your
                         category. AI names brands. Either yours makes the list —
                         or a competitor does.
@@ -682,16 +685,12 @@ const ProblemStatementSection = () => {
                   </div>
                   {/* Text zone */}
                   <div className="flex-1 p-5 pt-4">
-                    <Subheading
-                      as="h3"
-                      variant="small"
-                      className="text-neutral-900 font-light text-base"
-                    >
+                    <Paragraph as="h3" variant="paragraphHeading">
                       8 AI systems. All measuring you differently.
-                    </Subheading>
+                    </Paragraph>
                     <Paragraph
-                      variant="small"
-                      className="text-neutral-700 mt-2 tracking-tighter font-light leading-tight mx-auto"
+                      variant="paragraphtext"
+                      className="text-neutral-800 mt-2"
                     >
                       ChatGPT cites Wikipedia-heavy sources. Perplexity pulls
                       live web results. Gemini favors the Google ecosystem.
@@ -712,16 +711,15 @@ const ProblemStatementSection = () => {
                       <HoursBarChartVisual />
                     </div>
                     <div>
-                      <Subheading
+                      {/* <Paragraph
                         as="h3"
-                        variant="small"
-                        className="text-neutral-900 font-light text-base"
+                        variant="paragraphHeading"
                       >
                         25+ hours a week. By hand.
-                      </Subheading>
+                      </Paragraph> */}
                       <Paragraph
-                        variant="small"
-                        className="text-neutral-700 mt-2 tracking-tighter font-light leading-tight mx-auto"
+                        variant="paragraphtext"
+                        className="text-neutral-800 mt-2"
                       >
                         Copy-pasting queries into AI tools and logging results
                         in spreadsheets isn't a strategy.
@@ -736,10 +734,10 @@ const ProblemStatementSection = () => {
                 <Card className={WHITE_CARD}>
                   <CardContent className="flex flex-col items-center justify-center gap-3 p-5 h-full">
                     <div>
-                      <Subheading
+                      <Paragraph
                         as="h3"
-                        variant="medium"
-                        className="text-neutral-900 font-light text-base"
+                        variant="paragraphHeading"
+                        className="text-2xl sm:text-3xl md:text-4xl lg:text-4xl"
                       >
                         Your competitors are{" "}
                         <PointerHighlight
@@ -751,10 +749,10 @@ const ProblemStatementSection = () => {
                             everywhere.
                           </span>
                         </PointerHighlight>
-                      </Subheading>
+                      </Paragraph>
                       <Paragraph
-                        variant="small"
-                        className="text-neutral-700 mt-2 tracking-tighter font-light leading-tight mx-auto"
+                        variant="paragraphtext"
+                        className="text-neutral-800 mt-1"
                       >
                         AI share of voice is already being captured — just not
                         by you.
@@ -772,16 +770,12 @@ const ProblemStatementSection = () => {
                       <DroppingLineVisual />
                     </div>
                     <div>
-                      <Subheading
-                        as="h3"
-                        variant="small"
-                        className="text-neutral-900 font-light text-base"
-                      >
+                      <Paragraph as="h3" variant="paragraphHeading">
                         Model updates erase your progress.
-                      </Subheading>
+                      </Paragraph>
                       <Paragraph
-                        variant="small"
-                        className="text-neutral-700 mt-2 tracking-tighter font-light leading-tight mx-auto"
+                        variant="paragraphtext"
+                        className="text-neutral-800 mt-2"
                       >
                         AI training data changes constantly. Manual spot-checks
                         are stale before you can act on them.
@@ -810,16 +804,16 @@ const ProblemStatementSection = () => {
                     </div>
                     <div className="flex-1" />
                     <div>
-                      <Subheading
+                      <Paragraph
                         as="h3"
-                        variant="small"
-                        className="text-neutral-100 font-light text-base"
+                        variant="paragraphHeading"
+                        className="text-neutral-100 font-semibold"
                       >
                         Find out where you stand.
-                      </Subheading>
+                      </Paragraph>
                       <Paragraph
-                        variant="small"
-                        className="text-neutral-200 mt-2 tracking-tighter font-light leading-tight mx-auto"
+                        variant="paragraphtext"
+                        className="text-neutral-200 mt-2"
                       >
                         Run a free GEO scan and see exactly how your brand
                         appears — or doesn't — across 8 AI assistants.
@@ -852,16 +846,16 @@ const ProblemStatementSection = () => {
                       <UnknownScoreVisual isHovered={card7Hovered} />
                     </div>
                     <div>
-                      <Subheading
+                      <Paragraph
                         as="h3"
-                        variant="medium"
-                        className="text-neutral-900 font-light text-base"
+                        variant="paragraphHeading"
+                        className="font-semibold"
                       >
                         AI Visibility Score
-                      </Subheading>
+                      </Paragraph>
                       <Paragraph
-                        variant="small"
-                        className="text-neutral-700 mt-2 tracking-tighter font-light leading-tight mx-auto"
+                        variant="paragraphtext"
+                        className="text-neutral-800 mt-2"
                       >
                         You can't optimize what you can't see. Most brands have
                         never run a single AI visibility audit.

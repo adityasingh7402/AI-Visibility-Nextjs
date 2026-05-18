@@ -6,7 +6,7 @@ type SubheadingProps<T extends React.ElementType = "h2"> = {
   children: React.ReactNode;
   as?: T;
   id?: string;
-  variant?: "default" | "large" | "small" | "medium";
+  variant?: "herosubHeading";
 };
 
 export const Subheading = <T extends React.ElementType = "h2">({
@@ -14,29 +14,19 @@ export const Subheading = <T extends React.ElementType = "h2">({
   children,
   as,
   id,
-  variant = "default",
+  variant = "herosubHeading",
 }: SubheadingProps<T>) => {
   const Tag = as || "h2";
 
   const variants = {
-    large:
-      "text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-semibold leading-tight",
-    default:
-      "text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-semibold leading-tight",
-    small:
-      "text-2xl sm:text-3xl md:text-[20px] lg:text-[20px] font-light leading-tight",
-    medium:
-      "text-3xl sm:text-4xl md:text-[24px] lg:text-[28px] font-light leading-tight",
+    herosubHeading:
+      "text-[15px] sm:text-[17px] md:text-[18px] lg:text-[20px] font-light leading-tight tracking-tight",
   };
 
   return (
     <Tag
       id={id}
-      className={twMerge(
-        "font-schibsted text-neutral-900",
-        variants[variant],
-        className,
-      )}
+      className={twMerge("font-schibsted", variants[variant], className)}
     >
       {children}
     </Tag>
