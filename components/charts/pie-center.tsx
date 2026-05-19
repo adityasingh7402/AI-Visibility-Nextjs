@@ -48,8 +48,8 @@ export function PieCenter({
   formatOptions = defaultChartStatFlowFormat,
   children,
   className = "",
-  valueClassName = "text-lg font-bold",
-  labelClassName = "text-[9px]",
+  valueClassName = "text-5xl font-schibsted",
+  labelClassName = "text-[15px] tracking-tight text-neutral-500",
   prefix,
   suffix,
 }: PieCenterProps) {

@@ -69,9 +69,9 @@ export function DateTicker({ currentIndex, labels, visible }: DateTickerProps) {
   }
 
   return (
-    <div className="overflow-hidden rounded-full bg-zinc-900 px-4 py-1 text-white shadow-lg dark:bg-zinc-100 dark:text-zinc-900">
+    <div className="overflow-hidden rounded-[10px] bg-sky-900 font-schibsted tracking-tight px-1 py-1 text-white shadow-lg dark:bg-zinc-100 dark:text-zinc-900">
       <div className="relative h-6 overflow-hidden">
-        <div className="flex items-center justify-center gap-1">
+        <div className="flex items-center justify-center gap-0">
           {/* Month stack */}
           <div className="relative h-6 overflow-hidden">
             <motion.div className="flex flex-col" style={{ y: monthY }}>
@@ -80,9 +80,7 @@ export function DateTicker({ currentIndex, labels, visible }: DateTickerProps) {
                   className="flex h-6 shrink-0 items-center justify-center"
                   key={month}
                 >
-                  <span className="whitespace-nowrap font-medium text-sm">
-                    {month}
-                  </span>
+                  <span className="whitespace-nowrap text-sm">{month}</span>
                 </div>
               ))}
             </motion.div>
@@ -96,9 +94,7 @@ export function DateTicker({ currentIndex, labels, visible }: DateTickerProps) {
                   className="flex h-6 shrink-0 items-center justify-center"
                   key={label.full}
                 >
-                  <span className="whitespace-nowrap font-medium text-sm">
-                    {label.day}
-                  </span>
+                  <span className="whitespace-nowrap text-sm">{label.day}</span>
                 </div>
               ))}
             </motion.div>

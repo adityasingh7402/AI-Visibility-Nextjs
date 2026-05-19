@@ -122,7 +122,7 @@ export function BarYAxis({
 
   return createPortal(
     <div
-      className="pointer-events-none absolute top-0 bottom-0"
+      className="pointer-events-none absolute top-0 bottom-0 font-schibsted text-chart-label tracking-tight"
       style={{
         left: 0,
         width: margin.left,
@@ -138,7 +138,7 @@ export function BarYAxis({
         />
       ))}
     </div>,
-    container
+    container,
   );
 }
 
