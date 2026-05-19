@@ -4,6 +4,7 @@ import WhyDifferentSection from "@/components/landing/WhyDifferentSection";
 import LogoSliderSection from "@/components/landing/LogoSliderSection";
 import ProblemStatementSection from "@/components/landing/ProblemStatementSection";
 import HowItWorksSection from "@/components/landing/HowItWorksSection";
+import DataMetricsSection from "@/components/landing/DataMetricsSection";
 import FeaturesBentoGrid from "@/components/landing/FeaturesBentoGrid";
 import TestimonialsSection from "@/components/landing/TestimonialsSection";
 import ComparisonTableSection from "@/components/landing/ComparisonTableSection";
@@ -14,8 +15,9 @@ export default function MarketingLandingPage() {
   return (
     <main className="overflow-x-hidden">
       <HeroSection />
-      <FeatureOverviewSection />
+      <DataMetricsSection />
       <ProblemStatementSection />
+      <FeatureOverviewSection />
 
       {/* <LogoSliderSection /> */}
       <HowItWorksSection />
